@@ -6,9 +6,9 @@ import cityControllers from '@/models/city/city.controllers';
 const router = new Router();
 
 router.get('/', cityControllers.get_all_city)
-router.post('/', json_checker, authMiddleware, cityControllers.create_city)
-router.put('/:id', json_checker, authMiddleware, cityControllers.update_city)
-router.delete('/:id', authMiddleware, cityControllers.delete_city)
+router.post('/', json_checker, cityControllers.create_city)
+router.put('/:id', json_checker, cityControllers.update_city)
+router.delete('/:id', cityControllers.delete_city)
 router.get('/short-name/:id', cityControllers.get_city_by_short_name)
 
 export default router 

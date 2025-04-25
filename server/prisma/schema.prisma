@@ -41,7 +41,7 @@ model Location {
   address    String
 
   cityId String
-  city City @relation(fields: [cityId], references: [id])
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
   containers Containers[]
 
   createdAt DateTime @default(now())
@@ -55,7 +55,7 @@ model Containers {
   id Int @id @default(01)
 
   locId String
-  location Location @relation(fields: [locId], references: [id])
+  location Location @relation(fields: [locId], references: [id], onDelete: Cascade)
   cells Cells[]
 
   createdAt DateTime @default(now())
@@ -72,8 +72,8 @@ model Cells {
   len_height String? // Длина высота?
 
   containerId Int
-  container   Containers @relation(fields: [containerId], references: [id])
-  size        SizeCells  @relation(fields: [size_id], references: [id])
+  container   Containers @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  size        SizeCells  @relation(fields: [size_id], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -9,7 +9,7 @@ export const Header = () => {
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <span className="text-white text-xl font-bold">
-                  RELE Control
+                  Точка.Склада
                 </span>
               </div>
               <div className="hidden md:block">
