@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  login     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// NEW MODEL
+
+// MODEL CITY containers
+model City {
+  id         String @id @default(uuid())
+  title      String
+  short_name String @unique
+
+  locations Location[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("citys")
+}
+
+// MODEL LOCATION FOR CITY containers
+model Location {
+  id         String @id @default(uuid())
+  name       String
+  short_name String @unique
+  address    String
+
+  cityId String
+  city City @relation(fields: [cityId], references: [id])
+  containers Containers[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("locations")
+}
+
+// MODEL CONTAINERS
+model Containers {
+  id Int @id @default(01)
+
+  locId String
+  location Location @relation(fields: [locId], references: [id])
+  cells Cells[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("containers")
+}
+
+// MODEL CELLS for CONTAINERS
+model Cells {
+  id         String  @id @default(uuid())
+  size_id    String
+  name       String
+  len_height String? // Длина высота?
+
+  containerId Int
+  container   Containers @relation(fields: [containerId], references: [id])
+  size        SizeCells  @relation(fields: [size_id], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cells")
+}
+
+// MODEL SIZE FOR CELLS
+model SizeCells {
+  id   String @id @default(uuid())
+  name String
+  size String
+  area String // Площадь
+
+  cells Cells[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("size_cells")
+}
+
+// Rele old
+
+model Panel {
+  id        String  @id @default(uuid())
+  name      String
+  ipAddress String
+  port      Int
+  login     String
+  password  String
+  isActive  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  relays    Relay[]
+
+  @@map("panels")
+}
+
+model Relay {
+  id          String    @id @default(uuid())
+  panelId     String
+  relayNumber Int
+  name        String
+  type        RelayType
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  panel  Panel         @relation(fields: [panelId], references: [id])
+  access RelayAccess[]
+
+  @@unique([panelId, relayNumber])
+  @@map("relays")
+}
+
+model RelayAccess {
+  id             String   @id @default(uuid())
+  supabaseUserId String
+  relayId        String
+  validUntil     DateTime
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  relay Relay @relation(fields: [relayId], references: [id])
+
+  @@map("relay_access")
+}
+
+enum RelayType {
+  SECURITY
+  LIGHT
+  GATE
+}
