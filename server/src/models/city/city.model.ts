@@ -1,6 +1,5 @@
 import { City, Location } from "@prisma/client"
 
-
 function city_view(city: City & { location?: Location[] }) {
     const view = {
         id: city.id,

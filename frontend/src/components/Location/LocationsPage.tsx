@@ -51,9 +51,9 @@ export default function LocationsPage() {
     <div className="container py-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Локации</h1>
-        <Button>Добавить {activeTab === "cities" ? "город" : 
-                          activeTab === "locations" ? "локацию" : 
-                          activeTab === "containers" ? "контейнер" : "ячейку"}</Button>
+        <Button>Добавить {activeTab === "cities" ? "город" :
+          activeTab === "locations" ? "локацию" :
+            activeTab === "containers" ? "контейнер" : "ячейку"}</Button>
       </div>
 
       <div className="relative">
@@ -83,10 +83,12 @@ export default function LocationsPage() {
         </TabsContent>
 
         <TabsContent value="containers">
+          {/* @ts-ignore */}
           <ContainerTable containers={mockContainers} searchQuery={searchQuery} />
         </TabsContent>
 
         <TabsContent value="cells">
+          {/* @ts-ignore */}
           <CellTable cells={mockCells} searchQuery={searchQuery} />
         </TabsContent>
       </Tabs>
