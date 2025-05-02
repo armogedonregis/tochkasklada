@@ -1,3 +1,9 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,17 +15,51 @@ datasource db {
 
 model User {
   id        String   @id @default(uuid())
-  login     String   @unique
+  email     String  @unique
   password  String
+  role      String   @default("CLIENT")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Связи
+  client    Client?
+  
   @@map("users")
 }
 
-// NEW MODEL
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Связь с пользователем
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  phones    ClientPhone[]
+  
+  @@map("clients")
+}
 
-// MODEL CITY containers
+// Модель для хранения телефонов клиентов
+model ClientPhone {
+  id        String   @id @default(uuid())
+  phone     String
+
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("client_phones")
+}
+
+// Модели для работы со складами
+
 model City {
   id         String @id @default(uuid())
   title      String
@@ -33,7 +73,6 @@ model City {
   @@map("citys")
 }
 
-// MODEL LOCATION FOR CITY containers
 model Location {
   id         String @id @default(uuid())
   name       String
@@ -50,9 +89,8 @@ model Location {
   @@map("locations")
 }
 
-// MODEL CONTAINERS
 model Containers {
-  id Int @id @default(01)
+  id Int @id @default(autoincrement())
 
   locId String
   location Location @relation(fields: [locId], references: [id], onDelete: Cascade)
@@ -64,7 +102,6 @@ model Containers {
   @@map("containers")
 }
 
-// MODEL CELLS for CONTAINERS
 model Cells {
   id         String  @id @default(uuid())
   size_id    String
@@ -81,7 +118,6 @@ model Cells {
   @@map("cells")
 }
 
-// MODEL SIZE FOR CELLS
 model SizeCells {
   id   String @id @default(uuid())
   name String
@@ -96,7 +132,7 @@ model SizeCells {
   @@map("size_cells")
 }
 
-// Rele old
+// Модели для работы с панелями и реле
 
 model Panel {
   id        String  @id @default(uuid())
@@ -132,7 +168,7 @@ model Relay {
 
 model RelayAccess {
   id             String   @id @default(uuid())
-  supabaseUserId String
+  userId         String   // Изменено с supabaseUserId на userId для соответствия нашей модели
   relayId        String
   validUntil     DateTime
   isActive       Boolean  @default(true)

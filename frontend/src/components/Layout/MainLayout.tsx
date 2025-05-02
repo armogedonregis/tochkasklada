@@ -3,6 +3,7 @@
 import React, { ReactNode } from 'react';
 import { Navigation } from '../Navigation/Navigation';
 import { UserAvatar } from '../UserAvatar';
+import ProfileButton from '../auth/ProfileButton';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -26,14 +27,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </div>
             </h1>
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <button
-                  className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white focus:outline-none"
-                >
-                  <span className="mr-2">Администратор</span>
-                  <UserAvatar name="Администратор" size="sm" />
-                </button>
-              </div>
+              <ProfileButton />
             </div>
           </div>
         </header>
