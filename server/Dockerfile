@@ -1,50 +1,22 @@
-FROM node:18-alpine AS builder
+FROM node:18-alpine
+
+# Установка необходимых зависимостей
+RUN apk add --no-cache python3 make g++
+RUN npm install -g pnpm
 
 WORKDIR /app
 
-# Установка необходимых зависимостей для bcrypt
-RUN apk add --no-cache python3 make g++ 
-
-# Установка pnpm
-RUN npm install -g pnpm
-
-# Копирование файлов для зависимостей
-COPY package.json pnpm-lock.yaml ./
-COPY prisma ./prisma/
-
-# Установка зависимостей
-RUN pnpm install
-
-# Копирование исходного кода
+# Копирование файлов проекта
 COPY . .
 
-# Генерация Prisma клиента
-RUN pnpm prisma generate
-
-# Сборка приложения
+# Установка зависимостей и сборка
+RUN pnpm install
+RUN cd prisma && npx prisma generate
 RUN pnpm build
 
-FROM node:18-alpine AS runner
-
-WORKDIR /app
-
-# Установка необходимых зависимостей для bcrypt
-RUN apk add --no-cache python3 make g++
-
-# Установка pnpm
-RUN npm install -g pnpm
-
-# Копирование необходимых файлов из предыдущего этапа
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/prisma ./prisma
-
-# Экспорт окружения времени выполнения
+# Настраиваем окружение для продакшн
 ENV NODE_ENV production
-
-# Экспорт порта
 EXPOSE 5000
 
-# Запуск сервера
+# Запускаем приложение
 CMD ["pnpm", "start:prod"] 

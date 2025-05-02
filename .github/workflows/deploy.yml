@@ -1,0 +1,42 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main  # или master, в зависимости от основной ветки
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ secrets.PROJECT_PATH }}
+            
+            # Получаем последние изменения из репозитория
+            git pull origin main
+            
+            # Создаем/обновляем .env файл из секретов
+            echo "${{ secrets.ENV_FILE }}" > .env
+            
+            # Перезапускаем приложение
+            make rebuild
+            
+            # Применяем миграции
+            make migrate
+            
+            # Опционально запускаем сидеры
+            # make seed
+            
+            echo "Deployment completed successfully" 
