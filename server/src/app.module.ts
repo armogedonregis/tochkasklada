@@ -11,6 +11,7 @@ import { CellsModule } from './cells/cells.module';
 import { ContainersModule } from './containers/containers.module';
 import { LocationsModule } from './locations/locations.module';
 import { CitiesModule } from './cities/cities.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { CitiesModule } from './cities/cities.module';
     ContainersModule,
     LocationsModule,
     CitiesModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

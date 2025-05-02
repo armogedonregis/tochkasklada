@@ -24,6 +24,7 @@ model User {
 
   // Связи
   client    Client?
+  payments  Payment[]
   
   @@map("users")
 }
@@ -56,6 +57,24 @@ model ClientPhone {
   updatedAt DateTime @updatedAt
   
   @@map("client_phones")
+}
+
+// Модель для хранения платежей Tinkoff Bank
+model Payment {
+  id                String    @id @default(uuid())
+  amount            Int       // Сумма в копейках
+  orderId           String?    @unique // Уникальный идентификатор заказа
+  description       String?   // Описание платежа
+  userId            String    // Идентификатор пользователя
+  user              User      @relation(fields: [userId], references: [id])
+  status            Boolean   @default(false) // Статус платежа (true = успешно)
+  tinkoffPaymentId  String?   // Идентификатор платежа в системе Tinkoff
+  paymentUrl        String?   // URL для оплаты
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("payments")
 }
 
 // Модели для работы со складами

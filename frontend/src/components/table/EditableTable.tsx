@@ -180,6 +180,9 @@ interface EditableTableProps<TData> {
   autoSaveTimeout?: number;
   exportFilename?: string;
   onImportData?: (importedData: Partial<TData>[]) => void;
+  // Добавляем возможность внешнего контроля флага несохраненных изменений
+  hasUnsavedChanges?: boolean;
+  setHasUnsavedChanges?: (value: boolean) => void;
 }
 
 // Функция для динамической загрузки XLSX и выполнения действий
@@ -344,29 +347,40 @@ export function EditableTable<TData>({
   autoSaveTimeout = 0,
   exportFilename,
   onImportData,
+  // Новые пропсы для флага несохраненных изменений
+  hasUnsavedChanges: externalUnsavedChanges,
+  setHasUnsavedChanges: setExternalUnsavedChanges,
 }: EditableTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [tableData, setTableData] = useState(() => [...data]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(externalUnsavedChanges || false);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Используем внешний флаг, если он предоставлен
+  useEffect(() => {
+    if (externalUnsavedChanges !== undefined) {
+      setHasUnsavedChanges(externalUnsavedChanges);
+    }
+  }, [externalUnsavedChanges]);
 
   // Обновление внутренних данных когда внешние данные изменяются
   useEffect(() => {
     setTableData(data);
-    setHasUnsavedChanges(false);
+    // НЕ сбрасываем флаг hasUnsavedChanges при обновлении данных
   }, [data]);
 
-  // Настройка автосохранения
-  useEffect(() => {
-    return () => {
-      // Очистка таймера при размонтировании
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-    };
-  }, []);
+  // Функция для внутреннего обновления флага несохраненных изменений
+  const updateUnsavedChanges = (value: boolean) => {
+    // Обновляем внутренний флаг
+    setHasUnsavedChanges(value);
+    
+    // Если есть внешний контроль флага, также обновляем его
+    if (setExternalUnsavedChanges) {
+      setExternalUnsavedChanges(value);
+    }
+  };
 
   // Функция для обновления данных в таблице
   const updateData = (rowIndex: number, columnId: string, value: any) => {
@@ -382,7 +396,7 @@ export function EditableTable<TData>({
     });
     
     // Устанавливаем флаг несохраненных изменений
-    setHasUnsavedChanges(true);
+    updateUnsavedChanges(true);
     
     // Вызываем колбэк изменения данных с небольшой задержкой,
     // чтобы быть уверенными, что tableData уже обновлен
@@ -471,7 +485,7 @@ export function EditableTable<TData>({
         newData.splice(index, 1);
         return newData;
       });
-      setHasUnsavedChanges(true);
+      updateUnsavedChanges(true);
       if (onDataChange) {
         onDataChange([...tableData]);
       }
@@ -482,7 +496,7 @@ export function EditableTable<TData>({
   const handleSaveChanges = () => {
     if (onSaveChanges && hasUnsavedChanges) {
       onSaveChanges(tableData);
-      setHasUnsavedChanges(false);
+      updateUnsavedChanges(false);
       toast.success('Изменения сохранены');
     } else if (!hasUnsavedChanges) {
       toast.info('Нет несохраненных изменений');
@@ -529,7 +543,7 @@ export function EditableTable<TData>({
     onColumnFiltersChange: setColumnFilters,
     meta: {
       updateData,
-      setHasUnsavedChanges,
+      setHasUnsavedChanges: updateUnsavedChanges,
     },
     state: {
       sorting,
@@ -541,6 +555,16 @@ export function EditableTable<TData>({
       },
     },
   });
+
+  // Настройка автосохранения
+  useEffect(() => {
+    return () => {
+      // Очистка таймера при размонтировании
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, []);
 
   // Функция для безопасного клонирования React-элементов
   const safeCloneElement = (element: React.ReactNode, props: any) => {

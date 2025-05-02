@@ -17,7 +17,6 @@ CREATE TABLE "users" (
 CREATE TABLE "clients" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "company" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" TEXT NOT NULL,
@@ -34,6 +33,22 @@ CREATE TABLE "client_phones" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "client_phones_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "payments" (
+    "id" TEXT NOT NULL,
+    "amount" INTEGER NOT NULL,
+    "orderId" TEXT,
+    "description" TEXT,
+    "userId" TEXT NOT NULL,
+    "status" BOOLEAN NOT NULL DEFAULT false,
+    "tinkoffPaymentId" TEXT,
+    "paymentUrl" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "payments_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -143,6 +158,9 @@ CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 CREATE UNIQUE INDEX "clients_userId_key" ON "clients"("userId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "payments_orderId_key" ON "payments"("orderId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "citys_short_name_key" ON "citys"("short_name");
 
 -- CreateIndex
@@ -156,6 +174,9 @@ ALTER TABLE "clients" ADD CONSTRAINT "clients_userId_fkey" FOREIGN KEY ("userId"
 
 -- AddForeignKey
 ALTER TABLE "client_phones" ADD CONSTRAINT "client_phones_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "clients"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "payments" ADD CONSTRAINT "payments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "locations" ADD CONSTRAINT "locations_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "citys"("id") ON DELETE CASCADE ON UPDATE CASCADE;

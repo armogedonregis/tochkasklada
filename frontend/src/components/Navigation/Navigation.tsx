@@ -87,6 +87,13 @@ const MoonIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
+// Добавляем иконку рубля для тестового платежа
+const RubleIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8h6m-5 0a3 3 0 110 6H9l3 3m-3-6h6m6 1a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
 interface NavigationProps {
   initialIsOpen?: boolean;
 }
@@ -247,6 +254,16 @@ export const Navigation: React.FC<NavigationProps> = ({
           isNavOpened={isNavOpened}
           currentPage={currentPage}
           onClick={() => navigateTo(Pages.settings, '/settings')}
+        />
+        
+        <MenuItem 
+          icon={<RubleIcon className="text-gray-500" />}
+          activeIcon={<RubleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+          pageName="Тест Тбанк"
+          page={Pages.tinkoffTest}
+          isNavOpened={isNavOpened}
+          currentPage={currentPage}
+          onClick={() => navigateTo(Pages.tinkoffTest, '/tinkoff-test')}
         />
       </div>
       
