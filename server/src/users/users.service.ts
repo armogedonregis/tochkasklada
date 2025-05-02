@@ -26,7 +26,9 @@ export class UsersService {
   }
 
   async create(data: any) {
-    return this.prisma.user.create({ data });
+    const user = await this.prisma.user.create({ data });
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
   
   async createClient(data: any) {
@@ -34,16 +36,20 @@ export class UsersService {
   }
 
   async update(id: string, data: any) {
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id },
       data,
     });
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 
   async remove(id: string) {
-    return this.prisma.user.delete({
+    const user = await this.prisma.user.delete({
       where: { id },
     });
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 
   async findAll() {
