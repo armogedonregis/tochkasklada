@@ -9,7 +9,7 @@ export interface Container {
 
 // Тип для создания контейнера
 export interface CreateContainerDto {
-  id?: number;
+  id: number;
   locId: string;
 }
 

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
-import AuthGuard from "@/components/auth/AuthGuard";
 import { Button } from "@/components/ui/button";
 import { 
   useGetClientsQuery, 
@@ -36,84 +35,72 @@ export default function ClientsPage() {
     router.push("/clients/new");
   };
 
-  if (user?.role !== "ADMIN") {
-    return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">Доступ запрещен</h1>
-        <p className="mb-4">У вас нет прав для просмотра этой страницы.</p>
-        <Button onClick={() => router.push("/")}>На главную</Button>
-      </div>
-    );
-  }
-
   return (
-    <AuthGuard roles={["ADMIN"]}>
-      <div className="p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Управление клиентами</h1>
-          <Button onClick={handleAdd}>Добавить клиента</Button>
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
-          </div>
-        ) : !clients || clients.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-            <p className="text-lg mb-4">Нет данных о клиентах</p>
-            <Button onClick={handleAdd}>Добавить первого клиента</Button>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b dark:border-gray-700">
-                  <th className="px-4 py-3 text-left">Имя</th>
-                  <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Компания</th>
-                  <th className="px-4 py-3 text-left">Телефоны</th>
-                  <th className="px-4 py-3 text-right">Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-4 py-3">
-                      {client.name}
-                    </td>
-                    <td className="px-4 py-3">{client.email}</td>
-                    <td className="px-4 py-3">{client.company}</td>
-                    <td className="px-4 py-3">
-                      {client.phones.map((phone) => (
-                        <div key={phone.id}>{phone.number}</div>
-                      ))}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(client.id)}
-                        >
-                          Изменить
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(client.id)}
-                          disabled={isDeleting}
-                        >
-                          Удалить
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Управление клиентами</h1>
+        <Button onClick={handleAdd}>Добавить клиента</Button>
       </div>
-    </AuthGuard>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-solid border-primary border-t-transparent"></div>
+        </div>
+      ) : !clients || clients.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+          <p className="text-lg mb-4">Нет данных о клиентах</p>
+          <Button onClick={handleAdd}>Добавить первого клиента</Button>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b dark:border-gray-700">
+                <th className="px-4 py-3 text-left">Имя</th>
+                <th className="px-4 py-3 text-left">Email</th>
+                <th className="px-4 py-3 text-left">Компания</th>
+                <th className="px-4 py-3 text-left">Телефоны</th>
+                <th className="px-4 py-3 text-right">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((client) => (
+                <tr key={client.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-4 py-3">
+                    {client.name}
+                  </td>
+                  <td className="px-4 py-3">{client.email}</td>
+                  <td className="px-4 py-3">{client.company}</td>
+                  <td className="px-4 py-3">
+                    {client.phones.map((phone) => (
+                      <div key={phone.id}>{phone.number}</div>
+                    ))}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(client.id)}
+                      >
+                        Изменить
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(client.id)}
+                        disabled={isDeleting}
+                      >
+                        Удалить
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 } 

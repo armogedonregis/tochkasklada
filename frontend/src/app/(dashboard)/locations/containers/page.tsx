@@ -13,11 +13,15 @@ import { toast } from 'react-toastify';
 import * as yup from 'yup';
 
 const containerValidationSchema = yup.object({
+  id: yup.string()
+    .required('ID контейнера обязателен')
+    .matches(/^(0[1-9]|[1-9][0-9])$/, 'ID должен быть в формате 01-99'),
   locId: yup.string().required('Выберите локацию')
 });
 
 // Тип для полей формы
 type ContainerFormFields = {
+  id: string;
   locId: string;
 };
 
@@ -41,7 +45,11 @@ export default function ContainersPage() {
     {
       id: 'id',
       header: 'Номер',
-      cell: ({ row }) => `Контейнер №${row.original.id}`,
+      cell: ({ row }) => {
+        const id = row.original.id;
+        // Форматируем номер с лидирующим нулем если нужно
+        return `${id < 10 ? `0${id}` : id}`;
+      },
     },
     {
       id: 'location',
@@ -97,11 +105,20 @@ export default function ContainersPage() {
 
   const handleSubmit = async (data: ContainerFormFields) => {
     try {
+      // Преобразуем id из строки в число
+      const idNumber = parseInt(data.id, 10);
+      
       if (editingContainer) {
-        await updateContainer({ id: editingContainer.id, ...data }).unwrap();
+        await updateContainer({ 
+          id: editingContainer.id, 
+          locId: data.locId 
+        }).unwrap();
         toast.success('Контейнер успешно обновлен');
       } else {
-        await addContainer(data).unwrap();
+        await addContainer({
+          id: idNumber,
+          locId: data.locId
+        }).unwrap();
         toast.success('Контейнер успешно добавлен');
       }
       setIsModalOpen(false);
@@ -133,7 +150,22 @@ export default function ContainersPage() {
     );
   }
 
+  // Находим максимальный ID для предложения следующего номера
+  const getNextId = () => {
+    if (containers.length === 0) return '01';
+    const maxId = Math.max(...containers.map(c => c.id));
+    const nextId = maxId + 1;
+    return nextId < 10 ? `0${nextId}` : `${nextId}`;
+  };
+
   const modalFields = [
+    {
+      type: 'input' as const,
+      fieldName: 'id' as const,
+      label: 'ID контейнера',
+      placeholder: 'Например: 01',
+      defaultValue: !editingContainer ? getNextId() : undefined
+    },
     {
       type: 'select' as const,
       fieldName: 'locId' as const,
@@ -175,6 +207,7 @@ export default function ContainersPage() {
         onSubmit={handleSubmit}
         submitText={editingContainer ? 'Сохранить' : 'Добавить'}
         defaultValues={editingContainer ? {
+          id: editingContainer.id < 10 ? `0${editingContainer.id}` : `${editingContainer.id}`,
           locId: editingContainer.locId
         } : undefined}
       />
