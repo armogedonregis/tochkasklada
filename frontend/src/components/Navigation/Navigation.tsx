@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MenuItem, Pages } from './MenuItem';
+import { useTheme } from '@/lib/theme-provider';
 
 // Компоненты SVG иконок
 const ChevronLeftIcon = () => (
@@ -73,6 +74,19 @@ const BoxIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
+// Добавляем иконки для темы
+const SunIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+  </svg>
+);
+
+const MoonIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+  </svg>
+);
+
 interface NavigationProps {
   initialIsOpen?: boolean;
 }
@@ -83,6 +97,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const [isNavOpened, setIsNavOpened] = useState(initialIsOpen);
   const [currentPage, setCurrentPage] = useState<Pages | null>(null);
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
 
   // Имитируем данные из Flutter-приложения
   const [dashboardItems, setDashboardItems] = useState({
@@ -134,12 +149,12 @@ export const Navigation: React.FC<NavigationProps> = ({
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         {isNavOpened ? (
           <div className="flex items-center">
-            <span className="text-xl font-bold text-blue-600 dark:text-blue-400">Точка.</span>
+            <span className="text-xl font-bold text-[#F62D40] dark:text-[#F8888F]">Точка.</span>
             <span className="text-xl font-bold ml-1 text-gray-900 dark:text-white">Склада</span>
           </div>
         ) : (
           <div className="flex items-center justify-center w-full">
-            <span className="text-xl font-bold text-blue-600 dark:text-blue-400">R</span>
+            <span className="text-xl font-bold text-[#F62D40] dark:text-[#F8888F]">Т</span>
           </div>
         )}
         <button 
@@ -162,7 +177,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         
         <MenuItem 
           icon={<BriefcaseIcon className="text-gray-500" />}
-          activeIcon={<BriefcaseIcon className="text-blue-600 dark:text-blue-400" />}
+          activeIcon={<BriefcaseIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Франчайзинг"
           page={Pages.franchasing}
           isNavOpened={isNavOpened}
@@ -172,7 +187,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         
         <MenuItem 
           icon={<MapIcon className="text-gray-500" />}
-          activeIcon={<MapIcon className="text-blue-600 dark:text-blue-400" />}
+          activeIcon={<MapIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Локации"
           page={Pages.locs}
           newItems={dashboardItems.freeCells}
@@ -183,7 +198,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         
         <MenuItem 
           icon={<UsersIcon className="text-gray-500" />}
-          activeIcon={<UsersIcon className="text-blue-600 dark:text-blue-400" />}
+          activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Клиенты"
           page={Pages.clients}
           newItems={dashboardItems.clientsToday}
@@ -194,7 +209,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         
         <MenuItem 
           icon={<CreditCardIcon className="text-gray-500" />}
-          activeIcon={<CreditCardIcon className="text-blue-600 dark:text-blue-400" />}
+          activeIcon={<CreditCardIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Платежи"
           page={Pages.payments}
           newItems={dashboardItems.paymentsToday}
@@ -214,19 +229,9 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
         
-        {/* <MenuItem 
-          icon={<HomeIcon className="text-gray-500" />}
-          activeIcon={<HomeIcon className="text-blue-600 dark:text-blue-400" />}
-          pageName="Панели"
-          page={Pages.panels}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.panels, '/panels')}
-        /> */}
-        
         <MenuItem 
           icon={<BoxIcon className="text-gray-500" />}
-          activeIcon={<BoxIcon className="text-blue-600 dark:text-blue-400" />}
+          activeIcon={<BoxIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Размеры"
           page={Pages.sizes}
           isNavOpened={isNavOpened}
@@ -236,7 +241,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         
         <MenuItem 
           icon={<CogIcon className="text-gray-500" />}
-          activeIcon={<CogIcon className="text-blue-600 dark:text-blue-400" />}
+          activeIcon={<CogIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Настройки"
           page={Pages.settings}
           isNavOpened={isNavOpened}
@@ -247,9 +252,59 @@ export const Navigation: React.FC<NavigationProps> = ({
       
       {/* Профиль пользователя */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        {isNavOpened && (
+          <div className="mb-2 ml-4">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              Тема
+            </span>
+          </div>
+        )}
+        
+        {isNavOpened ? (
+          <div className="mb-4 px-2">
+            <div className="flex items-center justify-between rounded-lg bg-gray-100 dark:bg-gray-800 p-1.5">
+              <button
+                onClick={() => theme === 'dark' && toggleTheme()}
+                className={`flex items-center space-x-2 rounded-md py-1.5 px-2.5 transition-all ${
+                  theme === 'light' 
+                    ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-md' 
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                <SunIcon className="h-4 w-4" />
+                <span className="text-xs font-medium">Светлая</span>
+              </button>
+              <button
+                onClick={() => theme === 'light' && toggleTheme()}
+                className={`flex items-center space-x-2 rounded-md py-1.5 px-2.5 transition-all ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-md' 
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                <MoonIcon className="h-4 w-4" />
+                <span className="text-xs font-medium">Темная</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center mb-4">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 transition-all hover:bg-gray-200 dark:hover:bg-gray-700 shadow-sm"
+            >
+              {theme === 'light' ? (
+                <SunIcon className="h-5 w-5 text-[#F62D40]" />
+              ) : (
+                <MoonIcon className="h-5 w-5 text-[#F62D40]" />
+              )}
+            </button>
+          </div>
+        )}
+      
         <MenuItem 
           icon={<UserCircleIcon className="text-gray-500" />}
-          activeIcon={<UserCircleIcon className="text-blue-600 dark:text-blue-400" />}
+          activeIcon={<UserCircleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Профиль"
           page={Pages.profile}
           isNavOpened={isNavOpened}
