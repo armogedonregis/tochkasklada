@@ -295,49 +295,67 @@ export class ClientsService {
   }
 
   async update(id: string, data: any) {
-    const { phones, ...clientData } = data;
-    
-    // Если переданы телефоны, обрабатываем их отдельно
-    if (phones) {
-      // Для простоты удаляем все текущие телефоны и создаем новые
-      // В реальном приложении можно сделать более сложную логику обновления
-      await this.prisma.clientPhone.deleteMany({
-        where: { clientId: id }
-      });
+    try {
+      const { phones, email, ...clientData } = data;
       
-      // Создаем новые телефоны
-      if (Array.isArray(phones) && phones.length > 0) {
-        await this.prisma.clientPhone.createMany({
-          data: phones.map(phone => ({
-            phone,
-            clientId: id
-          }))
-        });
-      } else if (typeof phones === 'string') {
-        await this.prisma.clientPhone.create({
-          data: {
-            phone: phones,
-            clientId: id
-          }
-        });
+      // Получаем текущего клиента, чтобы узнать userId
+      const client = await this.prisma.client.findUnique({
+        where: { id },
+        include: { user: true }
+      });
+
+      if (!client) {
+        throw new BadRequestException(`Клиент с ID ${id} не найден`);
       }
-    }
-    
-    // Обновляем остальные данные клиента
-    return this.prisma.client.update({
-      where: { id },
-      data: clientData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
+
+      // Выполняем все операции в транзакции для обеспечения целостности данных
+      return await this.prisma.$transaction(async (tx) => {
+        // Если передан email, обновляем его в модели User
+        if (email) {
+          await tx.user.update({
+            where: { id: client.userId },
+            data: { email }
+          });
+        }
+
+        // Если переданы телефоны, обрабатываем их отдельно
+        if (phones && Array.isArray(phones)) {
+          // 1. Удаляем все текущие телефоны
+          await tx.clientPhone.deleteMany({
+            where: { clientId: id }
+          });
+          
+          // 2. Создаем новые телефоны (если массив не пустой)
+          if (phones.length > 0) {
+            await tx.clientPhone.createMany({
+              data: phones.map(phone => ({
+                phone: phone.toString(),
+                clientId: id
+              }))
+            });
+          }
+        }
+        
+        // Обновляем остальные данные клиента
+        return tx.client.update({
+          where: { id },
+          data: clientData,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+              },
+            },
+            phones: true,
           },
-        },
-        phones: true,
-      },
-    });
+        });
+      });
+    } catch (error) {
+      console.error('Ошибка при обновлении клиента:', error);
+      throw error;
+    }
   }
 
   async addPhone(clientId: string, phone: string) {

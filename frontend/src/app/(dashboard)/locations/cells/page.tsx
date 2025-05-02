@@ -78,7 +78,7 @@ export default function CellsPage() {
       cell: ({ row }) => {
         const id = row.original.containerId;
         // Форматируем номер с лидирующим нулем если нужно
-        return `Контейнер №${id < 10 ? `0${id}` : id}`;
+        return `${id < 10 ? `0${id}` : id}`;
       },
     },
     {
@@ -192,7 +192,7 @@ export default function CellsPage() {
       fieldName: 'containerId' as const,
       label: 'Контейнер',
       options: containers.map(container => ({
-        label: `Контейнер №${container.id < 10 ? `0${container.id}` : container.id}`,
+        label: `${container.id < 10 ? `0${container.id}` : container.id}`,
         value: container.id.toString()
       }))
     },

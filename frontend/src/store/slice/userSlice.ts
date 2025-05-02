@@ -9,10 +9,13 @@ interface UserState {
   error: string | null;
 }
 
+// Проверяем, доступен ли localStorage (только на клиенте)
+const isBrowser = typeof window !== 'undefined';
+
 const initialState: UserState = {
   user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  token: isBrowser ? localStorage.getItem('token') : null,
+  isAuthenticated: isBrowser ? !!localStorage.getItem('token') : false,
   isLoading: false,
   error: null,
 };
@@ -29,7 +32,9 @@ const userSlice = createSlice({
       state.user = user;
       state.token = token;
       state.isAuthenticated = true;
-      localStorage.setItem('token', token);
+      if (isBrowser) {
+        localStorage.setItem('token', token);
+      }
     },
     setUser: (state, action: PayloadAction<UserData>) => {
       state.user = action.payload;
@@ -40,7 +45,9 @@ const userSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
-      localStorage.removeItem('token');
+      if (isBrowser) {
+        localStorage.removeItem('token');
+      }
     },
     setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;

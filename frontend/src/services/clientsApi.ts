@@ -1,25 +1,36 @@
 import { api } from './api';
 
-export interface Phone {
+// Типы для различных форматов телефонов, которые могут приходить с сервера
+export interface PhoneWithNumber {
   id: string;
   number: string;
 }
+
+export interface PhoneWithPhoneField {
+  id: string;
+  phone: string;
+}
+
+// Объединенный тип для телефона
+export type Phone = PhoneWithNumber | PhoneWithPhoneField | string;
 
 export interface Client {
   id: string;
   userId: string;
   name: string;
-  email: string;
-  company: string;
   createdAt: string;
   updatedAt: string;
   phones: Phone[];
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+  };
 }
 
 export interface CreateClientRequest {
   name: string;
   email: string;
-  company?: string;
   phones?: string[];
 }
 
@@ -27,7 +38,6 @@ export interface UpdateClientRequest {
   id: string;
   name?: string;
   email?: string;
-  company?: string;
   phones?: string[];
 }
 

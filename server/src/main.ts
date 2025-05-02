@@ -9,7 +9,12 @@ async function bootstrap() {
   );
   
   // Глобальные настройки
-  app.enableCors();
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    allowedHeaders: 'Content-Type, Accept, Authorization'
+  });
   app.setGlobalPrefix('api');
   
   await app.listen(process.env.PORT || 5000, '0.0.0.0');
