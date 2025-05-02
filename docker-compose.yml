@@ -1,35 +1,35 @@
 version: '3.8'
 
 services:
-  api:
-    container_name: backend
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "5000:5000"
-    depends_on:
-      - postgres
-    networks:
-      - app_network
+  # api:
+  #   container_name: backend
+  #   build:
+  #     context: ./server
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "5000:5000"
+  #   depends_on:
+  #     - postgres
+  #   networks:
+  #     - app_network
       
-  frontend:
-    container_name: frontend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api
-    networks:
-      - app_network
+  # frontend:
+  #   container_name: frontend
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - app_network
 
   postgres:
     container_name: postgres
@@ -41,11 +41,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
-      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data/pgdata
+      - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -60,5 +59,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
-    name: pgdata
+  postgres:

@@ -11,6 +11,7 @@ import {
   ColumnFiltersState,
   getFilteredRowModel,
   getPaginationRowModel,
+  Row,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -37,6 +38,7 @@ interface BaseTableProps<TData> {
   pageSize?: number;
   className?: string;
   onRowClick?: (row: TData) => void;
+  renderRowSubComponent?: (props: { row: Row<TData> }) => React.ReactNode;
 }
 
 export function BaseTable<TData>({
@@ -47,6 +49,7 @@ export function BaseTable<TData>({
   pageSize = 10,
   className = '',
   onRowClick,
+  renderRowSubComponent,
 }: BaseTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -112,24 +115,33 @@ export function BaseTable<TData>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  onClick={() => onRowClick?.(row.original)}
-                  className={`
-                    border-b border-gray-200 dark:border-gray-700 
-                    transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/70
-                    ${onRowClick ? 'cursor-pointer' : ''}
-                  `}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-gray-700 dark:text-gray-300">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                <React.Fragment key={row.id}>
+                  <TableRow
+                    onClick={() => onRowClick?.(row.original)}
+                    className={`
+                      border-b border-gray-200 dark:border-gray-700 
+                      transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/70
+                      ${onRowClick ? 'cursor-pointer' : ''}
+                    `}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className="text-gray-700 dark:text-gray-300">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {/* Расширенная часть строки */}
+                  {renderRowSubComponent && (
+                    <tr>
+                      <td colSpan={columns.length}>
+                        {renderRowSubComponent({ row })}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))
             ) : (
               <TableRow>

@@ -1,3 +1,4 @@
 .env
 server_old/
 payment-tbank/
+data/
