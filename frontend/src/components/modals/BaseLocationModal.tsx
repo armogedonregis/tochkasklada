@@ -35,7 +35,7 @@ export const BaseLocationModal = <T extends FieldValues>({
 }: BaseLocationModalProps<T>) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[570px]">
+      <DialogContent className="sm:max-w-[570px] p-0">
         <div className="w-full p-6 bg-white dark:bg-gray-800 rounded-lg">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
@@ -43,7 +43,7 @@ export const BaseLocationModal = <T extends FieldValues>({
             </DialogTitle>
             {description && (
               <>
-                <div className="h-[2px] my-3 bg-gray-100 dark:bg-gray-700 w-full" />
+                <div className="h-[2px] my-3 bg-gray-200 dark:bg-gray-700 w-full" />
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   {description}
                 </p>
@@ -64,7 +64,7 @@ export const BaseLocationModal = <T extends FieldValues>({
                 <Button
                   type="button"
                   onClick={onClose}
-                  className="h-12 px-6 py-3 text-base font-semibold text-gray-700 bg-transparent border border-gray-300 rounded-2xl hover:bg-gray-50 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                  className="h-11 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-transparent border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   variant="outline"
                 >
                   {cancelText}
@@ -72,7 +72,7 @@ export const BaseLocationModal = <T extends FieldValues>({
                 <Button
                   type="submit"
                   disabled={!form.formState.isValid}
-                  className="h-12 px-6 py-3 text-base font-semibold text-white bg-red-600 rounded-2xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-11 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#F62D40] to-[#F8888F] rounded-md hover:from-[#E11830] hover:to-[#E76A73] disabled:opacity-50 disabled:pointer-events-none transition-all"
                 >
                   {submitText}
                 </Button>
