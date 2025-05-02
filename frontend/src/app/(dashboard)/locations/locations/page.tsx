@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useGetLocationsQuery, useDeleteLocationMutation } from '@/services/locationsApi';
+import { useGetLocationsQuery, useDeleteLocationMutation, useAddLocationMutation, useUpdateLocationMutation } from '@/services/locationsApi';
 import { useGetCitiesQuery } from '@/services/citiesApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { BaseLocationModal } from '@/components/modals/BaseLocationModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Location } from '@/services/locationsApi';
+import { Location, CreateLocationDto } from '@/services/locationsApi';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
@@ -19,6 +19,14 @@ const locationValidationSchema = yup.object({
   cityId: yup.string().required('Выберите город')
 });
 
+// Определяем тип полей формы для типизации
+type LocationFormFields = {
+  name: string;
+  short_name: string;
+  address: string;
+  cityId: string;
+};
+
 export default function LocationsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
@@ -26,6 +34,8 @@ export default function LocationsPage() {
   const { data: locations = [], error, isLoading } = useGetLocationsQuery();
   const { data: cities = [], isLoading: isCitiesLoading } = useGetCitiesQuery();
   const [deleteLocation] = useDeleteLocationMutation();
+  const [addLocation] = useAddLocationMutation();
+  const [updateLocation] = useUpdateLocationMutation();
 
   // Определение колонок таблицы
   const columns: ColumnDef<Location>[] = [
@@ -82,11 +92,22 @@ export default function LocationsPage() {
     }
   };
 
-  const handleSubmit = async (data: any) => {
-    // TODO: Реализовать создание/редактирование локации
-    console.log(data);
-    setIsModalOpen(false);
-    setEditingLocation(null);
+  const handleSubmit = async (data: LocationFormFields) => {
+    try {
+      if (editingLocation) {
+        await updateLocation({ id: editingLocation.id, ...data }).unwrap();
+        toast.success('Локация успешно обновлена');
+      } else {
+        await addLocation(data).unwrap();
+        toast.success('Локация успешно добавлена');
+      }
+      setIsModalOpen(false);
+      setEditingLocation(null);
+    } catch (error) {
+      toast.error(editingLocation 
+        ? 'Ошибка при обновлении локации' 
+        : 'Ошибка при добавлении локации');
+    }
   };
 
   // Состояния загрузки и ошибки
@@ -112,25 +133,25 @@ export default function LocationsPage() {
   const modalFields = [
     {
       type: 'input' as const,
-      fieldName: 'name',
+      fieldName: 'name' as const,
       label: 'Название локации',
       placeholder: 'Введите название'
     },
     {
       type: 'input' as const,
-      fieldName: 'short_name',
+      fieldName: 'short_name' as const,
       label: 'Короткое название',
       placeholder: 'Введите короткое название'
     },
     {
       type: 'input' as const,
-      fieldName: 'address',
+      fieldName: 'address' as const,
       label: 'Адрес',
       placeholder: 'Введите адрес'
     },
     {
       type: 'select' as const,
-      fieldName: 'cityId',
+      fieldName: 'cityId' as const,
       label: 'Город',
       options: cities.map(city => ({
         label: city.title,
@@ -168,6 +189,12 @@ export default function LocationsPage() {
         validationSchema={locationValidationSchema}
         onSubmit={handleSubmit}
         submitText={editingLocation ? 'Сохранить' : 'Добавить'}
+        defaultValues={editingLocation ? {
+          name: editingLocation.name,
+          short_name: editingLocation.short_name,
+          address: editingLocation.address,
+          cityId: editingLocation.cityId,
+        } : undefined}
       />
     </>
   );

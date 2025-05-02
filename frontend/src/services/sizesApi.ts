@@ -9,44 +9,43 @@ export interface Size {
   updatedAt?: string;
 }
 
-export interface AddSizeRequest {
+export interface CreateSizeDto {
   name: string;
   size: string;
   area: string;
 }
 
-export interface UpdateSizeRequest {
-  id: string;
-  name: string;
-  size: string;
-  area: string;
+export interface UpdateSizeDto {
+  name?: string;
+  size?: string;
+  area?: string;
 }
 
 export const sizesApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getSizes: builder.query<Size[], void>({
-      query: () => '/size',
+      query: () => '/sizes',
       providesTags: ['Sizes'],
     }),
 
     getSize: builder.query<Size, string>({
-      query: (id) => `/size/${id}`,
+      query: (id) => `/sizes/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Sizes', id }],
     }),
 
-    addSize: builder.mutation<Size, AddSizeRequest>({
+    addSize: builder.mutation<Size, CreateSizeDto>({
       query: (size) => ({
-        url: '/size',
+        url: '/sizes',
         method: 'POST',
         body: size,
       }),
       invalidatesTags: ['Sizes'],
     }),
 
-    updateSize: builder.mutation<Size, UpdateSizeRequest>({
+    updateSize: builder.mutation<Size, UpdateSizeDto & { id: string }>({
       query: ({ id, ...size }) => ({
-        url: `/size/${id}`,
-        method: 'PUT',
+        url: `/sizes/${id}`,
+        method: 'PATCH',
         body: size,
       }),
       invalidatesTags: (_result, _error, { id }) => [
@@ -57,7 +56,7 @@ export const sizesApi = api.injectEndpoints({
 
     deleteSize: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/size/${id}`,
+        url: `/sizes/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Sizes'],

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useGetContainersQuery, useDeleteContainerMutation } from '@/services/containersApi';
+import { useGetContainersQuery, useDeleteContainerMutation, useAddContainerMutation, useUpdateContainerMutation } from '@/services/containersApi';
 import { useGetLocationsQuery } from '@/services/locationsApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { BaseLocationModal } from '@/components/modals/BaseLocationModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Container } from '@/services/containersApi';
+import { Container, CreateContainerDto } from '@/services/containersApi';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
@@ -16,6 +16,11 @@ const containerValidationSchema = yup.object({
   locId: yup.string().required('Выберите локацию')
 });
 
+// Тип для полей формы
+type ContainerFormFields = {
+  locId: string;
+};
+
 export default function ContainersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContainer, setEditingContainer] = useState<Container | null>(null);
@@ -23,6 +28,8 @@ export default function ContainersPage() {
   const { data: containers = [], error, isLoading } = useGetContainersQuery();
   const { data: locations = [], isLoading: isLocationsLoading } = useGetLocationsQuery();
   const [deleteContainer] = useDeleteContainerMutation();
+  const [addContainer] = useAddContainerMutation();
+  const [updateContainer] = useUpdateContainerMutation();
 
   // Вспомогательные функции
   const getLocationInfo = (locId: string) => {
@@ -88,11 +95,22 @@ export default function ContainersPage() {
     }
   };
 
-  const handleSubmit = async (data: any) => {
-    // TODO: Реализовать создание/редактирование контейнера
-    console.log(data);
-    setIsModalOpen(false);
-    setEditingContainer(null);
+  const handleSubmit = async (data: ContainerFormFields) => {
+    try {
+      if (editingContainer) {
+        await updateContainer({ id: editingContainer.id, ...data }).unwrap();
+        toast.success('Контейнер успешно обновлен');
+      } else {
+        await addContainer(data).unwrap();
+        toast.success('Контейнер успешно добавлен');
+      }
+      setIsModalOpen(false);
+      setEditingContainer(null);
+    } catch (error) {
+      toast.error(editingContainer 
+        ? 'Ошибка при обновлении контейнера' 
+        : 'Ошибка при добавлении контейнера');
+    }
   };
 
   // Состояния загрузки и ошибки
@@ -118,7 +136,7 @@ export default function ContainersPage() {
   const modalFields = [
     {
       type: 'select' as const,
-      fieldName: 'locId',
+      fieldName: 'locId' as const,
       label: 'Локация',
       options: locations.map(location => ({
         label: location.name,
@@ -156,6 +174,9 @@ export default function ContainersPage() {
         validationSchema={containerValidationSchema}
         onSubmit={handleSubmit}
         submitText={editingContainer ? 'Сохранить' : 'Добавить'}
+        defaultValues={editingContainer ? {
+          locId: editingContainer.locId
+        } : undefined}
       />
     </>
   );

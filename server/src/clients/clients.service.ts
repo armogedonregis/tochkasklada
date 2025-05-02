@@ -61,7 +61,6 @@ export class ClientsService {
       const newClient = await tx.client.create({
         data: {
           name: data.name,
-          company: data.company,
           userId: newUser.id,
           phones: data.phones && data.phones.length > 0 ? {
             create: data.phones.map(phone => ({ phone }))

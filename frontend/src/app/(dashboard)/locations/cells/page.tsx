@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGetCellsQuery, useDeleteCellMutation } from '@/services/cellsApi';
+import { useGetCellsQuery, useDeleteCellMutation, useAddCellMutation, useUpdateCellMutation } from '@/services/cellsApi';
 import { useGetContainersQuery } from '@/services/containersApi';
 import { useGetLocationsQuery } from '@/services/locationsApi';
 import { useGetSizesQuery } from '@/services/sizesApi';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { BaseLocationModal } from '@/components/modals/BaseLocationModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Cell } from '@/services/cellsApi';
+import { Cell, CreateCellRequest } from '@/services/cellsApi';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
@@ -21,6 +21,14 @@ const cellValidationSchema = yup.object({
   len_height: yup.string().required('Укажите размеры')
 });
 
+// Тип для полей формы
+type CellFormFields = {
+  name: string;
+  containerId: number;
+  size_id: string;
+  len_height: string;
+};
+
 export default function CellsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCell, setEditingCell] = useState<Cell | null>(null);
@@ -30,6 +38,8 @@ export default function CellsPage() {
   const { data: locations = [] } = useGetLocationsQuery();
   const { data: sizes = [] } = useGetSizesQuery();
   const [deleteCell] = useDeleteCellMutation();
+  const [addCell] = useAddCellMutation();
+  const [updateCell] = useUpdateCellMutation();
 
   // Вспомогательные функции
   const getContainerInfo = (containerId: number) => {
@@ -121,11 +131,29 @@ export default function CellsPage() {
     }
   };
 
-  const handleSubmit = async (data: any) => {
-    // TODO: Реализовать создание/редактирование ячейки
-    console.log(data);
-    setIsModalOpen(false);
-    setEditingCell(null);
+  const handleSubmit = async (data: CellFormFields) => {
+    try {
+      if (editingCell) {
+        await updateCell({ 
+          id: editingCell.id, 
+          ...data,
+          containerId: Number(data.containerId) // Убедимся, что containerId - число
+        }).unwrap();
+        toast.success('Ячейка успешно обновлена');
+      } else {
+        await addCell({
+          ...data,
+          containerId: Number(data.containerId) // Убедимся, что containerId - число
+        }).unwrap();
+        toast.success('Ячейка успешно добавлена');
+      }
+      setIsModalOpen(false);
+      setEditingCell(null);
+    } catch (error) {
+      toast.error(editingCell 
+        ? 'Ошибка при обновлении ячейки' 
+        : 'Ошибка при добавлении ячейки');
+    }
   };
 
   // Состояния загрузки и ошибки
@@ -151,22 +179,22 @@ export default function CellsPage() {
   const modalFields = [
     {
       type: 'input' as const,
-      fieldName: 'name',
+      fieldName: 'name' as const,
       label: 'Название ячейки',
       placeholder: 'Например: A1'
     },
     {
       type: 'select' as const,
-      fieldName: 'containerId',
+      fieldName: 'containerId' as const,
       label: 'Контейнер',
       options: containers.map(container => ({
         label: `Контейнер №${container.id}`,
-        value: container.id
+        value: container.id.toString()
       }))
     },
     {
       type: 'select' as const,
-      fieldName: 'size_id',
+      fieldName: 'size_id' as const,
       label: 'Размер',
       options: sizes.map(size => ({
         label: size.name,
@@ -175,7 +203,7 @@ export default function CellsPage() {
     },
     {
       type: 'input' as const,
-      fieldName: 'len_height',
+      fieldName: 'len_height' as const,
       label: 'Размеры',
       placeholder: '2x2,4x1,75'
     }
@@ -210,6 +238,12 @@ export default function CellsPage() {
         validationSchema={cellValidationSchema}
         onSubmit={handleSubmit}
         submitText={editingCell ? 'Сохранить' : 'Добавить'}
+        defaultValues={editingCell ? {
+          name: editingCell.name,
+          containerId: editingCell.containerId,
+          size_id: editingCell.size_id,
+          len_height: editingCell.len_height || ''
+        } : undefined}
       />
     </>
   );

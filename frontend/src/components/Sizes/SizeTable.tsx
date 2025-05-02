@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Size, useUpdateSizeMutation, useDeleteSizeMutation } from '@/services/sizesApi';
+import { Size, useUpdateSizeMutation, useDeleteSizeMutation, UpdateSizeDto } from '@/services/sizesApi';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ interface SizeTableProps {
 
 export const SizeTable: React.FC<SizeTableProps> = ({ sizes, searchQuery = '' }) => {
   const [editingSize, setEditingSize] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Partial<Size>>({});
+  const [editValues, setEditValues] = useState<UpdateSizeDto>({});
   
   const [updateSize] = useUpdateSizeMutation();
   const [deleteSize] = useDeleteSizeMutation();
@@ -42,12 +42,23 @@ export const SizeTable: React.FC<SizeTableProps> = ({ sizes, searchQuery = '' })
 
   const handleSaveEdit = async (size: Size) => {
     try {
+      // Проверка, что хотя бы одно поле заполнено
+      if (!editValues.name && !editValues.size && !editValues.area) {
+        toast.error('Необходимо изменить хотя бы одно поле');
+        return;
+      }
+      
+      // Собираем только измененные поля
+      const updatedFields: UpdateSizeDto = {};
+      if (editValues.name !== undefined) updatedFields.name = editValues.name;
+      if (editValues.size !== undefined) updatedFields.size = editValues.size;
+      if (editValues.area !== undefined) updatedFields.area = editValues.area;
+      
       await updateSize({
         id: size.id,
-        name: editValues.name || size.name,
-        size: editValues.size || size.size,
-        area: editValues.area || size.area
+        ...updatedFields
       }).unwrap();
+      
       toast.success('Размер обновлен');
       setEditingSize(null);
       setEditValues({});

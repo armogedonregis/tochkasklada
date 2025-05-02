@@ -12,10 +12,24 @@ export interface Location {
   city?: City;
 }
 
+export interface CreateLocationDto {
+  name: string;
+  short_name: string;
+  address: string;
+  cityId: string;
+}
+
+export interface UpdateLocationDto {
+  name?: string;
+  short_name?: string;
+  address?: string;
+  cityId?: string;
+}
+
 export const locationsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getLocations: builder.query<Location[], void>({
-      query: () => '/location',
+      query: () => '/locations',
       providesTags: (result) =>
         result
           ? [
@@ -24,8 +38,12 @@ export const locationsApi = api.injectEndpoints({
             ]
           : [{ type: 'Locations', id: 'LIST' }],
     }),
+    getLocation: builder.query<Location, string>({
+      query: (id) => `/locations/${id}`,
+      providesTags: (result, error, arg) => [{ type: 'Locations', id: result?.id }],
+    }),
     getLocationsByCity: builder.query<Location[], string>({
-      query: (cityId) => `/location/by-city/${cityId}`,
+      query: (cityId) => `/locations/city/${cityId}`,
       providesTags: (result) =>
         result
           ? [
@@ -35,27 +53,21 @@ export const locationsApi = api.injectEndpoints({
           : [{ type: 'Locations', id: 'LIST' }],
     }),
     getLocationByShortName: builder.query<Location, string>({
-      query: (shortName) => `/location/short-name/${shortName}`,
+      query: (shortName) => `/locations/short-name/${shortName}`,
       providesTags: (result, error, arg) => [{ type: 'Locations', id: result?.id }],
     }),
-    addLocation: builder.mutation<
-      Location,
-      { name: string; short_name: string; address: string; cityId: string }
-    >({
+    addLocation: builder.mutation<Location, CreateLocationDto>({
       query: (body) => ({
-        url: '/location',
+        url: '/locations',
         method: 'POST',
         body,
       }),
       invalidatesTags: [{ type: 'Locations', id: 'LIST' }],
     }),
-    updateLocation: builder.mutation<
-      Location,
-      { id: string; name: string; short_name: string; address: string; cityId: string }
-    >({
+    updateLocation: builder.mutation<Location, UpdateLocationDto & { id: string }>({
       query: ({ id, ...body }) => ({
-        url: `/location/${id}`,
-        method: 'PUT',
+        url: `/locations/${id}`,
+        method: 'PATCH',
         body,
       }),
       invalidatesTags: (result, error, arg) => [
@@ -65,7 +77,7 @@ export const locationsApi = api.injectEndpoints({
     }),
     deleteLocation: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/location/${id}`,
+        url: `/locations/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: [{ type: 'Locations', id: 'LIST' }],
@@ -75,6 +87,7 @@ export const locationsApi = api.injectEndpoints({
 
 export const {
   useGetLocationsQuery,
+  useGetLocationQuery,
   useGetLocationsByCityQuery,
   useGetLocationByShortNameQuery,
   useAddLocationMutation,

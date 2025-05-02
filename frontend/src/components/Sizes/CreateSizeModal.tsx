@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAddSizeMutation } from '@/services/sizesApi';
+import { useAddSizeMutation, CreateSizeDto } from '@/services/sizesApi';
 import { toast } from 'react-toastify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
@@ -12,7 +12,7 @@ type CreateSizeModalProps = {
 
 export const CreateSizeModal: React.FC<CreateSizeModalProps> = ({ isOpen, onClose }) => {
   const [addSize, { isLoading }] = useAddSizeMutation();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateSizeDto>({
     name: '',
     size: '',
     area: '',

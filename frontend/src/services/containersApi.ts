@@ -7,41 +7,52 @@ export interface Container {
   updatedAt?: string;
 }
 
-// Тип для создания контейнера (с id)
-export interface CreateContainerRequest {
-  id: number;
+// Тип для создания контейнера
+export interface CreateContainerDto {
+  id?: number;
   locId: string;
+}
+
+export interface UpdateContainerDto {
+  locId?: string;
 }
 
 export const containersApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getContainers: builder.query<Container[], void>({
-      query: () => '/container',
+      query: () => '/containers',
+      providesTags: ['Containers'],
+    }),
+    getContainer: builder.query<Container, number>({
+      query: (id) => `/containers/${id}`,
       providesTags: ['Containers'],
     }),
     getContainersByLocation: builder.query<Container[], string>({
-      query: (locId) => `/container/by-location/${locId}`,
+      query: (locId) => `/containers/location/${locId}`,
       providesTags: ['Containers'],
     }),
-    addContainer: builder.mutation<Container, CreateContainerRequest>({
+    addContainer: builder.mutation<Container, CreateContainerDto>({
       query: (container) => ({
-        url: '/container',
+        url: '/containers',
         method: 'POST',
         body: container,
       }),
       invalidatesTags: ['Containers'],
     }),
-    updateContainer: builder.mutation<Container, Partial<Container> & { id: number }>({
-      query: (container) => ({
-        url: `/container/${container.id}`,
-        method: 'PUT',
-        body: container,
-      }),
+    updateContainer: builder.mutation<Container, UpdateContainerDto & { id: number }>({
+      query: (container) => {
+        const { id, ...body } = container;
+        return {
+          url: `/containers/${id}`,
+          method: 'PATCH',
+          body: body,
+        };
+      },
       invalidatesTags: ['Containers'],
     }),
     deleteContainer: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/container/${id}`,
+        url: `/containers/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Containers'],
@@ -51,6 +62,7 @@ export const containersApi = api.injectEndpoints({
 
 export const {
   useGetContainersQuery,
+  useGetContainerQuery,
   useGetContainersByLocationQuery,
   useAddContainerMutation,
   useUpdateContainerMutation,

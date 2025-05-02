@@ -59,40 +59,43 @@ export interface CreateCellRequest {
 export const cellsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getCells: builder.query<Cell[], void>({
-      query: () => '/cell',
+      query: () => '/cells',
       providesTags: ['Cells'],
     }),
     getCellsByContainer: builder.query<Cell[], number>({
-      query: (containerId) => `/cell/by-container/${containerId}`,
+      query: (containerId) => `/cells/container/${containerId}`,
       providesTags: ['Cells'],
     }),
     getCellsBySize: builder.query<Cell[], string>({
-      query: (sizeId) => `/cell/size/${sizeId}`,
+      query: (sizeId) => `/cells/size/${sizeId}`,
       providesTags: ['Cells'],
     }),
     getCell: builder.query<Cell, string>({
-      query: (id) => `/cell/${id}`,
+      query: (id) => `/cells/${id}`,
       providesTags: ['Cells'],
     }),
     addCell: builder.mutation<Cell, CreateCellRequest>({
       query: (cell) => ({
-        url: '/cell',
+        url: '/cells',
         method: 'POST',
         body: cell,
       }),
       invalidatesTags: ['Cells'],
     }),
     updateCell: builder.mutation<Cell, Partial<Cell> & { id: string }>({
-      query: (cell) => ({
-        url: `/cell/${cell.id}`,
-        method: 'PUT',
-        body: cell,
-      }),
+      query: (cell) => {
+        const { id, ...body } = cell;
+        return {
+          url: `/cells/${id}`,
+          method: 'PATCH',
+          body: body,
+        };
+      },
       invalidatesTags: ['Cells'],
     }),
     deleteCell: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/cell/${id}`,
+        url: `/cells/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Cells'],

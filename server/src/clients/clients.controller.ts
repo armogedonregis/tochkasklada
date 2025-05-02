@@ -31,7 +31,6 @@ class CreateClientDto {
   email: string;
   password?: string;
   phones?: string[];
-  company?: string;
 }
 
 // DTO для обновления клиента
@@ -39,7 +38,6 @@ class UpdateClientDto {
   name?: string;
   email?: string;
   phones?: string[];
-  company?: string;
 }
 
 @Controller('clients')
