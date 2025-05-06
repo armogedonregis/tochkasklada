@@ -112,7 +112,7 @@ model Containers {
   id Int @id @default(autoincrement())
 
   locId    String
-  location Location @relation(fields: [locId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locId], references: [id])
   cells    Cells[]
 
   createdAt DateTime @default(now())
@@ -130,7 +130,7 @@ model Cells {
   containerId Int
   container   Containers @relation(fields: [containerId], references: [id], onDelete: Cascade)
 
-  size SizeCells @relation(fields: [size_id], references: [id], onDelete: Cascade)
+  size SizeCells @relation(fields: [size_id], references: [id])
 
   statusId String?
   status   CellStatus? @relation(fields: [statusId], references: [id])
@@ -190,13 +190,13 @@ model Panel {
 
 model Relay {
   id          String    @id @default(uuid())
-  panelId     String
   relayNumber Int
   name        String
   type        RelayType
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  panelId     String
   panel  Panel         @relation(fields: [panelId], references: [id])
   access RelayAccess[]
 
@@ -206,7 +206,7 @@ model Relay {
 
 model RelayAccess {
   id         String   @id @default(uuid())
-  userId     String // Изменено с supabaseUserId на userId для соответствия нашей модели
+  userId     String
   relayId    String
   validUntil DateTime
   isActive   Boolean  @default(true)

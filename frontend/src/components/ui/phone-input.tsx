@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
+import React from 'react';
+import { IMaskInput } from 'react-imask';
 import { cn } from '@/lib/utils';
 
 interface PhoneInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
@@ -11,64 +11,43 @@ interface PhoneInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
 }
 
 export function PhoneInput({ value, onChange, className, error, ...props }: PhoneInputProps) {
-  // Обработчик изменения телефона
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let newValue = e.target.value;
-    
-    // Удаляем все символы кроме цифр и +
-    newValue = newValue.replace(/[^0-9+]/g, '');
-    
-    // Если значение пустое и первый вводимый символ не +
-    if (!value && newValue && !newValue.startsWith('+')) {
-      newValue = '+7' + newValue;
-    }
-    
-    // Если начинается с +7 и следом идет 8, то удаляем 8
-    if (newValue.startsWith('+78') && newValue.length > 3) {
-      newValue = '+7' + newValue.substring(3);
-    }
-    
-    onChange(newValue);
+  // Конфигурация маски
+  const maskOptions = {
+    mask: '+{7} (000) 000-00-00',
+    lazy: false, // Показывать маску сразу
+    placeholderChar: '_'
   };
 
-  // Форматируем телефонный номер для отображения
-  const formatPhoneDisplay = (phone: string): string => {
-    if (!phone) return '';
-    
-    // +7 (XXX) XXX-XX-XX
-    const match = phone.match(/^\+7(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})(.*)$/);
-    
-    if (!match) return phone;
-    
-    let result = '+7';
-    
-    if (match[1]) {
-      result += ` (${match[1]}`;
-      if (match[1].length === 3) result += ')';
+  // Обработчик изменения значения
+  const handleAccept = (value: string) => {
+    // Сохраняем только цифры и +
+    const cleanValue = value.replace(/[^\d+]/g, '');
+    onChange(cleanValue);
+  };
+
+  // Обработчик потери фокуса
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const digits = value.replace(/\D/g, '');
+    // Если номер неполный (меньше 11 цифр) - очищаем поле
+    if (digits.length > 0 && digits.length < 11) {
+      onChange('');
     }
-    
-    if (match[2] && match[1].length === 3) {
-      result += ` ${match[2]}`;
-    }
-    
-    if (match[3] && match[2].length === 3) {
-      result += `-${match[3]}`;
-    }
-    
-    if (match[4] && match[3].length === 2) {
-      result += `-${match[4]}`;
-    }
-    
-    return result;
+    props.onBlur?.(e);
   };
 
   return (
-    <Input
-      type="tel"
-      value={formatPhoneDisplay(value)}
-      onChange={handleChange}
-      className={cn(error ? 'border-red-500' : '', className)}
+    <IMaskInput
+      {...maskOptions}
+      value={value}
+      onAccept={handleAccept}
+      onBlur={handleBlur}
       placeholder="+7 (___) ___-__-__"
+      type="tel"
+      className={cn(
+        "flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-[#F62D40] focus:ring-1 focus:ring-[#F62D40] dark:focus:border-[#F8888F] dark:focus:ring-[#F8888F] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+        error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : '',
+        className
+      )}
       {...props}
     />
   );

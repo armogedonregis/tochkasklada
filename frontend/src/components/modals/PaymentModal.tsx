@@ -121,12 +121,12 @@ export function PaymentModal({
     const newErrors: Record<string, string> = {};
 
     // Проверка клиента
-    if (!formData.userId.trim()) {
+    if (!formData.userId) {
       newErrors.userId = 'Выберите клиента';
     }
 
     // Проверка суммы
-    if (formData.amount <= 0) {
+    if (!formData.amount || formData.amount <= 0) {
       newErrors.amount = 'Сумма должна быть больше 0';
     }
 
@@ -137,13 +137,24 @@ export function PaymentModal({
   // Обработчик сохранения
   const handleSave = () => {
     if (validateForm()) {
-      const updateData: UpdatePaymentRequest = {
-        id: formData.id,
-        amount: formData.amount,
-        description: formData.description,
-        status: formData.status,
+      const saveData = {
+        ...formData,
+        amount: Number(formData.amount)
       };
-      onSave(updateData);
+      
+      if (!payment) {
+        // Для нового платежа отправляем все данные
+        onSave(saveData);
+      } else {
+        // Для редактирования отправляем только измененные поля
+        const updateData = {
+          id: payment.id,
+          amount: Number(formData.amount),
+          description: formData.description,
+          status: formData.status
+        };
+        onSave(updateData);
+      }
     } else {
       toast.error('Пожалуйста, исправьте ошибки в форме');
     }
@@ -157,8 +168,6 @@ export function PaymentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      // Если модальное окно пытаются закрыть кликом за пределами (open становится false),
-      // то предотвращаем закрытие, не вызывая onClose
       if (!open) {
         // Здесь мы ничего не делаем, чтобы предотвратить закрытие
       }
@@ -175,7 +184,7 @@ export function PaymentModal({
             <X size={18} />
           </button>
           <DialogDescription>
-            Редактирование информации о платеже.
+            {payment ? 'Редактирование информации о платеже.' : 'Создание нового платежа.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -190,7 +199,8 @@ export function PaymentModal({
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   <span>Загрузка клиентов...</span>
                 </div>
-              ) : (
+              ) : payment ? (
+                // Для редактирования показываем только информацию о клиенте
                 <>
                   <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-md">
                     {getClientName(formData.userId)}
@@ -199,6 +209,30 @@ export function PaymentModal({
                     Клиента нельзя изменить
                   </div>
                 </>
+              ) : (
+                // Для создания нового платежа показываем выпадающий список
+                <div className="col-span-3">
+                  <Select
+                    value={formData.userId}
+                    onValueChange={(value) => handleChange('userId', value)}
+                  >
+                    <SelectTrigger className={errors.userId ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Выберите клиента" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clientsList.map((client: any) => (
+                        <SelectItem key={client.userId} value={client.userId}>
+                          {client.name} ({client.user?.email || 'Нет email'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.userId && (
+                    <div className="text-red-500 text-xs mt-1">
+                      {errors.userId}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

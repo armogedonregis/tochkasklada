@@ -11,9 +11,7 @@ export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ 
     baseUrl: 'http://localhost:5000/api',
-    prepareHeaders: (headers, { getState }) => {
-      headers.set('Content-Type', 'application/json');
-      
+    prepareHeaders: (headers, { getState, type }) => {
       // Добавляем токен, если он есть в локальном хранилище
       const token = getToken();
       if (token) {

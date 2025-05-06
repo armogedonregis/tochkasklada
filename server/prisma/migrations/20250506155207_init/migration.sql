@@ -141,12 +141,12 @@ CREATE TABLE "panels" (
 -- CreateTable
 CREATE TABLE "relays" (
     "id" TEXT NOT NULL,
-    "panelId" TEXT NOT NULL,
     "relayNumber" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "type" "RelayType" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "panelId" TEXT NOT NULL,
 
     CONSTRAINT "relays_pkey" PRIMARY KEY ("id")
 );
@@ -195,13 +195,13 @@ ALTER TABLE "payments" ADD CONSTRAINT "payments_userId_fkey" FOREIGN KEY ("userI
 ALTER TABLE "locations" ADD CONSTRAINT "locations_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "citys"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "containers" ADD CONSTRAINT "containers_locId_fkey" FOREIGN KEY ("locId") REFERENCES "locations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "containers" ADD CONSTRAINT "containers_locId_fkey" FOREIGN KEY ("locId") REFERENCES "locations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "cells" ADD CONSTRAINT "cells_containerId_fkey" FOREIGN KEY ("containerId") REFERENCES "containers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "cells" ADD CONSTRAINT "cells_size_id_fkey" FOREIGN KEY ("size_id") REFERENCES "size_cells"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "cells" ADD CONSTRAINT "cells_size_id_fkey" FOREIGN KEY ("size_id") REFERENCES "size_cells"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "cells" ADD CONSTRAINT "cells_statusId_fkey" FOREIGN KEY ("statusId") REFERENCES "cell_statuses"("id") ON DELETE SET NULL ON UPDATE CASCADE;

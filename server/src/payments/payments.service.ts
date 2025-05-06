@@ -318,6 +318,7 @@ export class PaymentsService {
           select: {
             id: true,
             email: true,
+            client: true
           },
         },
       },

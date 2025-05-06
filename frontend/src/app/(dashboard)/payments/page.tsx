@@ -29,7 +29,10 @@ import {
   Edit, 
   Save, 
   Loader2, 
-  CreditCard
+  CreditCard,
+  ChevronDown,
+  ChevronRight,
+  User
 } from 'lucide-react';
 import {
   Dialog,
@@ -71,10 +74,11 @@ declare module '@tanstack/react-table' {
   }
 }
 
-// Интерфейс для данных платежа в таблице
+// Расширяем интерфейс для данных платежа
 interface PaymentTableData extends Payment {
   formattedDate?: string;
   formattedAmount?: string;
+  expanded?: boolean;
 }
 
 const PaymentsPage = () => {
@@ -86,19 +90,10 @@ const PaymentsPage = () => {
   const [setPaymentStatus] = useSetPaymentStatusMutation();
   
   const [tableData, setTableData] = useState<PaymentTableData[]>([]);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newPayment, setNewPayment] = useState({
-    userId: '',
-    amount: '',
-    description: '',
-    status: false
-  });
-  
-  const [activeTab, setActiveTab] = useState('all');
-  
-  // Модальное окно для редактирования платежа
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
+  const [expandedPayments, setExpandedPayments] = useState<string[]>([]);
 
   // Конвертируем данные платежей для отображения в таблице
   useEffect(() => {
@@ -132,8 +127,86 @@ const PaymentsPage = () => {
     })})`;
   };
 
+  // Функция для переключения раскрытия информации о клиенте
+  const toggleExpandPayment = (paymentId: string) => {
+    setExpandedPayments(prev => 
+      prev.includes(paymentId)
+        ? prev.filter(id => id !== paymentId)
+        : [...prev, paymentId]
+    );
+  };
+
+  // Компонент для отображения расширенной информации о клиенте
+  const ExpandedClientInfo = ({ payment }: { payment: PaymentTableData }) => {
+    const client = clients.find(c => c.userId === payment.userId);
+    const user = client?.user;
+
+    if (!client) {
+      return (
+        <div className="p-4 pl-12 text-sm text-gray-500">
+          Информация о клиенте недоступна
+        </div>
+      );
+    }
+
+    return (
+      <div className="pl-12 pr-4 py-4 border-t border-gray-100">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4">
+          <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+            <User size={16} />
+            Информация о клиенте
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">ФИО:</p>
+              <p className="font-medium">{client.name}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Email:</p>
+              <p className="font-medium">{user?.email || 'Не указан'}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-gray-500 dark:text-gray-400 mb-1">Телефоны:</p>
+              <div className="font-medium space-y-1">
+                {client.phones && client.phones.length > 0 ? (
+                  client.phones.map((phone: any, index: number) => (
+                    <div key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded">
+                      {typeof phone === 'object' ? phone.phone || phone.number : phone}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-400">Телефоны не указаны</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Определение колонок таблицы
   const columns: ColumnDef<PaymentTableData>[] = [
+    {
+      id: 'expander',
+      header: '',
+      cell: ({ row }) => {
+        const isExpanded = expandedPayments.includes(row.original.id);
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpandPayment(row.original.id);
+            }}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </button>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: 'orderId',
       header: 'ID платежа',
@@ -209,58 +282,47 @@ const PaymentsPage = () => {
     },
   ];
 
-  // Обработчик создания нового платежа
-  const handleCreatePayment = async () => {
-    if (!newPayment.userId || !newPayment.amount || parseInt(newPayment.amount) < 10) {
-      toast.error('Заполните все обязательные поля. Сумма должна быть не менее 10 рублей.');
-      return;
-    }
-
+  // Обработчик сохранения платежа (создание/редактирование)
+  const handleSaveFromModal = async (paymentData: any) => {
     try {
-      // Создаем новый платеж через API
-      const result = await adminCreatePayment({
-        userId: newPayment.userId,
-        amount: parseInt(newPayment.amount),
-        description: newPayment.description,
-        status: newPayment.status
-      }).unwrap();
+      if (editingPayment) {
+        // Обновление существующего платежа
+        await updatePayment({
+          id: editingPayment.id,
+          ...paymentData
+        }).unwrap();
+        toast.success('Платеж успешно обновлен');
+      } else {
+        // Создание нового платежа
+        await adminCreatePayment(paymentData).unwrap();
+        toast.success('Платеж создан успешно');
+      }
       
-      // Сбрасываем форму
-      setNewPayment({
-        userId: '',
-        amount: '',
-        description: '',
-        status: false
-      });
-      
-      setIsAddDialogOpen(false);
-      toast.success('Платеж создан успешно');
-      
-      refetch(); // Обновляем данные
-    } catch (error) {
-      console.error('Ошибка при создании платежа:', error);
-      toast.error('Не удалось создать платеж');
-    }
-  };
-
-  // Обработчик редактирования платежа
-  const handleEdit = (payment: Payment) => {
-    setEditingPayment(payment);
-    setIsEditModalOpen(true);
-  };
-
-  // Обработчик сохранения отредактированного платежа
-  const handleSaveEditedPayment = async (updatedPayment: any) => {
-    try {
-      await updatePayment(updatedPayment).unwrap();
-      toast.success('Платеж успешно обновлен');
-      setIsEditModalOpen(false);
+      setIsModalOpen(false);
       setEditingPayment(null);
       refetch();
     } catch (error) {
-      console.error('Ошибка при обновлении платежа:', error);
-      toast.error('Не удалось обновить платеж');
+      console.error('Ошибка при сохранении платежа:', error);
+      toast.error(`Ошибка при ${editingPayment ? 'обновлении' : 'создании'} платежа`);
     }
+  };
+
+  // Открыть модальное окно для создания платежа
+  const handleOpenCreateModal = () => {
+    setEditingPayment(null);
+    setIsModalOpen(true);
+  };
+
+  // Открыть модальное окно для редактирования платежа
+  const handleEdit = (payment: Payment) => {
+    setEditingPayment(payment);
+    setIsModalOpen(true);
+  };
+
+  // Закрыть модальное окно
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingPayment(null);
   };
 
   // Обработчик удаления платежа
@@ -269,7 +331,7 @@ const PaymentsPage = () => {
       try {
         await deletePayment(id).unwrap();
         toast.success('Платеж удален');
-        refetch();
+        await refetch(); // Явно обновляем список после удаления
       } catch (error) {
         console.error('Ошибка при удалении платежа:', error);
         toast.error('Не удалось удалить платеж');
@@ -278,8 +340,8 @@ const PaymentsPage = () => {
   };
 
   // Адаптер для передачи функции удаления в BaseTable
-  const handleDeleteAdapter = (payment: PaymentTableData) => {
-    handleDelete(payment.id);
+  const handleDeleteAdapter = async (payment: PaymentTableData) => {
+    await handleDelete(payment.id);
   };
 
   // Обработчик изменения статуса платежа
@@ -292,11 +354,6 @@ const PaymentsPage = () => {
       console.error('Ошибка при изменении статуса:', error);
       toast.error('Не удалось изменить статус платежа');
     }
-  };
-
-  // Обработчик добавления новой строки
-  const handleAddRow = () => {
-    setIsAddDialogOpen(true);
   };
 
   // Фильтруем данные по вкладке
@@ -339,7 +396,7 @@ const PaymentsPage = () => {
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Управление платежами</h1>
-        <Button onClick={handleAddRow} className="flex items-center gap-2">
+        <Button onClick={handleOpenCreateModal} className="flex items-center gap-2">
           <CreditCard className="h-4 w-4" />
           <span>Новый платеж</span>
         </Button>
@@ -366,17 +423,20 @@ const PaymentsPage = () => {
           enableActions={true}
           onEdit={handleEdit}
           onDelete={handleDeleteAdapter}
+          renderRowSubComponent={({ row }) => 
+            expandedPayments.includes(row.original.id) ? <ExpandedClientInfo payment={row.original} /> : null
+          }
         />
       </div>
 
-      {/* Модальное окно для редактирования платежа */}
+      {/* Модальное окно для создания/редактирования платежа */}
       <PaymentModal 
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSave={handleSaveEditedPayment}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveFromModal}
         payment={editingPayment}
         clients={clients}
-        title="Редактировать платеж"
+        title={editingPayment ? 'Редактировать платеж' : 'Создать новый платеж'}
       />
     </div>
   );
