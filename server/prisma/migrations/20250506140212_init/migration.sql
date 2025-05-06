@@ -92,10 +92,23 @@ CREATE TABLE "cells" (
     "name" TEXT NOT NULL,
     "len_height" TEXT,
     "containerId" INTEGER NOT NULL,
+    "statusId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "cells_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "cell_statuses" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "color" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "cell_statuses_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -189,6 +202,9 @@ ALTER TABLE "cells" ADD CONSTRAINT "cells_containerId_fkey" FOREIGN KEY ("contai
 
 -- AddForeignKey
 ALTER TABLE "cells" ADD CONSTRAINT "cells_size_id_fkey" FOREIGN KEY ("size_id") REFERENCES "size_cells"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cells" ADD CONSTRAINT "cells_statusId_fkey" FOREIGN KEY ("statusId") REFERENCES "cell_statuses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "relays" ADD CONSTRAINT "relays_panelId_fkey" FOREIGN KEY ("panelId") REFERENCES "panels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

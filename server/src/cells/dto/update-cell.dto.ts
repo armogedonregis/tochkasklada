@@ -5,4 +5,5 @@ export class UpdateCellDto implements Partial<CreateCellDto> {
   name?: string;
   len_height?: string;
   containerId?: number;
+  statusId?: string;
 } 

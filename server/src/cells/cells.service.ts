@@ -11,7 +11,8 @@ export class CellsService {
     return this.prisma.cells.findMany({
       include: {
         container: true,
-        size: true
+        size: true,
+        status: true
       }
     });
   }
@@ -21,7 +22,8 @@ export class CellsService {
       where: { id },
       include: {
         container: true,
-        size: true
+        size: true,
+        status: true
       }
     });
   }
@@ -29,6 +31,9 @@ export class CellsService {
   async create(createCellDto: CreateCellDto) {
     return this.prisma.cells.create({
       data: createCellDto,
+      include: {
+        status: true
+      }
     });
   }
 
@@ -36,6 +41,9 @@ export class CellsService {
     return this.prisma.cells.update({
       where: { id },
       data: updateCellDto,
+      include: {
+        status: true
+      }
     });
   }
 
@@ -49,7 +57,8 @@ export class CellsService {
     return this.prisma.cells.findMany({
       where: { containerId },
       include: {
-        size: true
+        size: true,
+        status: true
       }
     });
   }
@@ -58,7 +67,8 @@ export class CellsService {
     return this.prisma.cells.findMany({
       where: { size_id: sizeId },
       include: {
-        container: true
+        container: true,
+        status: true
       }
     });
   }

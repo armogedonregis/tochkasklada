@@ -12,6 +12,7 @@ import { ContainersModule } from './containers/containers.module';
 import { LocationsModule } from './locations/locations.module';
 import { CitiesModule } from './cities/cities.module';
 import { PaymentsModule } from './payments/payments.module';
+import { CellStatusesModule } from './cell-statuses/cell-statuses.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PaymentsModule } from './payments/payments.module';
     LocationsModule,
     CitiesModule,
     PaymentsModule,
+    CellStatusesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

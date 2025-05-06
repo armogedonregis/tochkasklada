@@ -14,65 +14,65 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String  @unique
-  password  String
-  role      String   @default("CLIENT")
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
+  role     String @default("CLIENT")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Связи
-  client    Client?
-  payments  Payment[]
-  
+  client   Client?
+  payments Payment[]
+
   @@map("users")
 }
 
 model Client {
-  id        String   @id @default(uuid())
-  name      String
-  
+  id   String @id @default(uuid())
+  name String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Связь с пользователем
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  phones    ClientPhone[]
-  
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phones ClientPhone[]
+
   @@map("clients")
 }
 
 // Модель для хранения телефонов клиентов
 model ClientPhone {
-  id        String   @id @default(uuid())
-  phone     String
+  id    String @id @default(uuid())
+  phone String
 
-  clientId  String
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("client_phones")
 }
 
 // Модель для хранения платежей Tinkoff Bank
 model Payment {
-  id                String    @id @default(uuid())
-  amount            Int       // Сумма в копейках
-  orderId           String?    @unique // Уникальный идентификатор заказа
-  description       String?   // Описание платежа
-  userId            String    // Идентификатор пользователя
-  user              User      @relation(fields: [userId], references: [id])
-  status            Boolean   @default(false) // Статус платежа (true = успешно)
-  tinkoffPaymentId  String?   // Идентификатор платежа в системе Tinkoff
-  paymentUrl        String?   // URL для оплаты
+  id               String  @id @default(uuid())
+  amount           Int // Сумма в копейках
+  orderId          String? @unique // Уникальный идентификатор заказа
+  description      String? // Описание платежа
+  userId           String // Идентификатор пользователя
+  user             User    @relation(fields: [userId], references: [id])
+  status           Boolean @default(false) // Статус платежа (true = успешно)
+  tinkoffPaymentId String? // Идентификатор платежа в системе Tinkoff
+  paymentUrl       String? // URL для оплаты
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("payments")
 }
@@ -98,8 +98,8 @@ model Location {
   short_name String @unique
   address    String
 
-  cityId String
-  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  cityId     String
+  city       City         @relation(fields: [cityId], references: [id], onDelete: Cascade)
   containers Containers[]
 
   createdAt DateTime @default(now())
@@ -111,9 +111,9 @@ model Location {
 model Containers {
   id Int @id @default(autoincrement())
 
-  locId String
+  locId    String
   location Location @relation(fields: [locId], references: [id], onDelete: Cascade)
-  cells Cells[]
+  cells    Cells[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -129,12 +129,31 @@ model Cells {
 
   containerId Int
   container   Containers @relation(fields: [containerId], references: [id], onDelete: Cascade)
-  size        SizeCells  @relation(fields: [size_id], references: [id], onDelete: Cascade)
+
+  size SizeCells @relation(fields: [size_id], references: [id], onDelete: Cascade)
+
+  statusId String?
+  status   CellStatus? @relation(fields: [statusId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("cells")
+}
+
+// Модель для статусов ячеек
+model CellStatus {
+  id       String  @id @default(uuid())
+  name     String
+  color    String
+  isActive Boolean @default(true)
+
+  cells Cells[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cell_statuses")
 }
 
 model SizeCells {
@@ -186,13 +205,13 @@ model Relay {
 }
 
 model RelayAccess {
-  id             String   @id @default(uuid())
-  userId         String   // Изменено с supabaseUserId на userId для соответствия нашей модели
-  relayId        String
-  validUntil     DateTime
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id         String   @id @default(uuid())
+  userId     String // Изменено с supabaseUserId на userId для соответствия нашей модели
+  relayId    String
+  validUntil DateTime
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   relay Relay @relation(fields: [relayId], references: [id])
 
