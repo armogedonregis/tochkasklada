@@ -10,7 +10,7 @@ const getToken = (): string | null => {
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ 
-    baseUrl: '/api',
+    baseUrl: 'http://localhost:5000/api',
     prepareHeaders: (headers, { getState }) => {
       headers.set('Content-Type', 'application/json');
       

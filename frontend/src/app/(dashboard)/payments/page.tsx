@@ -43,7 +43,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { EditableTable, EditableCell } from "@/components/table/EditableTable";
+import { BaseTable } from "@/components/table/BaseTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -93,11 +93,7 @@ const PaymentsPage = () => {
     status: false
   });
   
-  // Для автосохранения
-  const [autoSave, setAutoSave] = useState<boolean>(false);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [activeTab, setActiveTab] = useState('all');
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Конвертируем данные платежей для отображения в таблице
   useEffect(() => {
@@ -197,23 +193,16 @@ const PaymentsPage = () => {
       id: 'amount',
       header: 'Сумма',
       accessorFn: (row) => formatAmount(row.amount),
-      cell: (props) => {
-        const { row, table } = props;
-        // При редактировании показываем сумму в целых рублях без форматирования
-        const editValue = row.original.amount.toString();
-        
-        return (
-          <EditableCell 
-            {...props} 
-            getValue={() => editValue} 
-          />
-        );
+      cell: ({ getValue }) => {
+        return <div className="p-2">{String(getValue())}</div>;
       }
     },
     {
       accessorKey: 'description',
       header: 'Описание',
-      cell: (props) => <EditableCell {...props} />,
+      cell: ({ getValue }) => {
+        return <div className="p-2">{String(getValue())}</div>;
+      }
     },
     {
       accessorKey: 'status',
@@ -289,18 +278,6 @@ const PaymentsPage = () => {
     },
   ];
 
-  // Переключатель автосохранения
-  const toggleAutoSave = () => {
-    setAutoSave(prev => !prev);
-
-    // Показываем уведомление
-    if (!autoSave) {
-      toast.info('Автосохранение включено. Изменения будут сохраняться автоматически после 2 секунд бездействия.');
-    } else {
-      toast.info('Автосохранение выключено. Не забывайте сохранять изменения вручную.');
-    }
-  };
-
   // Обработчик создания нового платежа
   const handleCreatePayment = async () => {
     if (!newPayment.userId || !newPayment.amount || parseInt(newPayment.amount) < 10) {
@@ -353,246 +330,22 @@ const PaymentsPage = () => {
   const handleToggleStatus = async (id: string, newStatus: boolean) => {
     try {
       await setPaymentStatus({ id, status: newStatus }).unwrap();
-      toast.success(`Статус платежа изменен на "${newStatus ? 'Оплачен' : 'Не оплачен'}"`);
+      toast.success(`Статус платежа ${newStatus ? 'оплачен' : 'не оплачен'}`);
       refetch();
     } catch (error) {
-      console.error('Ошибка при изменении статуса платежа:', error);
+      console.error('Ошибка при изменении статуса:', error);
       toast.error('Не удалось изменить статус платежа');
     }
   };
 
-  // Добавление нового платежа в таблицу
+  // Обработчик добавления новой строки
   const handleAddRow = () => {
     setIsAddDialogOpen(true);
   };
 
-  // Добавление новой строки непосредственно в таблицу
+  // Этот метод заменен на handleAddRow
   const handleAddTableRow = () => {
-    // Создаем новую пустую строку со всеми необходимыми полями
-    const newRow: PaymentTableData = {
-      id: `temp-${Date.now()}`, // Временный ID, который заменится на сервере
-      amount: 0,
-      orderId: `temp-${Date.now()}`,
-      description: '',
-      userId: clients.length > 0 ? clients[0].userId : '',
-      status: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    // Добавляем форматированные поля
-    newRow.formattedDate = formatDate(newRow.createdAt);
-    newRow.formattedAmount = formatAmount(newRow.amount);
-    
-    // Добавляем строку в таблицу
-    const updatedData = [...tableData, newRow];
-    setTableData(updatedData);
-    
-    // Устанавливаем флаг несохраненных изменений
-    setHasUnsavedChanges(true);
-    
-    toast.info('Добавлена новая строка. Не забудьте сохранить изменения.');
-  };
-
-  // Обработчик сохранения изменений в таблице
-  const handleSaveChanges = async (updatedData: PaymentTableData[]) => {
-    try {
-      const promises = [];
-      const newRowPromises = [];
-
-      for (const payment of updatedData) {
-        // Проверяем, является ли это новой строкой (по временному ID)
-        const isNewRow = payment.id.startsWith('temp-');
-        
-        if (isNewRow) {
-          // Для новых строк создаем новый платеж
-          // Проверяем, что все обязательные поля заполнены
-          if (!payment.userId || payment.amount < 10) {
-            toast.error(`Строка с временным ID ${payment.id.substring(0, 8)}... содержит неверные данные. Заполните все поля.`);
-            continue;
-          }
-          
-          // Создаем новый платеж
-          const newPaymentData = {
-            userId: payment.userId,
-            amount: payment.amount,
-            description: payment.description || '',
-            status: payment.status
-          };
-          
-          newRowPromises.push(adminCreatePayment(newPaymentData).unwrap());
-          continue;
-        }
-        
-        // Для существующих строк обновляем данные
-        const originalPayment = payments.find(p => p.id === payment.id);
-        if (!originalPayment) continue;
-
-        // Создаем объект с изменениями
-        const changes: any = { id: payment.id };
-        let hasChanges = false;
-
-        // Обработка суммы - работаем только с целыми рублями
-        const originalAmount = originalPayment.amount;
-        
-        // Получаем новое значение
-        let newAmount = originalAmount; // По умолчанию оставляем прежнее значение
-        
-        try {
-          // В EditableTable значение может быть как строкой, так и числом
-          const rawAmount = payment.amount;
-          
-          // Работаем со строковым представлением, которое возможно от EditableCell
-          if (typeof rawAmount === 'string') {
-            // Очищаем строку от всего кроме чисел
-            const cleanAmount = (rawAmount as string).replace(/[^\d]/g, '');
-            if (cleanAmount) {
-              newAmount = parseInt(cleanAmount, 10);
-            }
-          } else if (typeof rawAmount === 'number') {
-            // Если это число, используем его напрямую, округляя до целого
-            newAmount = Math.round(rawAmount);
-          }
-        } catch (err) {
-          console.warn('Ошибка при обработке суммы', err);
-          // Продолжаем с исходным значением
-        }
-        
-        console.log('Исходная сумма в рублях:', originalAmount);
-        console.log('Новая сумма в рублях:', newAmount);
-        
-        // Проверяем, изменилась ли сумма
-        if (newAmount !== originalAmount && !isNaN(newAmount)) {
-          // Проверяем на разумные пределы
-          if (newAmount > 0 && newAmount <= 10000000) {
-            changes.amount = newAmount;
-            hasChanges = true;
-            console.log('Сумма для сохранения:', newAmount);
-          } else {
-            console.error('Сумма выходит за допустимые пределы:', newAmount);
-            toast.error('Недопустимая сумма. Диапазон: от 1₽ до 10,000,000₽');
-          }
-        }
-
-        // Проверяем, изменилось ли описание
-        if (payment.description !== originalPayment.description) {
-          changes.description = payment.description;
-          hasChanges = true;
-        }
-
-        // Если были изменения, отправляем запрос
-        if (hasChanges) {
-          promises.push(updatePayment(changes).unwrap());
-        }
-      }
-
-      // Выполняем все запросы
-      if (promises.length > 0 || newRowPromises.length > 0) {
-        // Сначала создаем новые платежи
-        if (newRowPromises.length > 0) {
-          await Promise.all(newRowPromises);
-          toast.success(`Создано новых платежей: ${newRowPromises.length}`);
-        }
-        
-        // Затем обновляем существующие
-        if (promises.length > 0) {
-          await Promise.all(promises);
-          toast.success(`Обновлено платежей: ${promises.length}`);
-        }
-        
-        // Сбрасываем флаг несохраненных изменений
-        setHasUnsavedChanges(false);
-        
-        // Обновляем данные
-        refetch();
-      } else {
-        toast.info("Нет изменений для сохранения");
-      }
-    } catch (error) {
-      console.error('Ошибка при сохранении изменений:', error);
-      toast.error('Не удалось сохранить изменения');
-    }
-  };
-
-  // Валидация ячеек таблицы
-  const validateCell = (value: any, columnId: string, rowData: any): { isValid: boolean; errorMessage?: string } => {
-    if (columnId === 'amount') {
-      // Очищаем значение от нечисловых символов
-      const cleanValue = value.toString().replace(/[^\d]/g, '');
-      const numValue = parseInt(cleanValue, 10);
-      
-      // Проверки на разумность значения
-      if (isNaN(numValue)) {
-        return { 
-          isValid: false, 
-          errorMessage: 'Введите корректное целое число' 
-        };
-      }
-      
-      if (numValue < 10) {
-        return { 
-          isValid: false, 
-          errorMessage: 'Сумма должна быть не менее 10 рублей' 
-        };
-      }
-      
-      if (numValue > 10000000) {
-        return { 
-          isValid: false, 
-          errorMessage: 'Сумма не должна превышать 10 миллионов рублей' 
-        };
-      }
-    } else if (columnId === 'userId') {
-      // Проверяем, что выбран клиент
-      if (!value) {
-        return { 
-          isValid: false, 
-          errorMessage: 'Выберите клиента' 
-        };
-      }
-    }
-    return { isValid: true };
-  };
-
-  // Обработчик изменения данных таблицы для автосохранения
-  const handleDataChange = (updatedData: PaymentTableData[]) => {
-    // Сохраняем обновленные данные
-    setTableData(updatedData);
-
-    // Если автосохранение выключено, просто обновляем данные
-    if (!autoSave) return;
-
-    // Очищаем предыдущий таймер при каждом вызове
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-    }
-
-    // Иначе запускаем таймер для автосохранения через 2 секунды
-    // после последнего изменения
-    autoSaveTimerRef.current = setTimeout(() => {
-      handleSaveChanges(updatedData);
-    }, 2000);
-  };
-
-  // Адаптер для преобразования индекса в ID для EditableTable
-  const handleRowDelete = (index: number) => {
-    if (tableData[index]) {
-      handleDelete(tableData[index].id);
-    }
-  };
-
-  // Получить имя клиента по ID
-  const getClientName = (userId: string) => {
-    const client = clients.find(c => c.userId === userId);
-    if (client) {
-      return `${client.name} (${client.user?.email || 'Без email'})`;
-    }
-    return null;
-  };
-
-  // Обработчик изменения вкладки
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
+    handleAddRow();
   };
 
   // Фильтруем данные по вкладке
@@ -637,19 +390,6 @@ const PaymentsPage = () => {
         <h1 className="text-2xl font-bold">Управление платежами</h1>
         
         <div className="flex items-center gap-4">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="autoSave"
-              checked={autoSave}
-              onChange={toggleAutoSave}
-              className="mr-2 h-4 w-4"
-            />
-            <label htmlFor="autoSave" className="text-sm">
-              Автосохранение
-            </label>
-          </div>
-
           <Button onClick={handleAddRow}>
             <CreditCard className="h-4 w-4 mr-1" />
             Создать платеж
@@ -757,7 +497,7 @@ const PaymentsPage = () => {
       <div className="mb-6">
         <Tabs 
           value={activeTab} 
-          onValueChange={handleTabChange}
+          onValueChange={setActiveTab}
           className="w-full"
         >
           <TabsList className="mb-4">
@@ -778,22 +518,13 @@ const PaymentsPage = () => {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <EditableTable
+          <BaseTable
             data={getFilteredData()}
             columns={columns}
-            searchColumn="user"
-            searchPlaceholder="Поиск по клиенту..."
-            onRowAdd={handleAddTableRow}
-            onSaveChanges={handleSaveChanges}
-            onDataChange={handleDataChange}
-            onRowDelete={handleRowDelete}
-            validateCell={validateCell}
-            addRowButtonText="Добавить строку"
-            saveButtonText="Сохранить изменения"
-            exportFilename={`payments-${activeTab}.xlsx`}
-            autoSaveTimeout={autoSave ? 2000 : 0}
-            hasUnsavedChanges={hasUnsavedChanges}
-            setHasUnsavedChanges={setHasUnsavedChanges}
+            searchColumn="description"
+            searchPlaceholder="Поиск по описанию..."
+            pageSize={10}
+            onRowClick={(row) => console.log('Clicked row:', row)}
           />
         </div>
       )}
