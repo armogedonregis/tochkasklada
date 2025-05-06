@@ -496,6 +496,9 @@ const PaymentsPage = () => {
             searchPlaceholder="Поиск по описанию..."
             pageSize={10}
             onRowClick={(row) => console.log('Clicked row:', row)}
+            enableColumnReordering={true}
+            persistColumnOrder={true}
+            tableId="payments-table"
           />
         </div>
       )}

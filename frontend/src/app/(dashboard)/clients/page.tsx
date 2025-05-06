@@ -253,6 +253,9 @@ export default function ClientsPage() {
             pageSize={10}
             onRowClick={(row) => handleEdit(row)}
             className="border-collapse"
+            enableColumnReordering={true}
+            persistColumnOrder={true}
+            tableId="clients-table"
           />
         </div>
       )}

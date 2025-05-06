@@ -276,7 +276,7 @@ export default function ContainersPage() {
   return (
     <>
       {/* Панель добавления */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 px-4 pt-4">
         <Button onClick={() => setIsModalOpen(true)}>
           Добавить контейнер
         </Button>

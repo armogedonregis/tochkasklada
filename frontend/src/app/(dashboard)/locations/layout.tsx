@@ -64,7 +64,7 @@ export default function LocationsLayout({
       </div>
 
       {/* Основное содержимое */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
         {children}
       </div>
     </div>
