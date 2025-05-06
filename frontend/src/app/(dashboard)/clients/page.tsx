@@ -216,8 +216,8 @@ export default function ClientsPage() {
   if (isLoading) {
     return (
       <div className="py-12 text-center">
-        <h3 className="text-xl mb-2">Загрузка данных...</h3>
-        <p className="text-gray-500">Пожалуйста, подождите</p>
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 dark:border-blue-400 border-r-transparent"></div>
+        <p className="mt-4 text-gray-700 dark:text-gray-300">Загрузка данных...</p>
       </div>
     );
   }
@@ -225,7 +225,7 @@ export default function ClientsPage() {
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Управление клиентами</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Управление клиентами</h1>
 
         <div className="flex items-center gap-4">
           <Button onClick={handleOpenCreateModal}>
@@ -236,15 +236,15 @@ export default function ClientsPage() {
       </div>
 
       {!clients || clients.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-          <p className="text-lg mb-4">Нет данных о клиентах</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow p-8 text-center">
+          <p className="text-lg mb-4 text-gray-600 dark:text-gray-300">Нет данных о клиентах</p>
           <Button onClick={handleOpenCreateModal}>
             <UserPlus className="h-4 w-4 mr-1" />
             Добавить первого клиента
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
           <BaseTable
             data={clients}
             columns={columns}

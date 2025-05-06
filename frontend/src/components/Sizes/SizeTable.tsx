@@ -89,9 +89,9 @@ export const SizeTable: React.FC<SizeTableProps> = ({ sizes, searchQuery = '' })
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+      <table className="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
         <thead>
-          <tr className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               Название
             </th>
@@ -106,11 +106,11 @@ export const SizeTable: React.FC<SizeTableProps> = ({ sizes, searchQuery = '' })
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
           {filteredSizes.map(size => (
             <tr
               key={size.id}
-              className="hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="hover:bg-gray-50 dark:hover:bg-gray-800/70"
             >
               <td className="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">
                 {editingSize === size.id ? (

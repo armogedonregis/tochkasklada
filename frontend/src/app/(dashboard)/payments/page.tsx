@@ -363,15 +363,15 @@ const PaymentsPage = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Загрузка платежей...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+        <span className="ml-2 text-gray-700 dark:text-gray-300">Загрузка платежей...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 p-4 rounded-md border border-red-200 text-red-700">
+      <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-md border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
         <p>Ошибка при загрузке платежей.</p>
         <Button 
           variant="outline" 
@@ -387,7 +387,7 @@ const PaymentsPage = () => {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Управление платежами</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Управление платежами</h1>
         
         <div className="flex items-center gap-4">
           <Button onClick={handleAddRow}>
@@ -408,7 +408,7 @@ const PaymentsPage = () => {
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="userId">Выберите клиента</Label>
+              <Label htmlFor="userId" className="text-gray-700 dark:text-gray-300">Выберите клиента</Label>
               <Select
                 onValueChange={(value) => setNewPayment({...newPayment, userId: value})}
                 value={newPayment.userId}
@@ -419,8 +419,8 @@ const PaymentsPage = () => {
                 <SelectContent>
                   {isLoadingClients ? (
                     <div className="flex items-center justify-center p-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="ml-2">Загрузка клиентов...</span>
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                      <span className="ml-2 text-gray-600 dark:text-gray-400">Загрузка клиентов...</span>
                     </div>
                   ) : clients.length > 0 ? (
                     clients.map((client) => (
@@ -429,20 +429,20 @@ const PaymentsPage = () => {
                       </SelectItem>
                     ))
                   ) : (
-                    <div className="p-2 text-sm text-gray-500">Нет доступных клиентов</div>
+                    <div className="p-2 text-sm text-gray-500 dark:text-gray-400">Нет доступных клиентов</div>
                   )}
                 </SelectContent>
               </Select>
               
               {!isLoadingClients && clients.length === 0 && (
-                <p className="text-xs text-yellow-500">
+                <p className="text-xs text-yellow-500 dark:text-yellow-400">
                   Нет доступных клиентов. Создайте клиентов в разделе "Клиенты".
                 </p>
               )}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="amount">Сумма (руб.)</Label>
+              <Label htmlFor="amount" className="text-gray-700 dark:text-gray-300">Сумма (руб.)</Label>
               <Input
                 id="amount"
                 type="number"
@@ -452,11 +452,11 @@ const PaymentsPage = () => {
                 value={newPayment.amount}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPayment({...newPayment, amount: e.target.value})}
               />
-              <p className="text-xs text-gray-500">Минимальная сумма: 10 рублей</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Минимальная сумма: 10 рублей</p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="description">Описание (необязательно)</Label>
+              <Label htmlFor="description" className="text-gray-700 dark:text-gray-300">Описание (необязательно)</Label>
               <Textarea
                 id="description"
                 placeholder="Назначение платежа"
@@ -471,7 +471,7 @@ const PaymentsPage = () => {
                 checked={newPayment.status}
                 onCheckedChange={(checked) => setNewPayment({...newPayment, status: checked as boolean})}
               />
-              <Label htmlFor="status">Отметить как оплаченный</Label>
+              <Label htmlFor="status" className="text-gray-700 dark:text-gray-300">Отметить как оплаченный</Label>
             </div>
           </div>
           
@@ -509,15 +509,15 @@ const PaymentsPage = () => {
       </div>
 
       {tableData.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-          <p className="text-lg mb-4">Нет данных о платежах</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow p-8 text-center">
+          <p className="text-lg mb-4 text-gray-600 dark:text-gray-300">Нет данных о платежах</p>
           <Button onClick={handleAddRow}>
             <CreditCard className="h-4 w-4 mr-1" />
             Создать первый платеж
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
           <BaseTable
             data={getFilteredData()}
             columns={columns}

@@ -48,19 +48,21 @@ export default function Sizes() {
 
       {isLoading ? (
         <div className="text-center py-8">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 dark:border-blue-400 border-r-transparent"></div>
           <p className="mt-4 text-gray-700 dark:text-gray-300">Загрузка размеров...</p>
         </div>
       ) : isError ? (
-        <div className="bg-red-100 dark:bg-red-900 p-4 rounded-md">
-          <p className="text-red-700 dark:text-red-200">
+        <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-md border border-red-200 dark:border-red-800">
+          <p className="text-red-700 dark:text-red-300">
             Ошибка при загрузке данных: {(error as any)?.data?.message || 'Неизвестная ошибка'}
           </p>
         </div>
       ) : sizes && sizes.length > 0 ? (
-        <SizeTable sizes={sizes} searchQuery={searchQuery} />
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
+          <SizeTable sizes={sizes} searchQuery={searchQuery} />
+        </div>
       ) : (
-        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
           <p className="text-lg text-gray-600 dark:text-gray-300">Нет доступных размеров</p>
           <Button onClick={handleOpenModal} className="mt-4">
             Добавить первый размер

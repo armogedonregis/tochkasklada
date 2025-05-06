@@ -62,7 +62,7 @@ export default function LoginPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-center mb-6">Вход в систему</h1>
+      <h1 className="text-2xl font-semibold text-center mb-6 text-gray-900 dark:text-white">Вход в систему</h1>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -71,11 +71,11 @@ export default function LoginPage() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className="text-gray-700 dark:text-gray-300">Email</FormLabel>
                 <FormControl>
                   <Input placeholder="email@example.com" {...field} />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-500 dark:text-red-400" />
               </FormItem>
             )}
           />
@@ -85,17 +85,17 @@ export default function LoginPage() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Пароль</FormLabel>
+                <FormLabel className="text-gray-700 dark:text-gray-300">Пароль</FormLabel>
                 <FormControl>
                   <Input type="password" placeholder="******" {...field} />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-500 dark:text-red-400" />
               </FormItem>
             )}
           />
           
           {error && (
-            <div className="text-red-500 text-sm">{error}</div>
+            <div className="text-red-500 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800">{error}</div>
           )}
           
           <Button type="submit" className="w-full" disabled={isLoading}>
