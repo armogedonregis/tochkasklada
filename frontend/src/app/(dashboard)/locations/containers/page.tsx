@@ -28,7 +28,7 @@ const containerValidationSchema = yup.object({
 // Тип для полей формы
 type ContainerFormFields = {
   id: string;
-  locId: string;
+  locId?: string;
 };
 
 export default function ContainersPage() {
@@ -52,7 +52,8 @@ export default function ContainersPage() {
   };
 
   // Вспомогательные функции
-  const getLocationInfo = (locId: string) => {
+  const getLocationInfo = (locId?: string) => {
+    if (!locId) return undefined;
     return locations.find(location => location.id === locId);
   };
 
@@ -91,7 +92,8 @@ export default function ContainersPage() {
       id: 'location',
       header: 'Локация',
       cell: ({ row }) => {
-        const location = getLocationInfo(row.original.locId);
+        const locId = row.original.locId;
+        const location = locId ? getLocationInfo(locId) : undefined;
         return location?.name || 'Не указана';
       },
     },
@@ -99,7 +101,8 @@ export default function ContainersPage() {
       id: 'city',
       header: 'Город',
       cell: ({ row }) => {
-        const location = getLocationInfo(row.original.locId);
+        const locId = row.original.locId;
+        const location = locId ? getLocationInfo(locId) : undefined;
         return location?.city?.title || 'Не указан';
       },
     },

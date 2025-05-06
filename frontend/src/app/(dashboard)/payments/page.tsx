@@ -300,7 +300,6 @@ const PaymentsPage = () => {
       
       setIsModalOpen(false);
       setEditingPayment(null);
-      refetch();
     } catch (error) {
       console.error('Ошибка при сохранении платежа:', error);
       toast.error(`Ошибка при ${editingPayment ? 'обновлении' : 'создании'} платежа`);
@@ -331,7 +330,7 @@ const PaymentsPage = () => {
       try {
         await deletePayment(id).unwrap();
         toast.success('Платеж удален');
-        await refetch(); // Явно обновляем список после удаления
+        // Ручное обновление не требуется, так как теперь инвалидация настроена правильно
       } catch (error) {
         console.error('Ошибка при удалении платежа:', error);
         toast.error('Не удалось удалить платеж');
@@ -349,7 +348,6 @@ const PaymentsPage = () => {
     try {
       await setPaymentStatus({ id, status: newStatus }).unwrap();
       toast.success(`Статус платежа ${newStatus ? 'оплачен' : 'не оплачен'}`);
-      refetch();
     } catch (error) {
       console.error('Ошибка при изменении статуса:', error);
       toast.error('Не удалось изменить статус платежа');

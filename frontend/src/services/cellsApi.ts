@@ -60,19 +60,37 @@ export const cellsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getCells: builder.query<Cell[], void>({
       query: () => '/cells',
-      providesTags: ['Cells'],
+      providesTags: (result) => 
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'Cells' as const, id })),
+              { type: 'Cells', id: 'LIST' },
+            ]
+          : [{ type: 'Cells', id: 'LIST' }],
     }),
     getCellsByContainer: builder.query<Cell[], number>({
       query: (containerId) => `/cells/container/${containerId}`,
-      providesTags: ['Cells'],
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'Cells' as const, id })),
+              { type: 'Cells' as const, id: 'LIST' }
+            ]
+          : [{ type: 'Cells' as const, id: 'LIST' }],
     }),
     getCellsBySize: builder.query<Cell[], string>({
       query: (sizeId) => `/cells/size/${sizeId}`,
-      providesTags: ['Cells'],
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'Cells' as const, id })),
+              { type: 'Cells' as const, id: 'LIST' }
+            ]
+          : [{ type: 'Cells' as const, id: 'LIST' }],
     }),
     getCell: builder.query<Cell, string>({
       query: (id) => `/cells/${id}`,
-      providesTags: ['Cells'],
+      providesTags: (result, error, id) => [{ type: 'Cells', id }],
     }),
     addCell: builder.mutation<Cell, CreateCellRequest>({
       query: (cell) => ({
@@ -80,7 +98,7 @@ export const cellsApi = api.injectEndpoints({
         method: 'POST',
         body: cell,
       }),
-      invalidatesTags: ['Cells'],
+      invalidatesTags: [{ type: 'Cells', id: 'LIST' }],
     }),
     updateCell: builder.mutation<Cell, Partial<Cell> & { id: string }>({
       query: (cell) => {
@@ -91,14 +109,20 @@ export const cellsApi = api.injectEndpoints({
           body: body,
         };
       },
-      invalidatesTags: ['Cells'],
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Cells' as const, id: arg.id },
+        { type: 'Cells' as const, id: 'LIST' }
+      ],
     }),
     deleteCell: builder.mutation<void, string>({
       query: (id) => ({
         url: `/cells/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Cells'],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Cells' as const, id },
+        { type: 'Cells' as const, id: 'LIST' }
+      ],
     }),
   }),
 });

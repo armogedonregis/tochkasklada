@@ -48,7 +48,13 @@ export const paymentsApi = api.injectEndpoints({
         url: '/payments',
         method: 'GET',
       }),
-      providesTags: ['Payments'],
+      providesTags: (result) => 
+        result 
+          ? [
+              ...result.map(({ id }) => ({ type: 'Payments' as const, id })),
+              { type: 'Payments', id: 'LIST' },
+            ]
+          : [{ type: 'Payments', id: 'LIST' }],
     }),
     
     // Получение платежа по orderId
@@ -112,7 +118,10 @@ export const paymentsApi = api.injectEndpoints({
         url: `/payments/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Payments'],
+      invalidatesTags: (result, error) => [
+        'Payments',
+        { type: 'Payments', id: 'LIST' }
+      ],
     }),
     
     // Получение ссылки на оплату для существующего платежа

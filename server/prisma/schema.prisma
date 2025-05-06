@@ -111,8 +111,8 @@ model Location {
 model Containers {
   id Int @id @default(autoincrement())
 
-  locId    String
-  location Location @relation(fields: [locId], references: [id])
+  locId    String?
+  location Location? @relation(fields: [locId], references: [id], onDelete: SetNull)
   cells    Cells[]
 
   createdAt DateTime @default(now())
@@ -123,17 +123,17 @@ model Containers {
 
 model Cells {
   id         String  @id @default(uuid())
-  size_id    String
   name       String
   len_height String? // Длина высота?
 
   containerId Int
   container   Containers @relation(fields: [containerId], references: [id], onDelete: Cascade)
 
-  size SizeCells @relation(fields: [size_id], references: [id])
+  size_id    String?
+  size SizeCells? @relation(fields: [size_id], references: [id], onDelete: SetNull)
 
   statusId String?
-  status   CellStatus? @relation(fields: [statusId], references: [id])
+  status   CellStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

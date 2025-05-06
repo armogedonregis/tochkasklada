@@ -9,7 +9,13 @@ export const panelsApi = api.injectEndpoints({
         url: '/panels',
         method: 'GET',
       }),
-      providesTags: ['Panels'],
+      providesTags: (result) => 
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'Panels' as const, id })),
+              { type: 'Panels' as const, id: 'LIST' },
+            ]
+          : [{ type: 'Panels' as const, id: 'LIST' }],
     }),
     
     // Получение панели по ID
@@ -50,7 +56,11 @@ export const panelsApi = api.injectEndpoints({
         url: `/panels/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Panels'],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Panels' as const, id },
+        { type: 'Panels' as const, id: 'LIST' },
+        'Relays' as const
+      ],
     }),
 
     // Проверка соединения с панелью

@@ -22,11 +22,17 @@ export const citiesApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getCities: builder.query<City[], void>({
       query: () => '/cities',
-      providesTags: ['Cities'],
+      providesTags: (result) => 
+        result 
+          ? [
+              ...result.map(({ id }) => ({ type: 'Cities' as const, id })),
+              { type: 'Cities', id: 'LIST' },
+            ]
+          : [{ type: 'Cities', id: 'LIST' }],
     }),
     getCity: builder.query<City, string>({
       query: (id) => `/cities/${id}`,
-      providesTags: ['Cities'],
+      providesTags: (result, error, id) => [{ type: 'Cities', id }],
     }),
     addCity: builder.mutation<City, CreateCityDto>({
       query: (city) => ({
@@ -52,7 +58,11 @@ export const citiesApi = api.injectEndpoints({
         url: `/cities/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Cities'],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Cities', id },
+        { type: 'Cities', id: 'LIST' },
+        { type: 'Locations', id: 'LIST' }
+      ],
     }),
   }),
 });

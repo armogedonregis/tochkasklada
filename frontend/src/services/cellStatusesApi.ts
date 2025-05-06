@@ -59,7 +59,7 @@ export const cellStatusesApi = api.injectEndpoints({
         url: `/cell-statuses/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['CellStatuses'],
+      invalidatesTags: ['CellStatuses', 'Cells'],
     }),
 
     assignStatusToCell: builder.mutation<void, { cellId: string; statusId: string }>({

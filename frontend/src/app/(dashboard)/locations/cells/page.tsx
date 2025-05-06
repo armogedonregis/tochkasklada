@@ -46,7 +46,8 @@ export default function CellsPage() {
     return containers.find(container => container.id === containerId);
   };
 
-  const getLocationInfo = (locId: string) => {
+  const getLocationInfo = (locId?: string) => {
+    if (!locId) return undefined;
     return locations.find(location => location.id === locId);
   };
 
@@ -86,7 +87,7 @@ export default function CellsPage() {
       header: 'Локация',
       cell: ({ row }) => {
         const container = getContainerInfo(row.original.containerId);
-        const location = container ? getLocationInfo(container.locId) : undefined;
+        const location = container && container.locId ? getLocationInfo(container.locId) : undefined;
         return location?.name || 'Не указана';
       },
     },
@@ -95,7 +96,7 @@ export default function CellsPage() {
       header: 'Город',
       cell: ({ row }) => {
         const container = getContainerInfo(row.original.containerId);
-        const location = container ? getLocationInfo(container.locId) : undefined;
+        const location = container && container.locId ? getLocationInfo(container.locId) : undefined;
         return location?.city?.title || 'Не указан';
       },
     },

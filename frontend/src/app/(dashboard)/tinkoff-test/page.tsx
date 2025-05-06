@@ -96,7 +96,6 @@ const TinkoffTestPage = () => {
         }
       }
       
-      refetch(); // Обновляем список платежей
     } catch (error) {
       console.error('Ошибка при создании платежа:', error);
       toast.error('Не удалось создать платеж');

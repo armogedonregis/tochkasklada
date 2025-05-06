@@ -50,7 +50,13 @@ export const clientsApi = api.injectEndpoints({
         url: '/clients',
         method: 'GET',
       }),
-      providesTags: ['Clients'],
+      providesTags: (result) => 
+        result 
+          ? [
+              ...result.map(({ id }) => ({ type: 'Clients' as const, id })),
+              { type: 'Clients', id: 'LIST' },
+            ]
+          : [{ type: 'Clients', id: 'LIST' }],
     }),
     
     // Получение клиента по ID
@@ -91,7 +97,11 @@ export const clientsApi = api.injectEndpoints({
         url: `/clients/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Clients'],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Clients', id },
+        { type: 'Clients', id: 'LIST' },
+        'Payments'
+      ],
     }),
   }),
   overrideExisting: false,

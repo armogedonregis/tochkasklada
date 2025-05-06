@@ -80,7 +80,12 @@ export const locationsApi = api.injectEndpoints({
         url: `/locations/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: [{ type: 'Locations', id: 'LIST' }],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Locations', id },
+        { type: 'Locations', id: 'LIST' },
+        { type: 'Containers', id: 'LIST' },
+        'Cells'
+      ],
     }),
   }),
 });

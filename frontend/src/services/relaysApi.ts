@@ -9,7 +9,13 @@ export const relaysApi = api.injectEndpoints({
         url: '/relays',
         method: 'GET',
       }),
-      providesTags: ['Relays'],
+      providesTags: (result) => 
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'Relays' as const, id })),
+              { type: 'Relays' as const, id: 'LIST' },
+            ]
+          : [{ type: 'Relays' as const, id: 'LIST' }],
     }),
     
     // Получение реле по ID
@@ -28,7 +34,7 @@ export const relaysApi = api.injectEndpoints({
         method: 'POST',
         body: relay,
       }),
-      invalidatesTags: ['Relays'],
+      invalidatesTags: [{ type: 'Relays' as const, id: 'LIST' }],
     }),
 
     // Обновление реле
@@ -47,7 +53,11 @@ export const relaysApi = api.injectEndpoints({
         url: `/relays/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Relays'],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Relays' as const, id },
+        { type: 'Relays' as const, id: 'LIST' },
+        'RelayAccess' as const
+      ],
     }),
 
     // Управление реле (включение/выключение)

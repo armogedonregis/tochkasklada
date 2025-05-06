@@ -25,7 +25,13 @@ export const sizesApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getSizes: builder.query<Size[], void>({
       query: () => '/sizes',
-      providesTags: ['Sizes'],
+      providesTags: (result) => 
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'Sizes' as const, id })),
+              { type: 'Sizes' as const, id: 'LIST' },
+            ]
+          : [{ type: 'Sizes' as const, id: 'LIST' }],
     }),
 
     getSize: builder.query<Size, string>({
@@ -39,7 +45,7 @@ export const sizesApi = api.injectEndpoints({
         method: 'POST',
         body: size,
       }),
-      invalidatesTags: ['Sizes'],
+      invalidatesTags: [{ type: 'Sizes' as const, id: 'LIST' }],
     }),
 
     updateSize: builder.mutation<Size, UpdateSizeDto & { id: string }>({
@@ -59,7 +65,11 @@ export const sizesApi = api.injectEndpoints({
         url: `/sizes/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Sizes'],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Sizes' as const, id },
+        { type: 'Sizes' as const, id: 'LIST' },
+        'Cells' as const
+      ],
     }),
   }),
 });

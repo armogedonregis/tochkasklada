@@ -115,7 +115,6 @@ export default function PanelsPage() {
       try {
         await deletePanel(id).unwrap();
         toast.success('Панель удалена');
-        refetch();
       } catch (error) {
         toast.error('Ошибка при удалении панели');
       }
@@ -137,7 +136,6 @@ export default function PanelsPage() {
         toast.success('Панель создана');
       }
       setIsModalOpen(false);
-      refetch();
     } catch (error) {
       toast.error('Ошибка при сохранении панели');
     }
@@ -167,7 +165,6 @@ export default function PanelsPage() {
     try {
       await toggleRelay({ id: relayId, state: !currentState }).unwrap();
       toast.success('Состояние реле изменено');
-      refetch();
     } catch (error) {
       toast.error('Ошибка при изменении состояния реле');
     }
@@ -220,7 +217,6 @@ export default function PanelsPage() {
       setIsRelayModalOpen(false);
       setEditingRelay(null);
       setCurrentPanelId(null);
-      refetch();
     } catch (error) {
       toast.error('Ошибка при сохранении реле');
       console.error('Ошибка сохранения реле:', error);
@@ -232,7 +228,6 @@ export default function PanelsPage() {
       try {
         await deleteRelay(relayId).unwrap();
         toast.success('Реле удалено');
-        refetch();
       } catch (error) {
         toast.error('Ошибка при удалении реле');
       }

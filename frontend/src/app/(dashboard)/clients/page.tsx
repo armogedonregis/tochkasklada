@@ -163,7 +163,6 @@ export default function ClientsPage() {
       setIsModalOpen(false);
       setEditingClient(null);
       toast.success(`Клиент успешно ${editingClient ? 'обновлен' : 'создан'}`);
-      refetch();
     } catch (error: any) {
       console.error('Ошибка при сохранении клиента:', error);
       toast.error(`Ошибка при ${editingClient ? 'обновлении' : 'создании'} клиента: ${error.data?.message || error.message || 'Неизвестная ошибка'}`);
@@ -181,7 +180,6 @@ export default function ClientsPage() {
       try {
         await deleteClient(id).unwrap();
         toast.success("Клиент успешно удален");
-        await refetch(); // Обновляем список после удаления
       } catch (error) {
         console.error("Failed to delete client:", error);
         toast.error("Ошибка при удалении клиента");
