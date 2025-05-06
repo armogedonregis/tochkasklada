@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useGetSizesQuery } from '@/services/sizesApi';
+import { useGetCellStatusesQuery } from '@/services/cellStatusesApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Search } from 'lucide-react';
-import { SizeTable } from '@/components/Sizes/SizeTable';
-import { SizeModal } from '@/components/Sizes/SizeModal';
+import { CellStatusTable } from '@/components/CellStatuses/CellStatusTable';
+import { CellStatusModal } from '@/components/CellStatuses/CellStatusModal';
 
-export default function Sizes() {
-  const { data: sizes, isLoading, isError, error } = useGetSizesQuery();
+export default function CellStatuses() {
+  const { data: statuses, isLoading, isError, error } = useGetCellStatusesQuery();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -24,10 +24,10 @@ export default function Sizes() {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Размеры ячеек</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Статусы ячеек</h1>
         <Button onClick={handleOpenModal} className="flex items-center">
           <Plus className="mr-2 h-4 w-4" />
-          Добавить размер
+          Добавить статус
         </Button>
       </div>
 
@@ -38,7 +38,7 @@ export default function Sizes() {
           </div>
           <Input
             type="text"
-            placeholder="Поиск размеров..."
+            placeholder="Поиск статусов..."
             className="pl-10 py-2"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -49,7 +49,7 @@ export default function Sizes() {
       {isLoading ? (
         <div className="text-center py-8">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 dark:border-blue-400 border-r-transparent"></div>
-          <p className="mt-4 text-gray-700 dark:text-gray-300">Загрузка размеров...</p>
+          <p className="mt-4 text-gray-700 dark:text-gray-300">Загрузка статусов...</p>
         </div>
       ) : isError ? (
         <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-md border border-red-200 dark:border-red-800">
@@ -57,20 +57,20 @@ export default function Sizes() {
             Ошибка при загрузке данных: {(error as any)?.data?.message || 'Неизвестная ошибка'}
           </p>
         </div>
-      ) : sizes && sizes.length > 0 ? (
+      ) : statuses && statuses.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-          <SizeTable sizes={sizes} searchQuery={searchQuery} />
+          <CellStatusTable statuses={statuses} searchQuery={searchQuery} />
         </div>
       ) : (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-          <p className="text-lg text-gray-600 dark:text-gray-300">Нет доступных размеров</p>
+          <p className="text-lg text-gray-600 dark:text-gray-300">Нет доступных статусов</p>
           <Button onClick={handleOpenModal} className="mt-4">
-            Добавить первый размер
+            Добавить первый статус
           </Button>
         </div>
       )}
 
-      <SizeModal isOpen={isModalOpen} onClose={handleCloseModal} />
+      <CellStatusModal isOpen={isModalOpen} onClose={handleCloseModal} />
     </div>
   );
 } 

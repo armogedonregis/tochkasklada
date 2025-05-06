@@ -23,6 +23,6 @@ export const api = createApi({
       return headers;
     }
   }),
-  tagTypes: ['Cities', 'Locations', 'Containers', 'Cells', 'Sizes', 'User', 'Auth', 'Clients', 'Payments'],
+  tagTypes: ['Cities', 'Locations', 'Containers', 'Cells', 'Sizes', 'User', 'Auth', 'Clients', 'Payments', 'CellStatuses'],
   endpoints: () => ({}),
 }); 

@@ -94,6 +94,13 @@ const RubleIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
+// Добавляем иконку для статусов ячеек
+const StatusIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+  </svg>
+);
+
 interface NavigationProps {
   initialIsOpen?: boolean;
 }
@@ -244,6 +251,16 @@ export const Navigation: React.FC<NavigationProps> = ({
           isNavOpened={isNavOpened}
           currentPage={currentPage}
           onClick={() => navigateTo(Pages.sizes, '/sizes')}
+        />
+        
+        <MenuItem 
+          icon={<StatusIcon className="text-gray-500" />}
+          activeIcon={<StatusIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+          pageName="Статусы ячеек"
+          page={Pages.cellStatuses}
+          isNavOpened={isNavOpened}
+          currentPage={currentPage}
+          onClick={() => navigateTo(Pages.cellStatuses, '/cell-statuses')}
         />
         
         <MenuItem 

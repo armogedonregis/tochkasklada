@@ -15,7 +15,7 @@ import {
 import { BaseTable } from "@/components/table/BaseTable";
 import { ClientModal } from "@/components/modals/ClientModal";
 import { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Plus, Trash2, UserPlus, Edit } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
 import { toast } from "react-toastify";
 import * as yup from "yup";
 import {
@@ -25,6 +25,7 @@ import {
   formatPhoneForSaving,
   parsePhonesString
 } from "@/lib/phoneUtils";
+import { TableActions } from "@/components/table/TableActions";
 
 // Схема валидации для клиента
 const clientValidationSchema = yup.object({
@@ -109,24 +110,10 @@ export default function ClientsPage() {
       id: 'actions',
       header: 'Действия',
       cell: ({ row }) => (
-        <div className="flex justify-center gap-2 p-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleEdit(row.original)}
-            title="Редактировать клиента"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => handleDelete(row.original.id)}
-            title="Удалить клиента"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <TableActions 
+          onEdit={() => handleEdit(row.original)}
+          onDelete={() => handleDelete(row.original.id)}
+        />
       ),
     },
   ];
@@ -251,7 +238,6 @@ export default function ClientsPage() {
             searchColumn="name"
             searchPlaceholder="Поиск по имени..."
             pageSize={10}
-            onRowClick={(row) => handleEdit(row)}
             className="border-collapse"
             enableColumnReordering={true}
             persistColumnOrder={true}

@@ -12,7 +12,8 @@ export enum Pages {
   profile = 'profile',
   logout = 'logout',
   sizes = 'sizes',
-  tinkoffTest = 'tinkoffTest'
+  tinkoffTest = 'tinkoffTest',
+  cellStatuses = 'cellStatuses'
   // Добавьте другие необходимые страницы из вашего Flutter-проекта
 }
 
