@@ -197,7 +197,7 @@ model Relay {
   updatedAt   DateTime  @updatedAt
 
   panelId     String
-  panel  Panel         @relation(fields: [panelId], references: [id])
+  panel  Panel         @relation(fields: [panelId], references: [id], onDelete: Cascade)
   access RelayAccess[]
 
   @@unique([panelId, relayNumber])

@@ -10,6 +10,29 @@ export class RelaysService {
     return this.prisma.relay.create({ data });
   }
 
+  async findAll(): Promise<Relay[]> {
+    return this.prisma.relay.findMany({ orderBy: { relayNumber: 'asc' } });
+  }
+
+  async findOne(id: string): Promise<Relay> {
+    const relay = await this.prisma.relay.findUnique({ where: { id } });
+    if (!relay) {
+      throw new NotFoundException(`Relay with ID ${id} not found`);
+    }
+    return relay;
+  }
+
+  async update(id: string, data: Prisma.RelayUpdateInput): Promise<Relay> {
+    try {
+      return await this.prisma.relay.update({
+        where: { id },
+        data,
+      });
+    } catch (error) {
+      throw new NotFoundException(`Relay with ID ${id} not found or could not be updated`);
+    }
+  }
+
   async toggle(id: string, state: boolean): Promise<void> {
     const relay = await this.prisma.relay.findUniqueOrThrow({
       where: { id },
@@ -58,29 +81,6 @@ export class RelaysService {
     if (data !== 'Success!') {
       throw new Error('Ошибка отправки импульса');
     }
-  }
-
-  async findAll(): Promise<Relay[]> {
-    return this.prisma.relay.findMany({
-      include: {
-        panel: true,
-      },
-    });
-  }
-
-  async findOne(id: string): Promise<Relay> {
-    const relay = await this.prisma.relay.findUnique({
-      where: { id },
-      include: {
-        panel: true,
-      },
-    });
-
-    if (!relay) {
-      throw new NotFoundException(`Relay with ID ${id} not found`);
-    }
-
-    return relay;
   }
 
   async remove(id: string): Promise<void> {

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Panel, Prisma } from '@prisma/client';
+import { Panel, Prisma, RelayType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PanelWithRelays } from './dto/panel.types';
 import { encrypt, decrypt } from '../common/utils/crypto';
@@ -33,7 +33,40 @@ export class PanelsService {
       password: encrypt(data.password),
     };
 
-    return this.prisma.panel.create({ data: encryptedPanel });
+    // Создаем панель
+    const panel = await this.prisma.panel.create({ 
+      data: encryptedPanel 
+    });
+
+    // Создаем 16 реле для новой панели
+    const relayTypes: RelayType[] = ['LIGHT', 'SECURITY', 'GATE'];
+    
+    for (let i = 1; i <= 16; i++) {
+      // Распределяем типы реле: 15 - свет, 16 - ворота, остальные - GATE
+      let type: RelayType;
+      if (i === 15) {
+        type = 'LIGHT';
+      } else if (i === 16) {
+        type = 'SECURITY';
+      } else {
+        type = 'GATE';
+      }
+      
+      await this.prisma.relay.create({
+        data: {
+          name: `Реле ${i}`,
+          relayNumber: i,
+          type,
+          panel: {
+            connect: {
+              id: panel.id
+            }
+          }
+        }
+      });
+    }
+
+    return panel;
   }
 
   async update(
@@ -46,11 +79,20 @@ export class PanelsService {
       password: string;
     }>,
   ): Promise<Panel> {
+    const panel = await this.prisma.panel.findUnique({
+      where: { id },
+    });
+
+    if (!panel) {
+      throw new NotFoundException(`Panel with ID ${id} not found`);
+    }
+
     const updateData: any = { ...data };
 
     if (data.login) {
       updateData.login = encrypt(data.login);
     }
+
     if (data.password) {
       updateData.password = encrypt(data.password);
     }
@@ -70,9 +112,14 @@ export class PanelsService {
             name: true,
             relayNumber: true,
             type: true,
+            createdAt: true,
+            updatedAt: true,
           },
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      }
     });
 
     return panels.map((panel) => ({
@@ -92,6 +139,11 @@ export class PanelsService {
             name: true,
             relayNumber: true,
             type: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy: {
+            relayNumber: 'asc',
           },
         },
       },

@@ -29,6 +29,13 @@ export class RelaysController {
     return this.relaysService.findOne(id);
   }
 
+  @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  update(@Param('id') id: string, @Body() updateRelayDto: Prisma.RelayUpdateInput) {
+    return this.relaysService.update(id, updateRelayDto);
+  }
+
   @Post(':id/toggle')
   toggle(@Param('id') id: string, @Body('state') state: boolean) {
     return this.relaysService.toggle(id, state);

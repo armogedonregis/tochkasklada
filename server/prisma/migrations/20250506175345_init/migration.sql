@@ -207,7 +207,7 @@ ALTER TABLE "cells" ADD CONSTRAINT "cells_size_id_fkey" FOREIGN KEY ("size_id") 
 ALTER TABLE "cells" ADD CONSTRAINT "cells_statusId_fkey" FOREIGN KEY ("statusId") REFERENCES "cell_statuses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "relays" ADD CONSTRAINT "relays_panelId_fkey" FOREIGN KEY ("panelId") REFERENCES "panels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "relays" ADD CONSTRAINT "relays_panelId_fkey" FOREIGN KEY ("panelId") REFERENCES "panels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "relay_access" ADD CONSTRAINT "relay_access_relayId_fkey" FOREIGN KEY ("relayId") REFERENCES "relays"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

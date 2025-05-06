@@ -9,12 +9,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
-      <body>
+    <html lang="ru" className="h-full">
+      <body className="h-full overflow-hidden">
         <Providers>
-          <main className="min-h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-            {children}
-          </main>
+          {children}
           <ToastContainer />
         </Providers>
       </body>

@@ -52,7 +52,7 @@ export class PanelsController {
     return this.panelsService.remove(id);
   }
 
-  @Get(':id/check-connection')
+  @Post(':id/check-connection')
   checkConnection(@Param('id') id: string): Promise<boolean> {
     return this.panelsService.checkConnection(id);
   }

@@ -7,13 +7,13 @@ export enum Pages {
   locs = 'locs',
   clients = 'clients',
   payments = 'payments',
-  panels = 'panels',
   settings = 'settings',
   profile = 'profile',
   logout = 'logout',
   sizes = 'sizes',
   tinkoffTest = 'tinkoffTest',
-  cellStatuses = 'cellStatuses'
+  cellStatuses = 'cellStatuses',
+  panels = 'panels'
   // Добавьте другие необходимые страницы из вашего Flutter-проекта
 }
 
