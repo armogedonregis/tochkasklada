@@ -154,7 +154,7 @@ const PaymentsPage = () => {
         // Отображаем только имя клиента
         const client = clients.find(c => c.userId === row.original.userId);
         return (
-          <div className="p-2">
+          <div>
             {client ? `${client.name} (${client.user?.email || 'Нет email'})` : row.original.user?.email || 'Неизвестный клиент'}
           </div>
         );
@@ -165,14 +165,14 @@ const PaymentsPage = () => {
       header: 'Сумма',
       accessorFn: (row) => formatAmount(row.amount),
       cell: ({ getValue }) => {
-        return <div className="p-2">{String(getValue())}</div>;
+        return <div>{String(getValue())}</div>;
       }
     },
     {
       accessorKey: 'description',
       header: 'Описание',
       cell: ({ getValue }) => {
-        return <div className="p-2">{String(getValue())}</div>;
+        return <div>{String(getValue())}</div>;
       }
     },
     {

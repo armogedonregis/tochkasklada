@@ -91,19 +91,19 @@ export default function ClientsPage() {
     {
       accessorKey: 'name',
       header: 'ФИО',
-      cell: ({ getValue }) => <div className="p-2">{String(getValue())}</div>,
+      cell: ({ getValue }) => <div>{String(getValue())}</div>,
     },
     {
       id: 'email',
       header: 'Email',
       accessorFn: (row) => row.user?.email || '',
-      cell: ({ getValue }) => <div className="p-2">{String(getValue())}</div>,
+      cell: ({ getValue }) => <div>{String(getValue())}</div>,
     },
     {
       id: 'phones',
       header: 'Телефоны',
       accessorFn: (row) => phonesToFormattedString(row.phones), // Используем функцию форматирования для отображения
-      cell: ({ getValue }) => <div className="p-2">{String(getValue())}</div>,
+      cell: ({ getValue }) => <div>{String(getValue())}</div>,
     },
     {
       id: 'actions',
