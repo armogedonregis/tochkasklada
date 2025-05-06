@@ -60,6 +60,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
+import { PaymentModal } from '@/components/modals/PaymentModal';
 import type { TableMeta } from "@tanstack/react-table";
 
 // Расширяю тип TableMeta для использования с нашими данными
@@ -94,6 +95,10 @@ const PaymentsPage = () => {
   });
   
   const [activeTab, setActiveTab] = useState('all');
+  
+  // Модальное окно для редактирования платежа
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
 
   // Конвертируем данные платежей для отображения в таблице
   useEffect(() => {
@@ -145,42 +150,8 @@ const PaymentsPage = () => {
         const client = clients.find(c => c.userId === row.userId);
         return client ? `${client.name} (${client.user?.email || 'Нет email'})` : row.user?.email || 'Неизвестный клиент';
       },
-      cell: ({ row, table }) => {
-        // При редактировании отображаем выпадающий список клиентов
-        const isNewRow = row.original.id.startsWith('temp-');
-        
-        // Если это новая строка или есть клиенты для выбора, делаем ячейку редактируемой
-        if (isNewRow || clients.length > 0) {
-          return (
-            <div className="p-2">
-              <Select
-                value={row.original.userId}
-                onValueChange={(value) => {
-                  // Проверяем, что meta определена
-                  if (table.options.meta) {
-                    // Обновляем значение через meta.updateData
-                    table.options.meta.updateData(row.index, 'userId', value);
-                    // Также устанавливаем флаг несохраненных изменений
-                    table.options.meta.setHasUnsavedChanges(true);
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 w-full">
-                  <SelectValue placeholder="Выберите клиента" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.userId} value={client.userId}>
-                      {client.name} ({client.user?.email || 'Без email'})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          );
-        }
-        
-        // Для существующих платежей просто отображаем имя клиента
+      cell: ({ row }) => {
+        // Отображаем только имя клиента
         const client = clients.find(c => c.userId === row.original.userId);
         return (
           <div className="p-2">
@@ -207,32 +178,9 @@ const PaymentsPage = () => {
     {
       accessorKey: 'status',
       header: 'Статус',
-      cell: ({ row, table }) => {
+      cell: ({ row }) => {
         const status = row.original.status;
-        const isNewRow = row.original.id.startsWith('temp-');
         
-        // Для новых строк используем чекбокс
-        if (isNewRow) {
-          return (
-            <div className="flex items-center justify-center p-2">
-              <Checkbox 
-                checked={status}
-                onCheckedChange={(checked) => {
-                  // Проверяем, что meta определена
-                  if (table.options.meta) {
-                    // Обновляем значение через meta.updateData
-                    table.options.meta.updateData(row.index, 'status', !!checked);
-                    // Также устанавливаем флаг несохраненных изменений
-                    table.options.meta.setHasUnsavedChanges(true);
-                  }
-                }}
-              />
-              <span className="ml-2">{status ? 'Оплачен' : 'Не оплачен'}</span>
-            </div>
-          );
-        }
-        
-        // Для существующих строк сохраняем текущую логику
         return (
           <div className="flex items-center space-x-2">
             <Badge variant={status ? "default" : "secondary"}>
@@ -264,6 +212,14 @@ const PaymentsPage = () => {
       header: 'Действия',
       cell: ({ row }) => (
         <div className="flex justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleEdit(row.original)}
+            title="Редактировать платеж"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
           <Button
             variant="destructive"
             size="sm"
@@ -312,6 +268,26 @@ const PaymentsPage = () => {
     }
   };
 
+  // Обработчик редактирования платежа
+  const handleEdit = (payment: Payment) => {
+    setEditingPayment(payment);
+    setIsEditModalOpen(true);
+  };
+
+  // Обработчик сохранения отредактированного платежа
+  const handleSaveEditedPayment = async (updatedPayment: any) => {
+    try {
+      await updatePayment(updatedPayment).unwrap();
+      toast.success('Платеж успешно обновлен');
+      setIsEditModalOpen(false);
+      setEditingPayment(null);
+      refetch();
+    } catch (error) {
+      console.error('Ошибка при обновлении платежа:', error);
+      toast.error('Не удалось обновить платеж');
+    }
+  };
+
   // Обработчик удаления платежа
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот платеж?')) {
@@ -341,11 +317,6 @@ const PaymentsPage = () => {
   // Обработчик добавления новой строки
   const handleAddRow = () => {
     setIsAddDialogOpen(true);
-  };
-
-  // Этот метод заменен на handleAddRow
-  const handleAddTableRow = () => {
-    handleAddRow();
   };
 
   // Фильтруем данные по вкладке
@@ -528,6 +499,18 @@ const PaymentsPage = () => {
           />
         </div>
       )}
+
+      {/* Модальное окно для редактирования платежа */}
+      <PaymentModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingPayment(null);
+        }}
+        onSave={handleSaveEditedPayment}
+        payment={editingPayment}
+        title="Редактировать платеж"
+      />
     </div>
   );
 };
