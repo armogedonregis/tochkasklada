@@ -56,31 +56,14 @@ export default function LocationsPage() {
       header: 'Город',
       cell: ({ row }) => row.original.city?.title || 'Не указан',
     },
-    {
-      id: 'actions',
-      header: 'Действия',
-      cell: ({ row }) => (
-        <div className="flex space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditingLocation(row.original)}
-          >
-            <Pencil size={16} className="mr-1" /> Изменить
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 size={16} className="mr-1" /> Удалить
-          </Button>
-        </div>
-      ),
-    },
   ];
 
   // Обработчики действий
+  const handleEdit = (location: Location) => {
+    setEditingLocation(location);
+    setIsModalOpen(true);
+  };
+
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить эту локацию?')) {
       try {
@@ -90,6 +73,10 @@ export default function LocationsPage() {
         toast.error('Ошибка при удалении локации');
       }
     }
+  };
+
+  const handleDeleteAdapter = (location: Location) => {
+    handleDelete(location.id);
   };
 
   const handleSubmit = async (data: LocationFormFields) => {
@@ -175,6 +162,12 @@ export default function LocationsPage() {
         columns={columns}
         searchColumn="name"
         searchPlaceholder="Поиск по названию локации..."
+        enableActions={true}
+        onEdit={handleEdit}
+        onDelete={handleDeleteAdapter}
+        tableId="locations-table"
+        enableColumnReordering={true}
+        persistColumnOrder={true}
       />
 
       {/* Модальное окно */}

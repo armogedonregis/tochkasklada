@@ -207,31 +207,6 @@ const PaymentsPage = () => {
       header: 'Дата создания',
       accessorFn: (row) => row.formattedDate || formatDate(row.createdAt),
     },
-    {
-      id: 'actions',
-      header: 'Действия',
-      cell: ({ row }) => (
-        <div className="flex justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleEdit(row.original)}
-            title="Редактировать платеж"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => handleDelete(row.original.id)}
-            disabled={isDeleting}
-            title="Удалить платеж"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
   ];
 
   // Обработчик создания нового платежа
@@ -302,6 +277,11 @@ const PaymentsPage = () => {
     }
   };
 
+  // Адаптер для передачи функции удаления в BaseTable
+  const handleDeleteAdapter = (payment: PaymentTableData) => {
+    handleDelete(payment.id);
+  };
+
   // Обработчик изменения статуса платежа
   const handleToggleStatus = async (id: string, newStatus: boolean) => {
     try {
@@ -357,161 +337,45 @@ const PaymentsPage = () => {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Управление платежами</h1>
-        
-        <div className="flex items-center gap-4">
-          <Button onClick={handleAddRow}>
-            <CreditCard className="h-4 w-4 mr-1" />
-            Создать платеж
-          </Button>
-        </div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Управление платежами</h1>
+        <Button onClick={handleAddRow} className="flex items-center gap-2">
+          <CreditCard className="h-4 w-4" />
+          <span>Новый платеж</span>
+        </Button>
       </div>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Создание платежа</DialogTitle>
-            <DialogDescription>
-              Заполните данные для создания нового платежа
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="userId" className="text-gray-700 dark:text-gray-300">Выберите клиента</Label>
-              <Select
-                onValueChange={(value) => setNewPayment({...newPayment, userId: value})}
-                value={newPayment.userId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Выберите клиента" />
-                </SelectTrigger>
-                <SelectContent>
-                  {isLoadingClients ? (
-                    <div className="flex items-center justify-center p-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
-                      <span className="ml-2 text-gray-600 dark:text-gray-400">Загрузка клиентов...</span>
-                    </div>
-                  ) : clients.length > 0 ? (
-                    clients.map((client) => (
-                      <SelectItem key={client.userId} value={client.userId}>
-                        {client.name} ({client.user?.email || 'Без email'})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-sm text-gray-500 dark:text-gray-400">Нет доступных клиентов</div>
-                  )}
-                </SelectContent>
-              </Select>
-              
-              {!isLoadingClients && clients.length === 0 && (
-                <p className="text-xs text-yellow-500 dark:text-yellow-400">
-                  Нет доступных клиентов. Создайте клиентов в разделе "Клиенты".
-                </p>
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="amount" className="text-gray-700 dark:text-gray-300">Сумма (руб.)</Label>
-              <Input
-                id="amount"
-                type="number"
-                placeholder="Введите сумму"
-                min="10"
-                step="1"
-                value={newPayment.amount}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPayment({...newPayment, amount: e.target.value})}
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">Минимальная сумма: 10 рублей</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-gray-700 dark:text-gray-300">Описание (необязательно)</Label>
-              <Textarea
-                id="description"
-                placeholder="Назначение платежа"
-                value={newPayment.description}
-                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNewPayment({...newPayment, description: e.target.value})}
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="status" 
-                checked={newPayment.status}
-                onCheckedChange={(checked) => setNewPayment({...newPayment, status: checked as boolean})}
-              />
-              <Label htmlFor="status" className="text-gray-700 dark:text-gray-300">Отметить как оплаченный</Label>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button 
-              onClick={handleCreatePayment}
-              disabled={isCreating || !newPayment.userId || !newPayment.amount || parseInt(newPayment.amount) < 10}
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Создание...
-                </>
-              ) : 'Создать платеж'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="all">Все платежи</TabsTrigger>
+          <TabsTrigger value="paid">Оплаченные</TabsTrigger>
+          <TabsTrigger value="unpaid">Неоплаченные</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      <div className="mb-6">
-        <Tabs 
-          value={activeTab} 
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <TabsList className="mb-4">
-            <TabsTrigger value="all">Все платежи ({tableData.length})</TabsTrigger>
-            <TabsTrigger value="paid">Оплаченные ({tableData.filter(p => p.status).length})</TabsTrigger>
-            <TabsTrigger value="unpaid">Неоплаченные ({tableData.filter(p => !p.status).length})</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
+        <BaseTable
+          data={getFilteredData()}
+          columns={columns}
+          searchColumn="orderId"
+          searchPlaceholder="Поиск по ID платежа..."
+          pageSize={10}
+          enableColumnReordering={true}
+          persistColumnOrder={true}
+          tableId="payments-table"
+          enableActions={true}
+          onEdit={handleEdit}
+          onDelete={handleDeleteAdapter}
+        />
       </div>
-
-      {tableData.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow p-8 text-center">
-          <p className="text-lg mb-4 text-gray-600 dark:text-gray-300">Нет данных о платежах</p>
-          <Button onClick={handleAddRow}>
-            <CreditCard className="h-4 w-4 mr-1" />
-            Создать первый платеж
-          </Button>
-        </div>
-      ) : (
-        <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-          <BaseTable
-            data={getFilteredData()}
-            columns={columns}
-            searchColumn="description"
-            searchPlaceholder="Поиск по описанию..."
-            pageSize={10}
-            onRowClick={(row) => console.log('Clicked row:', row)}
-            enableColumnReordering={true}
-            persistColumnOrder={true}
-            tableId="payments-table"
-          />
-        </div>
-      )}
 
       {/* Модальное окно для редактирования платежа */}
-      <PaymentModal
+      <PaymentModal 
         isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingPayment(null);
-        }}
+        onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveEditedPayment}
         payment={editingPayment}
+        clients={clients}
         title="Редактировать платеж"
       />
     </div>

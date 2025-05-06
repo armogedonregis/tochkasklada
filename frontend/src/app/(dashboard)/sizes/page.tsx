@@ -1,31 +1,97 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useGetSizesQuery } from '@/services/sizesApi';
+import { 
+  useGetSizesQuery, 
+  useDeleteSizeMutation,
+  Size
+} from '@/services/sizesApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Search } from 'lucide-react';
-import { SizeTable } from '@/components/Sizes/SizeTable';
-import { SizeModal } from '@/components/Sizes/SizeModal';
+import { BaseTable } from '@/components/table/BaseTable';
+import { ColumnDef } from '@tanstack/react-table';
+import { toast } from 'react-toastify';
+import { SizeModal } from '@/components/modals/SizeModal';
 
 export default function Sizes() {
   const { data: sizes, isLoading, isError, error } = useGetSizesQuery();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSize, setEditingSize] = useState<Size | null>(null);
+  
+  // Мутации для операций удаления
+  const [deleteSize] = useDeleteSizeMutation();
+  
+  // Фильтрация размеров по поисковому запросу
+  const filteredSizes = sizes ? sizes.filter(size => 
+    size.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    size.size.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    size.area.toLowerCase().includes(searchQuery.toLowerCase())
+  ) : [];
 
-  const handleOpenModal = () => {
+  // Обработчики для модального окна
+  const handleOpenModal = (size?: Size) => {
+    setEditingSize(size || null);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setEditingSize(null);
   };
+
+  // Обработчики действий для таблицы
+  const handleEdit = (size: Size) => {
+    handleOpenModal(size);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Вы уверены, что хотите удалить этот размер?')) {
+      try {
+        await deleteSize(id).unwrap();
+        toast.success('Размер удален');
+      } catch (error) {
+        toast.error('Ошибка при удалении размера');
+        console.error('Ошибка при удалении размера:', error);
+      }
+    }
+  };
+
+  const handleDeleteAdapter = (size: Size) => {
+    handleDelete(size.id);
+  };
+
+  // Определение колонок для таблицы
+  const columns: ColumnDef<Size>[] = [
+    {
+      accessorKey: 'name',
+      header: 'Название',
+      cell: ({ row }) => {
+        return <div className="py-2 px-1">{row.original.name}</div>;
+      },
+    },
+    {
+      accessorKey: 'size',
+      header: 'Размер',
+      cell: ({ row }) => {
+        return <div className="py-2 px-1">{row.original.size}</div>;
+      },
+    },
+    {
+      accessorKey: 'area',
+      header: 'Площадь',
+      cell: ({ row }) => {
+        return <div className="py-2 px-1">{row.original.area}</div>;
+      },
+    },
+  ];
 
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Размеры ячеек</h1>
-        <Button onClick={handleOpenModal} className="flex items-center">
+        <Button onClick={() => handleOpenModal()} className="flex items-center">
           <Plus className="mr-2 h-4 w-4" />
           Добавить размер
         </Button>
@@ -59,18 +125,34 @@ export default function Sizes() {
         </div>
       ) : sizes && sizes.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-          <SizeTable sizes={sizes} searchQuery={searchQuery} />
+          <BaseTable
+            data={filteredSizes}
+            columns={columns}
+            pageSize={10}
+            enableColumnReordering={true}
+            persistColumnOrder={true}
+            tableId="sizes-table"
+            enableActions={true}
+            onEdit={handleEdit}
+            onDelete={handleDeleteAdapter}
+          />
         </div>
       ) : (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
           <p className="text-lg text-gray-600 dark:text-gray-300">Нет доступных размеров</p>
-          <Button onClick={handleOpenModal} className="mt-4">
+          <Button onClick={() => handleOpenModal()} className="mt-4">
             Добавить первый размер
           </Button>
         </div>
       )}
 
-      <SizeModal isOpen={isModalOpen} onClose={handleCloseModal} />
+      {/* Модальное окно для создания/редактирования размера */}
+      <SizeModal 
+        isOpen={isModalOpen} 
+        onClose={handleCloseModal} 
+        size={editingSize}
+        title={editingSize ? 'Редактировать размер' : 'Добавить новый размер'}
+      />
     </div>
   );
 } 

@@ -52,6 +52,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import { TableActions } from '@/components/table/TableActions';
 
 // dnd-kit импорты
 import {
@@ -156,6 +157,10 @@ interface BaseTableProps<TData> {
   defaultColumnOrder?: string[];
   persistColumnOrder?: boolean;
   tableId?: string;
+  // Действия для строк таблицы
+  onEdit?: (row: TData) => void;
+  onDelete?: (row: TData) => void;
+  enableActions?: boolean;
 }
 
 export function BaseTable<TData>({
@@ -171,12 +176,51 @@ export function BaseTable<TData>({
   defaultColumnOrder,
   persistColumnOrder = false,
   tableId = 'table',
+  // Действия для строк таблицы
+  onEdit,
+  onDelete,
+  enableActions = false,
 }: BaseTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isReorderingEnabled, setIsReorderingEnabled] = useState(false);
   const [isResizingEnabled, setIsResizingEnabled] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  
+  // Добавляем колонку с действиями, если включены действия
+  const columnsWithActions = React.useMemo(() => {
+    if (enableActions && onEdit && onDelete) {
+      // Проверяем, есть ли уже колонка с actions
+      const hasActionsColumn = columns.some(column => {
+        if (typeof column.id === 'string' && column.id === 'actions') {
+          return true;
+        }
+        
+        if ('accessorKey' in column && typeof column.accessorKey === 'string' && column.accessorKey === 'actions') {
+          return true;
+        }
+        
+        return false;
+      });
+      
+      if (!hasActionsColumn) {
+        return [
+          ...columns,
+          {
+            id: 'actions',
+            header: 'Действия',
+            cell: ({ row }) => (
+              <TableActions 
+                onEdit={() => onEdit(row.original)}
+                onDelete={() => onDelete(row.original)}
+              />
+            ),
+          },
+        ];
+      }
+    }
+    return columns;
+  }, [columns, enableActions, onEdit, onDelete]);
   
   // Получаем сохраненный ранее порядок колонок из localStorage, если доступно
   const getSavedColumnOrder = (): string[] | undefined => {
@@ -261,7 +305,7 @@ export function BaseTable<TData>({
 
   const table = useReactTable({
     data,
-    columns,
+    columns: columnsWithActions,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),

@@ -106,16 +106,6 @@ export default function ClientsPage() {
       accessorFn: (row) => phonesToFormattedString(row.phones), // Используем функцию форматирования для отображения
       cell: ({ getValue }) => <div>{String(getValue())}</div>,
     },
-    {
-      id: 'actions',
-      header: 'Действия',
-      cell: ({ row }) => (
-        <TableActions 
-          onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original.id)}
-        />
-      ),
-    },
   ];
 
   // Обработчики действий
@@ -242,6 +232,9 @@ export default function ClientsPage() {
             enableColumnReordering={true}
             persistColumnOrder={true}
             tableId="clients-table"
+            enableActions={true}
+            onEdit={handleEdit}
+            onDelete={(client) => handleDelete(client.id)}
           />
         </div>
       )}

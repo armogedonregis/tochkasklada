@@ -103,28 +103,6 @@ export default function ContainersPage() {
         return location?.city?.title || 'Не указан';
       },
     },
-    {
-      id: 'actions',
-      header: 'Действия',
-      cell: ({ row }) => (
-        <div className="flex space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditingContainer(row.original)}
-          >
-            <Pencil size={16} className="mr-1" /> Изменить
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 size={16} className="mr-1" /> Удалить
-          </Button>
-        </div>
-      ),
-    },
   ];
 
   // Компонент для отображения расширенной информации о ячейках контейнера
@@ -182,6 +160,11 @@ export default function ContainersPage() {
   };
 
   // Обработчики действий
+  const handleEdit = (container: Container) => {
+    setEditingContainer(container);
+    setIsModalOpen(true);
+  };
+
   const handleDelete = async (id: number) => {
     if (window.confirm('Вы уверены, что хотите удалить этот контейнер?')) {
       try {
@@ -191,6 +174,10 @@ export default function ContainersPage() {
         toast.error('Ошибка при удалении контейнера');
       }
     }
+  };
+
+  const handleDeleteAdapter = (container: ContainerWithExpanded) => {
+    handleDelete(container.id);
   };
 
   const handleSubmit = async (data: ContainerFormFields) => {
@@ -292,6 +279,12 @@ export default function ContainersPage() {
           renderRowSubComponent={({ row }) => 
             expandedContainers.includes(row.original.id) ? <ExpandedContainerCells containerId={row.original.id} /> : null
           }
+          enableActions={true}
+          onEdit={handleEdit}
+          onDelete={handleDeleteAdapter}
+          tableId="containers-table"
+          enableColumnReordering={true}
+          persistColumnOrder={true}
         />
       </div>
 

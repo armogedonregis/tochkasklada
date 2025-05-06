@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 
 type SizeModalProps = {
   isOpen: boolean;
@@ -93,10 +94,24 @@ export const SizeModal: React.FC<SizeModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // Если модальное окно пытаются закрыть кликом за пределами (open становится false),
+      // то предотвращаем закрытие, не вызывая onClose
+      if (!open) {
+        // Здесь мы ничего не делаем, чтобы предотвратить закрытие
+      }
+    }}>
+      <DialogContent className="sm:max-w-[425px]" onEscapeKeyDown={(e) => e.preventDefault()}>
+        <DialogHeader className="relative">
+          <DialogTitle>{size ? 'Редактировать размер' : 'Добавить новый размер'}</DialogTitle>
+          <button 
+            onClick={onClose} 
+            className="absolute right-0 top-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            type="button"
+            aria-label="Закрыть"
+          >
+            <X size={18} />
+          </button>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">

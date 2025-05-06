@@ -99,31 +99,14 @@ export default function CellsPage() {
         return location?.city?.title || 'Не указан';
       },
     },
-    {
-      id: 'actions',
-      header: 'Действия',
-      cell: ({ row }) => (
-        <div className="flex space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditingCell(row.original)}
-          >
-            <Pencil size={16} className="mr-1" /> Изменить
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 size={16} className="mr-1" /> Удалить
-          </Button>
-        </div>
-      ),
-    },
   ];
 
   // Обработчики действий
+  const handleEdit = (cell: Cell) => {
+    setEditingCell(cell);
+    setIsModalOpen(true);
+  };
+
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить эту ячейку?')) {
       try {
@@ -133,6 +116,10 @@ export default function CellsPage() {
         toast.error('Ошибка при удалении ячейки');
       }
     }
+  };
+
+  const handleDeleteAdapter = (cell: Cell) => {
+    handleDelete(cell.id);
   };
 
   const handleSubmit = async (data: CellFormFields) => {
@@ -228,6 +215,12 @@ export default function CellsPage() {
         columns={columns}
         searchColumn="name"
         searchPlaceholder="Поиск по названию ячейки..."
+        enableActions={true}
+        onEdit={handleEdit}
+        onDelete={handleDeleteAdapter}
+        tableId="cells-table"
+        enableColumnReordering={true}
+        persistColumnOrder={true}
       />
 
       {/* Модальное окно */}

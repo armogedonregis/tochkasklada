@@ -211,10 +211,24 @@ export function ClientModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // Если модальное окно пытаются закрыть кликом за пределами (open становится false),
+      // то предотвращаем закрытие, не вызывая onClose
+      if (!open) {
+        // Здесь мы ничего не делаем, чтобы предотвратить закрытие
+      }
+    }}>
+      <DialogContent className="sm:max-w-[500px]" onEscapeKeyDown={(e) => e.preventDefault()}>
+        <DialogHeader className="relative">
           <DialogTitle>{title}</DialogTitle>
+          <button 
+            onClick={onClose} 
+            className="absolute right-0 top-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            type="button"
+            aria-label="Закрыть"
+          >
+            <X className="h-4 w-4" />
+          </button>
           <DialogDescription>
             Заполните информацию о клиенте. Все поля обязательны.
           </DialogDescription>

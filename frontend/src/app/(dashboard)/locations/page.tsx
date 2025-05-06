@@ -35,31 +35,14 @@ export default function CitiesPage() {
       accessorKey: 'short_name',
       header: 'Короткое название',
     },
-    {
-      id: 'actions',
-      header: 'Действия',
-      cell: ({ row }) => (
-        <div className="flex space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditingCity(row.original)}
-          >
-            <Pencil size={16} className="mr-1" /> Изменить
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 size={16} className="mr-1" /> Удалить
-          </Button>
-        </div>
-      ),
-    },
   ];
 
   // Обработчики действий
+  const handleEdit = (city: City) => {
+    setEditingCity(city);
+    setIsModalOpen(true);
+  };
+
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот город?')) {
       try {
@@ -69,6 +52,10 @@ export default function CitiesPage() {
         toast.error('Ошибка при удалении города');
       }
     }
+  };
+
+  const handleDeleteAdapter = (city: City) => {
+    handleDelete(city.id);
   };
 
   const handleSubmit = async (data: { title: string; short_name: string }) => {
@@ -137,6 +124,12 @@ export default function CitiesPage() {
         columns={columns}
         searchColumn="title"
         searchPlaceholder="Поиск по названию города..."
+        enableActions={true}
+        onEdit={handleEdit}
+        onDelete={handleDeleteAdapter}
+        tableId="cities-table"
+        enableColumnReordering={true}
+        persistColumnOrder={true}
       />
 
       {/* Модальное окно */}

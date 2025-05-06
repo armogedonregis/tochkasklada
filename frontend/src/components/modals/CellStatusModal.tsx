@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { X } from 'lucide-react';
 
 type CellStatusModalProps = {
   isOpen: boolean;
@@ -106,10 +107,24 @@ export const CellStatusModal: React.FC<CellStatusModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // Если модальное окно пытаются закрыть кликом за пределами (open становится false),
+      // то предотвращаем закрытие, не вызывая onClose
+      if (!open) {
+        // Здесь мы ничего не делаем, чтобы предотвратить закрытие
+      }
+    }}>
+      <DialogContent className="sm:max-w-[425px]" onEscapeKeyDown={(e) => e.preventDefault()}>
+        <DialogHeader className="relative">
+          <DialogTitle>{status ? 'Редактировать статус' : 'Добавить новый статус'}</DialogTitle>
+          <button 
+            onClick={onClose} 
+            className="absolute right-0 top-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            type="button"
+            aria-label="Закрыть"
+          >
+            <X size={18} />
+          </button>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">

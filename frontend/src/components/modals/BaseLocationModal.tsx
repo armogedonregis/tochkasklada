@@ -7,6 +7,7 @@ import BaseForm from '../forms/BaseForm';
 import { IForm } from '@/types/form';
 import { FieldValues, DefaultValues } from 'react-hook-form';
 import { ObjectSchema } from 'yup';
+import { X } from 'lucide-react';
 
 interface BaseLocationModalProps<T extends FieldValues> {
   isOpen: boolean;
@@ -34,13 +35,25 @@ export const BaseLocationModal = <T extends FieldValues>({
   defaultValues
 }: BaseLocationModalProps<T>) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[570px] p-0">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        // Здесь мы ничего не делаем, чтобы предотвратить закрытие
+      }
+    }}>
+      <DialogContent className="sm:max-w-[570px] p-0" onEscapeKeyDown={(e) => e.preventDefault()}>
         <div className="w-full p-6 bg-white dark:bg-gray-800 rounded-lg">
-          <DialogHeader className="mb-4">
+          <DialogHeader className="mb-4 relative">
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
               {title}
             </DialogTitle>
+            <button 
+              onClick={onClose} 
+              className="absolute right-0 top-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+              type="button"
+              aria-label="Закрыть"
+            >
+              <X size={18} />
+            </button>
             {description && (
               <>
                 <div className="h-[2px] my-3 bg-gray-200 dark:bg-gray-700 w-full" />

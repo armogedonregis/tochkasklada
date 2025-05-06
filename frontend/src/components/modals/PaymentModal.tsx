@@ -17,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useGetClientsQuery } from '@/services/clientsApi';
 import { Payment, UpdatePaymentRequest } from '@/services/paymentsApi';
 import { toast } from 'react-toastify';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -42,6 +42,7 @@ interface PaymentModalProps {
   onSave: (data: UpdatePaymentRequest) => void;
   payment: Payment | null;
   title?: string;
+  clients?: any[];
 }
 
 export function PaymentModal({
@@ -50,8 +51,17 @@ export function PaymentModal({
   onSave,
   payment = null,
   title = 'Редактировать платеж',
+  clients = [],
 }: PaymentModalProps) {
-  const { data: clients = [], isLoading: isLoadingClients } = useGetClientsQuery();
+  // Если уже есть переданные клиенты, не загружаем их из API
+  const isSkipApiCall = clients.length > 0;
+  const { data: apiClients = [], isLoading: isLoadingApiClients } = useGetClientsQuery(undefined, {
+    skip: isSkipApiCall
+  });
+  
+  // Используем либо переданные clients, либо загруженные из API
+  const clientsList = clients.length > 0 ? clients : apiClients;
+  const isLoadingClients = clients.length > 0 ? false : isLoadingApiClients;
   
   // Состояние формы
   const [formData, setFormData] = useState<PaymentFormData>({
@@ -141,15 +151,29 @@ export function PaymentModal({
 
   // Найти имя клиента по ID
   const getClientName = (userId: string) => {
-    const client = clients.find(c => c.userId === userId);
+    const client = clientsList.find((c: any) => c.userId === userId);
     return client ? `${client.name} (${client.user?.email || 'Нет email'})` : 'Неизвестный клиент';
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // Если модальное окно пытаются закрыть кликом за пределами (open становится false),
+      // то предотвращаем закрытие, не вызывая onClose
+      if (!open) {
+        // Здесь мы ничего не делаем, чтобы предотвратить закрытие
+      }
+    }}>
+      <DialogContent className="sm:max-w-[500px]" onEscapeKeyDown={(e) => e.preventDefault()}>
+        <DialogHeader className="relative">
           <DialogTitle>{title}</DialogTitle>
+          <button 
+            onClick={onClose} 
+            className="absolute right-0 top-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            type="button"
+            aria-label="Закрыть"
+          >
+            <X size={18} />
+          </button>
           <DialogDescription>
             Редактирование информации о платеже.
           </DialogDescription>
