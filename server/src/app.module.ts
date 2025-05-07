@@ -16,6 +16,7 @@ import { CellStatusesModule } from './cell-statuses/cell-statuses.module';
 import { PanelsModule } from './panels/panels.module';
 import { RelaysModule } from './relays/relays.module';
 import { RelayAccessModule } from './relay-access/relay-access.module';
+import { CellRentalsModule } from './cell-rentals/cell-rentals.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { RelayAccessModule } from './relay-access/relay-access.module';
     PanelsModule,
     RelaysModule,
     RelayAccessModule,
+    CellRentalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

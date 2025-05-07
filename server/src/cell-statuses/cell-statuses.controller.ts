@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  Put,
 } from '@nestjs/common';
 import { CellStatusesService } from './cell-statuses.service';
 import { CreateCellStatusDto, UpdateCellStatusDto } from './dto';
@@ -41,18 +40,5 @@ export class CellStatusesController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.cellStatusesService.remove(id);
-  }
-
-  @Put('assign/:statusId/to-cell/:cellId')
-  assignStatusToCell(
-    @Param('cellId') cellId: string,
-    @Param('statusId') statusId: string,
-  ) {
-    return this.cellStatusesService.setCellStatus(cellId, statusId);
-  }
-
-  @Delete('remove-from-cell/:cellId')
-  removeStatusFromCell(@Param('cellId') cellId: string) {
-    return this.cellStatusesService.removeCellStatus(cellId);
   }
 } 

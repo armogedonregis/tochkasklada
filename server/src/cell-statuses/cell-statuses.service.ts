@@ -53,32 +53,4 @@ export class CellStatusesService {
       throw new NotFoundException(`Статус с ID ${id} не найден`);
     }
   }
-
-  async setCellStatus(cellId: string, statusId: string) {
-    try {
-      return await this.prisma.cells.update({
-        where: { id: cellId },
-        data: { statusId },
-        include: {
-          status: true
-        }
-      });
-    } catch (error) {
-      throw new NotFoundException(`Ячейка с ID ${cellId} не найдена`);
-    }
-  }
-
-  async removeCellStatus(cellId: string) {
-    try {
-      return await this.prisma.cells.update({
-        where: { id: cellId },
-        data: { statusId: null },
-        include: {
-          status: true
-        }
-      });
-    } catch (error) {
-      throw new NotFoundException(`Ячейка с ID ${cellId} не найдена`);
-    }
-  }
 } 

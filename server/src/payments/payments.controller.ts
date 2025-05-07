@@ -3,6 +3,7 @@ import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CreateAdminPaymentDto, UpdatePaymentDto } from './dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -19,18 +20,30 @@ export class PaymentsController {
   }
 
   // Создание платежа администратором
+  // Для создания платежа за аренду ячейки, добавьте параметры:
+  // - cellId: ID ячейки
+  // - rentalMonths: количество месяцев аренды (по умолчанию 1)
+  // - statusId: ID статуса ячейки (опционально)
   @Post('admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  createPaymentByAdmin(@Body() createPaymentDto: any) {
+  createPaymentByAdmin(@Body() createPaymentDto: CreateAdminPaymentDto) {
     return this.paymentsService.createPaymentByAdmin(createPaymentDto);
   }
 
   // Обновление платежа администратором
+  // Для работы с арендой ячейки доступны следующие параметры:
+  // - cellRentalId: привязать платеж к существующей аренде
+  // - cellId: создать новую аренду для указанной ячейки
+  // - rentalMonths: количество месяцев аренды/продления
+  // - extendRental: продлить существующую аренду
+  // - detachRental: отвязать платеж от аренды
+  // - rentalStartDate: новая дата начала аренды (формат: "YYYY-MM-DD")
+  // - rentalEndDate: новая дата окончания аренды (формат: "YYYY-MM-DD")
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  updatePayment(@Param('id') id: string, @Body() updatePaymentDto: any) {
+  updatePayment(@Param('id') id: string, @Body() updatePaymentDto: UpdatePaymentDto) {
     return this.paymentsService.updatePayment(id, updatePaymentDto);
   }
 

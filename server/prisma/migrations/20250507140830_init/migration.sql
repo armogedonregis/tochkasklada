@@ -1,6 +1,9 @@
 -- CreateEnum
 CREATE TYPE "RelayType" AS ENUM ('SECURITY', 'LIGHT', 'GATE');
 
+-- CreateEnum
+CREATE TYPE "CellRentalStatus" AS ENUM ('ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'CLOSED');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -45,6 +48,7 @@ CREATE TABLE "payments" (
     "status" BOOLEAN NOT NULL DEFAULT false,
     "tinkoffPaymentId" TEXT,
     "paymentUrl" TEXT,
+    "cellRentalId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -105,6 +109,7 @@ CREATE TABLE "cell_statuses" (
     "name" TEXT NOT NULL,
     "color" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "statusType" "CellRentalStatus",
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -164,6 +169,25 @@ CREATE TABLE "relay_access" (
     CONSTRAINT "relay_access_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "cell_rentals" (
+    "id" TEXT NOT NULL,
+    "cellId" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3) NOT NULL,
+    "lastExtendedAt" TIMESTAMP(3),
+    "extensionCount" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "rentalStatus" "CellRentalStatus" NOT NULL DEFAULT 'ACTIVE',
+    "statusId" TEXT,
+    "closedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "cell_rentals_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -192,6 +216,9 @@ ALTER TABLE "client_phones" ADD CONSTRAINT "client_phones_clientId_fkey" FOREIGN
 ALTER TABLE "payments" ADD CONSTRAINT "payments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "payments" ADD CONSTRAINT "payments_cellRentalId_fkey" FOREIGN KEY ("cellRentalId") REFERENCES "cell_rentals"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "locations" ADD CONSTRAINT "locations_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "citys"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -211,3 +238,12 @@ ALTER TABLE "relays" ADD CONSTRAINT "relays_panelId_fkey" FOREIGN KEY ("panelId"
 
 -- AddForeignKey
 ALTER TABLE "relay_access" ADD CONSTRAINT "relay_access_relayId_fkey" FOREIGN KEY ("relayId") REFERENCES "relays"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cell_rentals" ADD CONSTRAINT "cell_rentals_cellId_fkey" FOREIGN KEY ("cellId") REFERENCES "cells"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cell_rentals" ADD CONSTRAINT "cell_rentals_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "clients"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cell_rentals" ADD CONSTRAINT "cell_rentals_statusId_fkey" FOREIGN KEY ("statusId") REFERENCES "cell_statuses"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -118,8 +118,8 @@ export const paymentsApi = api.injectEndpoints({
         url: `/payments/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: (result, error) => [
-        'Payments',
+      invalidatesTags: (result, error, id) => [
+        { type: 'Payments', id },
         { type: 'Payments', id: 'LIST' }
       ],
     }),

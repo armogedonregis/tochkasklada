@@ -2,10 +2,16 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken, PaymentParams } from './utils/generate-token';
+import { CellRentalsService } from '../cell-rentals/cell-rentals.service';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreateAdminPaymentDto, UpdatePaymentDto } from './dto';
 
 @Injectable()
 export class PaymentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cellRentalsService: CellRentalsService
+  ) {}
 
   // Получение платежа по ID
   async getPaymentById(id: string) {
@@ -90,10 +96,13 @@ export class PaymentsService {
   }
 
   // Создание платежа администратором
-  async createPaymentByAdmin(data: any) {
+  async createPaymentByAdmin(data: CreateAdminPaymentDto) {
     // Проверяем, существует ли пользователь
     const user = await this.prisma.user.findUnique({
-      where: { id: data.userId }
+      where: { id: data.userId },
+      include: {
+        client: true
+      }
     });
 
     if (!user) {
@@ -103,14 +112,20 @@ export class PaymentsService {
     // Создаем orderId
     const orderId = uuidv4();
     
+    // Проверяем, является ли платеж оплатой за аренду ячейки
+    const isCellRental = data.cellId && user.client !== null;
+    
+    // Определяем описание платежа
+    let description = data.description;
+    
     // Создаем платеж с предоставленными данными
-    return this.prisma.payment.create({
+    const payment = await this.prisma.payment.create({
       data: {
         amount: data.amount,
         orderId,
-        description: data.description,
+        description: description,
         userId: data.userId,
-        status: data.status || false,
+        status: data.status || true, // Для админа платеж по умолчанию успешный
         tinkoffPaymentId: data.tinkoffPaymentId,
         paymentUrl: data.paymentUrl
       },
@@ -123,10 +138,120 @@ export class PaymentsService {
         }
       }
     });
+    
+    // Если это платеж за аренду ячейки, то обрабатываем аренду
+    if (isCellRental && user.client) {
+      try {
+        // Проверяем, существует ли ячейка
+        const cell = await this.prisma.cells.findUnique({
+          where: { id: data.cellId }
+        });
+
+        if (!cell) {
+          throw new BadRequestException(`Ячейка с ID ${data.cellId} не найдена`);
+        }
+        
+        // Проверяем, есть ли уже активная аренда для этой ячейки
+        const existingRental = await this.prisma.cellRental.findFirst({
+          where: {
+            cellId: data.cellId,
+            isActive: true
+          }
+        });
+        
+        // Количество месяцев аренды (по умолчанию 1)
+        const rentalMonths = data.rentalMonths || 1;
+        
+        let rental;
+        
+        if (existingRental) {
+          // Ячейка уже арендована
+          if (existingRental.clientId === user.client.id) {
+            // Аренда принадлежит этому же клиенту - продлеваем ее
+            const newEndDate = new Date(existingRental.endDate);
+            newEndDate.setMonth(newEndDate.getMonth() + rentalMonths);
+            
+            // Обновляем аренду
+            rental = await this.prisma.cellRental.update({
+              where: { id: existingRental.id },
+              data: {
+                endDate: newEndDate,
+                lastExtendedAt: new Date(),
+                extensionCount: { increment: 1 }
+              }
+            });
+            
+            // Связываем платеж с арендой
+            await this.prisma.payment.update({
+              where: { id: payment.id },
+              data: { 
+                cellRentalId: rental.id,
+                description: description || `Продление аренды ячейки #${cell.name} на ${rentalMonths} мес.`
+              }
+            });
+          } else {
+            // Ячейка арендована другим клиентом
+            throw new BadRequestException(`Ячейка ${cell.name} уже арендована другим клиентом`);
+          }
+        } else {
+          // Создаем новую аренду
+          const startDate = new Date();
+          const endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + rentalMonths);
+          
+          // Проверка cellId перед созданием аренды
+          if (!data.cellId) {
+            throw new BadRequestException('ID ячейки (cellId) обязателен для создания аренды');
+          }
+          
+          rental = await this.prisma.cellRental.create({
+            data: {
+              cellId: data.cellId,
+              clientId: user.client.id,
+              startDate,
+              endDate,
+              isActive: true,
+              statusId: data.statusId
+            }
+          });
+          
+          // Связываем платеж с арендой и обновляем описание
+          await this.prisma.payment.update({
+            where: { id: payment.id },
+            data: { 
+              cellRentalId: rental.id,
+              description: description || `Аренда ячейки #${cell.name} на ${rentalMonths} мес.`
+            }
+          });
+        }
+        
+        // Получаем обновленный платеж с информацией об аренде
+        const updatedPayment = await this.prisma.payment.findUnique({
+          where: { id: payment.id },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true
+              }
+            },
+            cellRental: true
+          }
+        });
+        
+        return updatedPayment;
+      } catch (error) {
+        // Если произошла ошибка при создании аренды, все равно возвращаем созданный платеж
+        console.error('Ошибка при обработке аренды:', error.message);
+        return payment;
+      }
+    }
+    
+    return payment;
   }
 
   // Обновление платежа
-  async updatePayment(id: string, data: any) {
+  async updatePayment(id: string, data: UpdatePaymentDto) {
     // Проверяем, существует ли платеж
     const existingPayment = await this.getPaymentById(id);
     
@@ -134,17 +259,194 @@ export class PaymentsService {
       throw new NotFoundException(`Платеж с ID ${id} не найден`);
     }
     
+    let updateData: any = { ...data };
+    
+    // Удаляем поля, которые не являются частью модели платежа
+    const { 
+      cellRentalId, cellId, rentalMonths, extendRental, 
+      detachRental, rentalStartDate, rentalEndDate, 
+      ...paymentData 
+    } = updateData;
+    
+    // Обрабатываем действия с арендой
+    try {
+      // Отвязка от аренды
+      if (detachRental === true) {
+        // Проверяем, привязан ли платеж к аренде
+        if (existingPayment.cellRentalId) {
+          await this.prisma.payment.update({
+            where: { id },
+            data: { cellRentalId: null }
+          });
+          console.log(`Платеж ${id} отвязан от аренды ${existingPayment.cellRentalId}`);
+        }
+      }
+      
+      // Привязка к существующей аренде
+      else if (cellRentalId) {
+        // Проверяем, существует ли аренда
+        const rental = await this.prisma.cellRental.findUnique({
+          where: { id: cellRentalId }
+        });
+        
+        if (!rental) {
+          throw new NotFoundException(`Аренда с ID ${cellRentalId} не найдена`);
+        }
+        
+        // Привязываем платеж к аренде
+        await this.prisma.payment.update({
+          where: { id },
+          data: { cellRentalId }
+        });
+        
+        // Обрабатываем корректировку дат аренды
+        const updateRentalData: any = {};
+        
+        if (rentalStartDate) {
+          updateRentalData.startDate = new Date(rentalStartDate);
+        }
+        
+        if (rentalEndDate) {
+          updateRentalData.endDate = new Date(rentalEndDate);
+        }
+        
+        // Если нужно продлить аренду
+        if (extendRental === true && !rentalEndDate) {
+          const months = rentalMonths || 1;
+          const newEndDate = new Date(rental.endDate);
+          newEndDate.setMonth(newEndDate.getMonth() + months);
+          updateRentalData.endDate = newEndDate;
+          updateRentalData.lastExtendedAt = new Date();
+          updateRentalData.extensionCount = { increment: 1 };
+        }
+        
+        // Обновляем аренду, если есть изменения
+        if (Object.keys(updateRentalData).length > 0) {
+          await this.prisma.cellRental.update({
+            where: { id: cellRentalId },
+            data: updateRentalData
+          });
+          
+          console.log(`Аренда ${cellRentalId} обновлена`);
+        }
+      }
+      
+      // Создание новой аренды
+      else if (cellId) {
+        // Получаем информацию о пользователе
+        const payment = await this.prisma.payment.findUnique({
+          where: { id },
+          include: {
+            user: {
+              include: {
+                client: true
+              }
+            }
+          }
+        });
+        
+        if (!payment) {
+          throw new NotFoundException(`Платеж с ID ${id} не найден`);
+        }
+        
+        if (!payment.user.client) {
+          throw new BadRequestException(`Пользователь платежа не является клиентом`);
+        }
+        
+        // Проверяем, существует ли ячейка
+        const cell = await this.prisma.cells.findUnique({
+          where: { id: cellId }
+        });
+        
+        if (!cell) {
+          throw new BadRequestException(`Ячейка с ID ${cellId} не найдена`);
+        }
+        
+        // Проверяем, не арендована ли уже ячейка
+        const existingRental = await this.prisma.cellRental.findFirst({
+          where: {
+            cellId,
+            isActive: true
+          }
+        });
+        
+        if (existingRental) {
+          throw new BadRequestException(`Ячейка ${cell.name} уже арендована`);
+        }
+        
+        // Определяем даты начала и окончания аренды
+        let startDate = rentalStartDate ? new Date(rentalStartDate) : new Date();
+        let endDate: Date;
+        
+        if (rentalEndDate) {
+          endDate = new Date(rentalEndDate);
+        } else {
+          const months = rentalMonths || 1;
+          endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + months);
+        }
+        
+        // Создаем новую аренду
+        const rental = await this.prisma.cellRental.create({
+          data: {
+            cellId,
+            clientId: payment.user.client.id,
+            startDate,
+            endDate,
+            isActive: true
+          }
+        });
+        
+        // Привязываем платеж к новой аренде
+        await this.prisma.payment.update({
+          where: { id },
+          data: { 
+            cellRentalId: rental.id,
+            description: paymentData.description || `Аренда ячейки #${cell.name}`
+          }
+        });
+        
+        console.log(`Создана новая аренда ${rental.id} для ячейки ${cellId}`);
+      }
+      
+      // Обновление дат существующей аренды, связанной с платежом
+      else if ((rentalStartDate || rentalEndDate) && existingPayment.cellRentalId) {
+        const updateRentalData: any = {};
+        
+        if (rentalStartDate) {
+          updateRentalData.startDate = new Date(rentalStartDate);
+        }
+        
+        if (rentalEndDate) {
+          updateRentalData.endDate = new Date(rentalEndDate);
+        }
+        
+        if (Object.keys(updateRentalData).length > 0) {
+          await this.prisma.cellRental.update({
+            where: { id: existingPayment.cellRentalId },
+            data: updateRentalData
+          });
+          
+          console.log(`Аренда ${existingPayment.cellRentalId} обновлена`);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при обработке аренды:', error.message);
+      // Продолжаем обновление платежа даже при ошибке с арендой
+    }
+    
     // Обновляем платеж
     return this.prisma.payment.update({
       where: { id },
-      data,
+      data: paymentData,
       include: {
         user: {
           select: {
             id: true,
             email: true,
           }
-        }
+        },
+        cellRental: true
       }
     });
   }
