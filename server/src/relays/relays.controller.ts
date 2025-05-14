@@ -1,55 +1,85 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Body, 
+  Patch, 
+  Param, 
+  Delete, 
+  UseGuards, 
+  HttpCode, 
+  HttpStatus,
+  ParseUUIDPipe
+} from '@nestjs/common';
 import { RelaysService } from './relays.service';
-import { Relay, Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CreateRelayDto, UpdateRelayDto, ToggleRelayDto } from './dto';
+import { UserRole } from '@prisma/client';
 
-@Controller('relays')
-@UseGuards(JwtAuthGuard)
+// Административная часть API для работы с реле
+@Controller('admin/relays')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class RelaysController {
   constructor(private readonly relaysService: RelaysService) {}
 
-  @Post()
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  create(@Body() createRelayDto: Prisma.RelayCreateInput) {
-    return this.relaysService.create(createRelayDto);
-  }
-
-  @Get()
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  findAll() {
-    return this.relaysService.findAll();
-  }
-
+  /**
+   * Получение реле по ID
+   */
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.relaysService.findOne(id);
   }
 
+  /**
+   * Создание нового реле
+   */
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  create(@Body() createRelayDto: CreateRelayDto) {
+    return this.relaysService.create(createRelayDto);
+  }
+
+  /**
+   * Обновление реле
+   */
   @Patch(':id')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  update(@Param('id') id: string, @Body() updateRelayDto: Prisma.RelayUpdateInput) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateRelayDto: UpdateRelayDto
+  ) {
     return this.relaysService.update(id, updateRelayDto);
   }
 
-  @Post(':id/toggle')
-  toggle(@Param('id') id: string, @Body('state') state: boolean) {
-    return this.relaysService.toggle(id, state);
-  }
-
-  @Post(':id/pulse')
-  pulse(@Param('id') id: string) {
-    return this.relaysService.pulse(id);
-  }
-
+  /**
+   * Удаление реле
+   */
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  remove(@Param('id') id: string) {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.relaysService.remove(id);
+  }
+
+  /**
+   * Переключение состояния реле (вкл/выкл)
+   */
+  @Post(':id/toggle')
+  @HttpCode(HttpStatus.OK)
+  toggle(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() toggleDto: ToggleRelayDto
+  ) {
+    return this.relaysService.toggle(id, toggleDto.state);
+  }
+
+  /**
+   * Импульсное включение реле
+   */
+  @Post(':id/pulse')
+  @HttpCode(HttpStatus.OK)
+  pulse(@Param('id', ParseUUIDPipe) id: string) {
+    return this.relaysService.pulse(id);
   }
 } 

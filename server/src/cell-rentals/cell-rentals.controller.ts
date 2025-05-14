@@ -1,129 +1,143 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, ParseUUIDPipe, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { CellRentalsService } from './cell-rentals.service';
-import { CreateCellRentalDto, UpdateCellRentalDto, ExtendCellRentalDto } from './dto';
+import { UpdateCellRentalDto, FindCellRentalsDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
-@Controller('cell-rentals')
-@UseGuards(JwtAuthGuard)
-export class CellRentalsController {
+/**
+ * Административный контроллер для управления арендами ячеек
+ */
+@Controller('admin/cell-rentals')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+export class CellRentalsAdminController {
   constructor(private readonly cellRentalsService: CellRentalsService) {}
 
-  // Создание новой аренды (только админ)
-  @Post()
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  create(@Body() createCellRentalDto: CreateCellRentalDto) {
-    return this.cellRentalsService.create(createCellRentalDto);
-  }
-
-  // Получение всех аренд (только админ)
+  /**
+   * Получение всех аренд с поиском, фильтрацией и пагинацией
+   */
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  findAll() {
-    return this.cellRentalsService.findAll();
+  @HttpCode(HttpStatus.OK)
+  findAll(@Query() query: FindCellRentalsDto) {
+    return this.cellRentalsService.findCellRentals(query);
   }
 
-  // Получение конкретной аренды
+  /**
+   * Получение аренды по ID
+   */
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  @HttpCode(HttpStatus.OK)
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellRentalsService.findOne(id);
   }
 
-  // Обновление аренды (только админ)
+  /**
+   * Обновление данных аренды
+   */
   @Patch(':id')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  update(@Param('id') id: string, @Body() updateCellRentalDto: UpdateCellRentalDto) {
+  @HttpCode(HttpStatus.OK)
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateCellRentalDto: UpdateCellRentalDto
+  ) {
     return this.cellRentalsService.update(id, updateCellRentalDto);
   }
 
-  // Удаление аренды (только админ)
+  /**
+   * Удаление аренды
+   */
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  remove(@Param('id') id: string) {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellRentalsService.remove(id);
   }
 
-  // Закрытие аренды (только админ)
+  /**
+   * Закрытие аренды (прекращение аренды)
+   */
   @Post(':id/close')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  closeRental(@Param('id') id: string) {
+  @HttpCode(HttpStatus.OK)
+  closeRental(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellRentalsService.closeRental(id);
   }
 
-  // Продление аренды (только админ)
-  @Post('extend')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  extendRental(@Body() extendDto: ExtendCellRentalDto, @Req() req: any) {
-    return this.cellRentalsService.extendRental(req.user.id, extendDto);
-  }
-
-  // Привязка платежа к аренде (только админ)
+  /**
+   * Привязка существующего платежа к аренде
+   */
   @Post('attach-payment/:paymentId/to-rental/:rentalId')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
   attachPaymentToRental(
-    @Param('paymentId') paymentId: string,
-    @Param('rentalId') rentalId: string,
+    @Param('paymentId', ParseUUIDPipe) paymentId: string,
+    @Param('rentalId', ParseUUIDPipe) rentalId: string,
   ) {
     return this.cellRentalsService.attachPaymentToRental(paymentId, rentalId);
   }
 
-  // Получение аренд по клиенту (активных)
-  @Get('client/:clientId/active')
-  findActiveRentalsByClient(@Param('clientId') clientId: string) {
-    return this.cellRentalsService.findActiveRentalsByClient(clientId);
-  }
-
-  // Получение всех аренд по клиенту (включая историю)
-  @Get('client/:clientId/all')
-  findAllRentalsByClient(@Param('clientId') clientId: string) {
-    return this.cellRentalsService.findAllRentalsByClient(clientId);
-  }
-
-  // Получение истории аренд для ячейки
-  @Get('cell/:cellId/history')
-  findRentalHistoryByCell(@Param('cellId') cellId: string) {
-    return this.cellRentalsService.findRentalHistoryByCell(cellId);
-  }
-
-  // Обновление статуса аренды (только админ)
+  /**
+   * Обновление статуса аренды
+   */
   @Post(':id/update-status')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  updateRentalStatus(@Param('id') id: string) {
+  @HttpCode(HttpStatus.OK)
+  updateRentalStatus(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellRentalsService.updateRentalStatus(id);
   }
 
-  // Обновление статусов всех активных аренд (только админ)
+  /**
+   * Обновление статусов всех активных аренд
+   */
   @Post('update-all-statuses')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
   updateAllRentalStatuses() {
     return this.cellRentalsService.updateAllRentalStatuses();
   }
 
-  // Управление статусами ячеек
+  /**
+   * Получение всех активных аренд для конкретного клиента
+   */
+  @Get('client/:clientId/active')
+  @HttpCode(HttpStatus.OK)
+  findActiveRentalsByClient(@Param('clientId', ParseUUIDPipe) clientId: string) {
+    return this.cellRentalsService.findActiveRentalsByClient(clientId);
+  }
+
+  /**
+   * Получение всех аренд клиента (включая историю)
+   */
+  @Get('client/:clientId/all')
+  @HttpCode(HttpStatus.OK)
+  findAllRentalsByClient(@Param('clientId', ParseUUIDPipe) clientId: string) {
+    return this.cellRentalsService.findAllRentalsByClient(clientId);
+  }
+
+  /**
+   * Получение истории аренд для конкретной ячейки
+   */
+  @Get('cell/:cellId/history')
+  @HttpCode(HttpStatus.OK)
+  findRentalHistoryByCell(@Param('cellId', ParseUUIDPipe) cellId: string) {
+    return this.cellRentalsService.findRentalHistoryByCell(cellId);
+  }
+
+  /**
+   * Установка статуса для ячейки
+   */
   @Put('cell/:cellId/set-status/:statusId')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
   setCellStatus(
-    @Param('cellId') cellId: string,
-    @Param('statusId') statusId: string,
+    @Param('cellId', ParseUUIDPipe) cellId: string,
+    @Param('statusId', ParseUUIDPipe) statusId: string,
   ) {
     return this.cellRentalsService.setCellStatus(cellId, statusId);
   }
 
+  /**
+   * Удаление статуса у ячейки
+   */
   @Delete('cell/:cellId/remove-status')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  removeCellStatus(@Param('cellId') cellId: string) {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeCellStatus(@Param('cellId', ParseUUIDPipe) cellId: string) {
     return this.cellRentalsService.removeCellStatus(cellId);
   }
 } 

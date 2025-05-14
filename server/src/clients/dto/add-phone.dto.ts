@@ -1,0 +1,15 @@
+import { IsNotEmpty, IsString, Matches } from 'class-validator';
+
+/**
+ * DTO для добавления телефона клиенту
+ */
+export class AddPhoneDto {
+  /**
+   * Номер телефона клиента
+   * @example "79001234567"
+   */
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^7\d{10}$/, { message: 'Телефон должен быть в формате 7XXXXXXXXXX' })
+  phone: string;
+} 

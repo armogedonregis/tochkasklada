@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter({
@@ -29,6 +30,17 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Accept, Authorization'
   });
   app.setGlobalPrefix('api');
+  
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true, 
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
   
   await app.listen(process.env.PORT || 5000, '0.0.0.0');
   console.log(`Application is running on: ${await app.getUrl()}`);

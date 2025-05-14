@@ -1,46 +1,69 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Body, 
+  Param, 
+  Delete, 
+  UseGuards, 
+  ParseUUIDPipe, 
+  HttpCode, 
+  HttpStatus,
+  Query
+} from '@nestjs/common';
 import { RelayAccessService } from './relay-access.service';
-import { Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
+import { CreateRelayAccessDto, CheckRelayAccessDto, FindRelayAccessDto } from './dto';
 
-@Controller('relay-access')
-@UseGuards(JwtAuthGuard)
+@Controller('admin/relay-access')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class RelayAccessController {
   constructor(private readonly relayAccessService: RelayAccessService) {}
 
+  /**
+   * Предоставление доступа к реле
+   */
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  grantAccess(@Body() createRelayAccessDto: Prisma.RelayAccessCreateInput) {
+  @HttpCode(HttpStatus.CREATED)
+  grantAccess(@Body() createRelayAccessDto: CreateRelayAccessDto) {
     return this.relayAccessService.grantAccess(createRelayAccessDto);
   }
 
+  /**
+   * Получение всех записей доступа к реле с пагинацией и фильтрацией
+   */
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  findAll() {
-    return this.relayAccessService.findAll();
+  findAll(@Query() query: FindRelayAccessDto) {
+    return this.relayAccessService.findAll(query);
   }
 
-  @Get('user/:userId')
-  findByUser(@Param('userId') userId: string) {
-    return this.relayAccessService.findByUser(userId);
+  /**
+   * Получение доступов для конкретной аренды ячейки
+   */
+  @Get('rental/:rentalId')
+  findByRental(@Param('rentalId', ParseUUIDPipe) rentalId: string) {
+    return this.relayAccessService.findByRental(rentalId);
   }
 
+  /**
+   * Проверка доступа к реле для аренды ячейки
+   */
   @Post('check')
-  checkAccess(
-    @Body('userId') userId: string,
-    @Body('relayId') relayId: string,
-  ) {
-    return this.relayAccessService.checkAccess(userId, relayId);
+  @HttpCode(HttpStatus.OK)
+  checkAccess(@Body() checkDto: CheckRelayAccessDto) {
+    return this.relayAccessService.checkAccess(checkDto.cellRentalId, checkDto.relayId);
   }
 
+  /**
+   * Отзыв доступа к реле
+   */
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  revokeAccess(@Param('id') id: string) {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeAccess(@Param('id', ParseUUIDPipe) id: string) {
     return this.relayAccessService.revokeAccess(id);
   }
 } 

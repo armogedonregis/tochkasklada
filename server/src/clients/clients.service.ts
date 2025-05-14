@@ -1,38 +1,14 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashPassword, generateRandomPassword } from '../common/utils/password.utils';
+import { ClientSortField, FindClientsDto, SortDirection, UpdateClientDto, CreateClientDto } from './dto';
 
 @Injectable()
 export class ClientsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: any) {
-    const { phones, ...clientData } = data;
-    
-    return this.prisma.client.create({
-      data: {
-        ...clientData,
-        phones: phones ? {
-          create: Array.isArray(phones) 
-            ? phones.map(phone => ({ phone }))
-            : [{ phone: phones }]
-        } : undefined
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-          },
-        },
-        phones: true,
-      },
-    });
-  }
-
   // Метод для создания клиента администратором
-  async createByAdmin(data: { name: string; email: string; password?: string; phones?: string[]; company?: string }) {
+  async createByAdmin(data: CreateClientDto) {
     // Проверяем, существует ли пользователь с таким email
     const existingUser = await this.prisma.user.findUnique({
       where: { email: data.email },
@@ -214,19 +190,8 @@ export class ClientsService {
     });
   }
 
-  async findAll() {
-    return this.prisma.client.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-          },
-        },
-        phones: true,
-      },
-    });
+  async findAll(queryParams: FindClientsDto = {}) {
+    return this.findClients(queryParams);
   }
 
   async findOne(id: string) {
@@ -261,40 +226,110 @@ export class ClientsService {
     });
   }
 
-  async findByEmail(email: string) {
-    return this.prisma.user.findUnique({
-      where: { email },
-      include: {
-        client: {
-          include: {
-            phones: true,
+  /**
+   * Поиск клиентов с пагинацией и фильтрацией
+   */
+  async findClients(queryParams: FindClientsDto) {
+    const { 
+      search, 
+      page = 1, 
+      limit = 10, 
+      sortBy = ClientSortField.CREATED_AT, 
+      sortDirection = SortDirection.DESC 
+    } = queryParams;
+
+    // Базовые условия фильтрации
+    const where: any = {};
+
+    // Если есть поисковый запрос, добавляем условия поиска
+    if (search) {
+      where.OR = [
+        // Поиск по имени
+        {
+          name: {
+            contains: search,
+            mode: 'insensitive',
           }
         },
-      },
-    });
-  }
-
-  async findByPhone(phone: string) {
-    return this.prisma.clientPhone.findFirst({
-      where: { phone },
-      include: {
-        client: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                role: true,
+        // Поиск по email пользователя
+        {
+          user: {
+            email: {
+              contains: search,
+              mode: 'insensitive',
+            }
+          }
+        },
+        // Поиск по телефонам
+        {
+          phones: {
+            some: {
+              phone: {
+                contains: search,
               }
-            },
-            phones: true,
+            }
           }
+        }
+      ];
+    }
+
+    // Вычисляем параметры пагинации
+    const skip = (page - 1) * limit;
+
+    // Настройка сортировки
+    let orderBy: any = {};
+    
+    // В зависимости от выбранного поля сортировки
+    switch (sortBy) {
+      case ClientSortField.NAME:
+        orderBy.name = sortDirection;
+        break;
+      case ClientSortField.EMAIL:
+        orderBy.user = { email: sortDirection };
+        break;
+      case ClientSortField.CREATED_AT:
+      default:
+        orderBy.createdAt = sortDirection;
+        break;
+    }
+
+    // Запрос на получение общего количества
+    const totalCount = await this.prisma.client.count({ where });
+
+    // Запрос на получение данных с пагинацией
+    const clients = await this.prisma.client.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+          },
         },
+        phones: true,
       },
     });
+
+    // Рассчитываем количество страниц
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Возвращаем результат с мета-информацией
+    return {
+      data: clients,
+      meta: {
+        totalCount,
+        page,
+        limit,
+        totalPages,
+      },
+    };
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: UpdateClientDto) {
     try {
       const { phones, email, ...clientData } = data;
       
@@ -305,7 +340,7 @@ export class ClientsService {
       });
 
       if (!client) {
-        throw new BadRequestException(`Клиент с ID ${id} не найден`);
+        throw new NotFoundException(`Клиент с ID ${id} не найден`);
       }
 
       // Выполняем все операции в транзакции для обеспечения целостности данных
@@ -353,8 +388,11 @@ export class ClientsService {
         });
       });
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       console.error('Ошибка при обновлении клиента:', error);
-      throw error;
+      throw new BadRequestException('Ошибка при обновлении клиента');
     }
   }
 
@@ -368,13 +406,14 @@ export class ClientsService {
     });
   }
   
-  async removePhone(phoneId: string) {
+  async removePhone(phoneId: string): Promise<{ id: string }> {
     // Удаляем телефон
     await this.prisma.clientPhone.delete({
       where: { id: phoneId }
     });
     
-    return { success: true };
+    // Возвращаем ID для RTK Query оптимистического обновления
+    return { id: phoneId };
   }
 
   async remove(id: string) {

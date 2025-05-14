@@ -1,8 +1,16 @@
 import { CellRentalStatus } from '@prisma/client';
+import { IsString, IsNotEmpty, IsHexColor, IsOptional, IsEnum } from 'class-validator';
 
 export class CreateCellStatusDto {
+  @IsString()
+  @IsNotEmpty()
   name: string;
+
+  @IsString()
+  @IsHexColor()
   color: string;
-  isActive?: boolean;
-  statusType?: CellRentalStatus; // Использование типа enum вместо string
+
+  @IsOptional()
+  @IsEnum(CellRentalStatus)
+  statusType?: CellRentalStatus;
 } 

@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken, PaymentParams } from './utils/generate-token';
 import { CellRentalsService } from '../cell-rentals/cell-rentals.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { CreateAdminPaymentDto, UpdatePaymentDto } from './dto';
+import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, PaymentSortField, SortDirection } from './dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -22,8 +23,23 @@ export class PaymentsService {
           select: {
             id: true,
             email: true,
+            client: {
+              include: {
+                phones: true
+              }
+            },
           },
         },
+        cellRental: {
+          include: {
+            cell: {
+              include: {
+                container: true,
+                size: true
+              }
+            }
+          }
+        }
       },
     });
 
@@ -43,8 +59,24 @@ export class PaymentsService {
           select: {
             id: true,
             email: true,
+            client: {
+              include: {
+                phones: true
+              }
+            },
           },
         },
+        cellRental: {
+          include: {
+            cell: {
+              include: {
+                container: true,
+                size: true,
+                status: true
+              }
+            }
+          }
+        }
       },
     });
 
@@ -444,9 +476,24 @@ export class PaymentsService {
           select: {
             id: true,
             email: true,
+            client: {
+              include: {
+                phones: true
+              }
+            }
           }
         },
-        cellRental: true
+        cellRental: {
+          include: {
+            cell: {
+              include: {
+                container: true,
+                size: true,
+                status: true
+              }
+            }
+          }
+        }
       }
     });
   }
@@ -469,6 +516,21 @@ export class PaymentsService {
           select: {
             id: true,
             email: true,
+            client: {
+              include: {
+                phones: true
+              }
+            }
+          }
+        },
+        cellRental: {
+          include: {
+            cell: {
+              include: {
+                container: true,
+                size: true
+              }
+            }
           }
         }
       }
@@ -608,23 +670,130 @@ export class PaymentsService {
   async getUserPayments(userId: string) {
     return this.prisma.payment.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' }
-    });
-  }
-
-  // Получение всех платежей (для администратора)
-  async getAllPayments() {
-    return this.prisma.payment.findMany({
       include: {
         user: {
           select: {
             id: true,
             email: true,
-            client: true
-          },
+            client: {
+              include: {
+                phones: true
+              }
+            }
+          }
         },
+        cellRental: {
+          include: {
+            cell: {
+              include: {
+                container: true,
+                size: true,
+                status: true
+              }
+            }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
+  }
+
+  // Получение всех платежей (для администратора)
+  async getAllPayments(queryParams: FindPaymentsDto) {
+    try {
+      const {
+        search,
+        page = 1,
+        limit = 10,
+        sortBy = PaymentSortField.CREATED_AT,
+        sortDirection = SortDirection.DESC,
+        onlyPaid
+      } = queryParams;
+
+      // Базовые условия фильтрации
+      let where: Prisma.PaymentWhereInput = {};
+
+      // Дополнительный фильтр по статусу оплаты, если указан
+      if (onlyPaid !== undefined) {
+        where.status = onlyPaid;
+      }
+
+      // Если указана поисковая строка, строим сложное условие для поиска
+      if (search) {
+        where.OR = [
+          { orderId: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
+          { user: { client: { name: { contains: search, mode: 'insensitive' } } } },
+          { user: { client: { phones: { some: { phone: { contains: search, mode: 'insensitive' } } } } } },
+          // Поиск по ID связанной аренды ячейки
+          { cellRentalId: { contains: search } }
+        ];
+      }
+
+      // Вычисляем параметры пагинации
+      const skip = (page - 1) * limit;
+
+      // Настройка сортировки
+      let orderBy: Prisma.PaymentOrderByWithRelationInput = {};
+      
+      // В зависимости от выбранного поля сортировки
+      switch (sortBy) {
+        case PaymentSortField.AMOUNT:
+          orderBy.amount = sortDirection;
+          break;
+        case PaymentSortField.STATUS:
+          orderBy.status = sortDirection;
+          break;
+        case PaymentSortField.ORDER_ID:
+          orderBy.orderId = sortDirection;
+          break;
+        case PaymentSortField.CREATED_AT:
+        default:
+          orderBy.createdAt = sortDirection;
+          break;
+      }
+
+      // Запрос на получение общего количества
+      const totalCount = await this.prisma.payment.count({ where });
+
+      // Запрос на получение данных с пагинацией
+      const payments = await this.prisma.payment.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              client: true
+            }
+          },
+          cellRental: {
+            include: {
+              cell: true
+            }
+          }
+        }
+      });
+
+      // Рассчитываем количество страниц
+      const totalPages = Math.ceil(totalCount / limit);
+
+      // Возвращаем результат с мета-информацией
+      return {
+        data: payments,
+        meta: {
+          totalCount,
+          page,
+          limit,
+          totalPages,
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(`Ошибка при получении списка платежей: ${error.message}`);
+    }
   }
 } 

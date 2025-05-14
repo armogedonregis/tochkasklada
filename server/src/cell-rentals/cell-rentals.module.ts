@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { CellRentalsService } from './cell-rentals.service';
-import { CellRentalsController } from './cell-rentals.controller';
+import { CellRentalsAdminController } from './cell-rentals.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [PrismaModule, ScheduleModule.forRoot()],
-  controllers: [CellRentalsController],
+  controllers: [CellRentalsAdminController],
   providers: [CellRentalsService],
   exports: [CellRentalsService],
 })

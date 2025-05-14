@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,22 +7,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Основной пользователь
 model User {
   id       String @id @default(uuid())
   email    String @unique
   password String
-  role     String @default("CLIENT")
+  role     UserRole @default(CLIENT)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Связи
   client   Client?
   payments Payment[]
 
   @@map("users")
 }
 
+// РОЛИ
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  CLIENT
+}
+
+// Подмодель для клиентов
 model Client {
   id   String @id @default(uuid())
   name String
@@ -36,7 +38,6 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Связь с пользователем
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -46,7 +47,7 @@ model Client {
   @@map("clients")
 }
 
-// Модель для хранения телефонов клиентов
+// Телефоны клиентов
 model ClientPhone {
   id    String @id @default(uuid())
   phone String
@@ -60,17 +61,17 @@ model ClientPhone {
   @@map("client_phones")
 }
 
-// Модель для хранения платежей Tinkoff Bank
+// Платежи
 model Payment {
   id               String  @id @default(uuid())
-  amount           Int // Сумма в копейках
-  orderId          String? @unique // Уникальный идентификатор заказа
-  description      String? // Описание платежа
-  userId           String // Идентификатор пользователя
+  amount           Int
+  orderId          String? @unique
+  description      String?
+  userId           String
   user             User    @relation(fields: [userId], references: [id])
-  status           Boolean @default(false) // Статус платежа (true = успешно)
-  tinkoffPaymentId String? // Идентификатор платежа в системе Tinkoff
-  paymentUrl       String? // URL для оплаты
+  status           Boolean @default(false)
+  tinkoffPaymentId String?
+  paymentUrl       String?
   
   cellRentalId     String?
   cellRental       CellRental? @relation(fields: [cellRentalId], references: [id])
@@ -81,8 +82,7 @@ model Payment {
   @@map("payments")
 }
 
-// Модели для работы со складами
-
+// Города связаны с локациями
 model City {
   id         String @id @default(uuid())
   title      String
@@ -96,11 +96,12 @@ model City {
   @@map("citys")
 }
 
+// Локации связаны с городами
 model Location {
   id         String @id @default(uuid())
   name       String
   short_name String @unique
-  address    String
+  address    String?
 
   cityId     String
   city       City         @relation(fields: [cityId], references: [id], onDelete: Cascade)
@@ -112,8 +113,10 @@ model Location {
   @@map("locations")
 }
 
+// Контейнеры связаны с ячейками
 model Containers {
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
+  name Int @unique
 
   locId    String?
   location Location? @relation(fields: [locId], references: [id], onDelete: SetNull)
@@ -125,12 +128,13 @@ model Containers {
   @@map("containers")
 }
 
+// Ячейки связаны с контейнерами
 model Cells {
   id         String  @id @default(uuid())
   name       String
-  len_height String? // Длина высота?
+  comment String?
 
-  containerId Int
+  containerId String
   container   Containers @relation(fields: [containerId], references: [id], onDelete: Cascade)
 
   size_id    String?
@@ -140,6 +144,9 @@ model Cells {
   status   CellStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
   
   rentals CellRental[]
+  
+  // Связь с реле (1 ячейка - 1 реле)
+  relay Relay?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -147,14 +154,12 @@ model Cells {
   @@map("cells")
 }
 
-// Модель для статусов ячеек
+// Статусы ячеек
 model CellStatus {
   id          String  @id @default(uuid())
   name        String
   color       String
-  isActive    Boolean @default(true)
   
-  // Тип статуса (для автоматического определения)
   statusType  CellRentalStatus?
   
   cells       Cells[]
@@ -166,11 +171,13 @@ model CellStatus {
   @@map("cell_statuses")
 }
 
+// Размеры ячеек
 model SizeCells {
   id   String @id @default(uuid())
   name String
+  short_name String @unique
+  area String
   size String
-  area String // Площадь
 
   cells Cells[]
 
@@ -180,16 +187,14 @@ model SizeCells {
   @@map("size_cells")
 }
 
-// Модели для работы с панелями и реле
-
+// Модель панель
 model Panel {
   id        String  @id @default(uuid())
   name      String
-  ipAddress String
+  ipAddress String @unique
   port      Int
   login     String
   password  String
-  isActive  Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -198,6 +203,7 @@ model Panel {
   @@map("panels")
 }
 
+// Модель реле
 model Relay {
   id          String    @id @default(uuid())
   relayNumber Int
@@ -207,31 +213,38 @@ model Relay {
   updatedAt   DateTime  @updatedAt
 
   panelId     String
-  panel  Panel         @relation(fields: [panelId], references: [id], onDelete: Cascade)
-  access RelayAccess[]
+  panel       Panel     @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  access      RelayAccess[]
+  
+  // Связь с ячейкой (1 реле - 1 ячейка)
+  cellId      String?   @unique
+  cell        Cells?    @relation(fields: [cellId], references: [id], onDelete: SetNull)
 
   @@unique([panelId, relayNumber])
   @@map("relays")
 }
 
 model RelayAccess {
-  id         String   @id @default(uuid())
-  userId     String
-  relayId    String
-  validUntil DateTime
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  relay Relay @relation(fields: [relayId], references: [id])
+  id             String    @id @default(uuid())
+  relayId        String
+  relay          Relay     @relation(fields: [relayId], references: [id], onDelete: Cascade)
+  
+  // Связь с арендой
+  cellRentalId   String?
+  cellRental     CellRental? @relation(fields: [cellRentalId], references: [id], onDelete: SetNull)
+  
+  validUntil     DateTime
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@map("relay_access")
 }
 
 enum RelayType {
-  SECURITY
-  LIGHT
-  GATE
+  SECURITY // Дверь
+  LIGHT // Свет
+  GATE // Ворота
 }
 
 // Модель для аренды ячеек
@@ -264,10 +277,13 @@ model CellRental {
   // Связь с платежами
   payments       Payment[]
   
-  // Метаданные
+  // Доступ к реле
+  relayAccess    RelayAccess[]
+  
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   
+  @@unique([cellId, isActive], name: "UniqueActiveRental", map: "unique_active_rental")
   @@map("cell_rentals")
 }
 
@@ -277,4 +293,7 @@ enum CellRentalStatus {
   EXPIRING_SOON    // Скоро истекает (осталось меньше недели)
   EXPIRED          // Просрочена (дата окончания в прошлом)
   CLOSED           // Договор закрыт администратором
+  RESERVATION      // Бронь
+  EXTENDED         // Продлен
+  PAYMENT_SOON     // Скоро оплата
 }

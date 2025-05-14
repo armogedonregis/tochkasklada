@@ -1,12 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateUserDto, UpdateUserDto } from './dto';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Поиск пользователя по ID
+   */
   async findOne(id: string) {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -17,43 +21,132 @@ export class UsersService {
         client: true,
       },
     });
+
+    if (!user) {
+      throw new NotFoundException(`Пользователь с ID ${id} не найден`);
+    }
+
+    return user;
   }
 
+  /**
+   * Поиск пользователя по email
+   */
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { email },
     });
+
+    if (!user) {
+      return null;
+    }
+
+    return user;
   }
 
-  async create(data: any) {
-    const user = await this.prisma.user.create({ data });
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+  /**
+   * Создание нового пользователя
+   */
+  async create(createUserDto: CreateUserDto) {
+    const user = await this.prisma.user.create({ 
+      data: createUserDto,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return user;
   }
   
-  async createClient(data: any) {
-    return this.prisma.client.create({ data });
+  /**
+   * Создание клиента для пользователя
+   */
+  async createClient(userId: string, clientData: { name: string }) {
+    // Проверяем существование пользователя
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException(`Пользователь с ID ${userId} не найден`);
+    }
+
+    // Создаем клиента
+    await this.prisma.client.create({ 
+      data: {
+        ...clientData,
+        userId,
+      },
+    });
+
+    // Возвращаем обновленные данные пользователя
+    return this.findOne(userId);
   }
 
-  async update(id: string, data: any) {
+  /**
+   * Обновление пользователя
+   */
+  async update(id: string, updateUserDto: UpdateUserDto) {
+    // Проверяем существование пользователя
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException(`Пользователь с ID ${id} не найден`);
+    }
+
     const user = await this.prisma.user.update({
       where: { id },
-      data,
+      data: updateUserDto,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+
+    return user;
   }
 
+  /**
+   * Удаление пользователя
+   */
   async remove(id: string) {
-    const user = await this.prisma.user.delete({
+    // Проверяем существование пользователя
+    const existingUser = await this.prisma.user.findUnique({
       where: { id },
     });
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+
+    if (!existingUser) {
+      throw new NotFoundException(`Пользователь с ID ${id} не найден`);
+    }
+
+    const user = await this.prisma.user.delete({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return user;
   }
 
+  /**
+   * Получение всех пользователей
+   */
   async findAll() {
-    return this.prisma.user.findMany({
+    const users = await this.prisma.user.findMany({
       select: {
         id: true,
         email: true,
@@ -63,5 +156,7 @@ export class UsersService {
         client: true,
       },
     });
+
+    return users;
   }
 } 

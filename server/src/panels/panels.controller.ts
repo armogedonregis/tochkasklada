@@ -1,59 +1,80 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Body, 
+  Patch, 
+  Param, 
+  Delete, 
+  UseGuards, 
+  HttpCode, 
+  HttpStatus,
+  ParseUUIDPipe,
+  Query
+} from '@nestjs/common';
 import { PanelsService } from './panels.service';
-import { Panel } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { PanelWithRelays } from './dto/panel.types';
+import { CreatePanelDto, UpdatePanelDto, FindPanelsDto } from './dto';
+import { UserRole } from '@prisma/client';
 
-@Controller('panels')
+@Controller('admin/panels')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles(UserRole.ADMIN)
 export class PanelsController {
   constructor(private readonly panelsService: PanelsService) {}
 
-  @Post()
-  create(@Body() createPanelDto: {
-    name: string;
-    ipAddress: string;
-    port: number;
-    login: string;
-    password: string;
-  }): Promise<Panel> {
-    return this.panelsService.create(createPanelDto);
-  }
-
+  /**
+   * Поиск панелей с пагинацией и фильтрацией
+   */
   @Get()
-  findAll(): Promise<PanelWithRelays[]> {
-    return this.panelsService.findAll();
+  findPanels(@Query() query: FindPanelsDto) {
+    return this.panelsService.findPanels(query);
   }
 
+  /**
+   * Получение панели по ID с ее реле
+   */
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<PanelWithRelays> {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.panelsService.findOne(id);
   }
 
+  /**
+   * Создание новой панели с реле
+   */
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  create(@Body() createPanelDto: CreatePanelDto) {
+    return this.panelsService.create(createPanelDto);
+  }
+
+  /**
+   * Обновление панели
+   */
   @Patch(':id')
   update(
-    @Param('id') id: string,
-    @Body() updatePanelDto: Partial<{
-      name: string;
-      ipAddress: string;
-      port: number;
-      login: string;
-      password: string;
-    }>,
-  ): Promise<Panel> {
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updatePanelDto: UpdatePanelDto
+  ) {
     return this.panelsService.update(id, updatePanelDto);
   }
 
+  /**
+   * Удаление панели
+   */
   @Delete(':id')
-  remove(@Param('id') id: string): Promise<void> {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.panelsService.remove(id);
   }
 
+  /**
+   * Проверка соединения с панелью
+   */
   @Post(':id/check-connection')
-  checkConnection(@Param('id') id: string): Promise<boolean> {
+  checkConnection(@Param('id', ParseUUIDPipe) id: string) {
     return this.panelsService.checkConnection(id);
   }
 } 

@@ -6,123 +6,127 @@ import {
   Param, 
   Delete, 
   UseGuards,
-  Patch 
+  Patch,
+  HttpCode,
+  HttpStatus,
+  Query,
+  ParseUUIDPipe
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-
-// DTO для формы лендинга
-class LandingFormDto {
-  name: string;
-  email: string;
-  phone: string;
-}
-
-// DTO для добавления телефона
-class AddPhoneDto {
-  phone: string;
-}
-
-// DTO для создания клиента админом
-class CreateClientDto {
-  name: string;
-  email: string;
-  password?: string;
-  phones?: string[];
-}
-
-// DTO для обновления клиента
-class UpdateClientDto {
-  name?: string;
-  email?: string;
-  phones?: string[];
-}
+import { 
+  AddPhoneDto, 
+  CreateClientDto, 
+  FindClientsDto,
+  LandingFormDto, 
+  UpdateClientDto 
+} from './dto';
 
 @Controller('clients')
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
-  // Публичный эндпоинт для формы с лендинга
+  /**
+   * Публичный эндпоинт для формы с лендинга
+   */
   @Post('landing')
   async createFromLanding(@Body() formData: LandingFormDto) {
     return this.clientsService.createFromLanding(formData);
   }
 
-  // Эндпоинт для поиска клиента по телефону
-  @Get('phone/:phone')
+  /**
+   * Поиск клиентов с возможностью фильтрации и пагинации
+   */
   @UseGuards(JwtAuthGuard)
-  async findByPhone(@Param('phone') phone: string) {
-    return this.clientsService.findByPhone(phone);
+  @Roles('ADMIN')
+  @Get('search')
+  async search(@Query() query: FindClientsDto) {
+    return this.clientsService.findClients(query);
   }
 
-  // Эндпоинт для поиска клиента по email
-  @Get('email/:email')
-  @UseGuards(JwtAuthGuard)
-  async findByEmail(@Param('email') email: string) {
-    return this.clientsService.findByEmail(email);
-  }
-
-  // Добавление телефона клиенту
+  /**
+   * Добавление телефона клиенту
+   * @returns Созданная запись телефона для RTK Query
+   */
   @Post(':id/phones')
   @UseGuards(JwtAuthGuard)
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.CREATED)
   async addPhone(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() addPhoneDto: AddPhoneDto
   ) {
-    return this.clientsService.addPhone(
+    return await this.clientsService.addPhone(
       id, 
       addPhoneDto.phone
     );
   }
 
-  // Удаление телефона
+  /**
+   * Удаление телефона клиента
+   * @returns ID удаленного телефона для RTK Query
+   */
   @Delete('phones/:id')
   @UseGuards(JwtAuthGuard)
-  async removePhone(@Param('id') id: string) {
-    return this.clientsService.removePhone(id);
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async removePhone(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.clientsService.removePhone(id);
   }
 
-  // Получение всех клиентов (для админа)
+  /**
+   * Получение всех клиентов с пагинацией и сортировкой (только для админа)
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Get()
-  findAll() {
-    return this.clientsService.findAll();
+  async findAll(@Query() query: FindClientsDto) {
+    return this.clientsService.findAll(query);
   }
 
-  // Получение клиента по ID
+  /**
+   * Получение клиента по ID
+   */
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.clientsService.findOne(id);
   }
   
-  // Создание нового клиента (для админа)
+  /**
+   * Создание нового клиента (только для админа)
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   async create(@Body() createClientDto: CreateClientDto) {
     return this.clientsService.createByAdmin(createClientDto);
   }
   
-  // Обновление клиента (для админа)
+  /**
+   * Обновление клиента (только для админа)
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch(':id')
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateClientDto: UpdateClientDto
   ) {
     return this.clientsService.update(id, updateClientDto);
   }
   
-  // Удаление клиента (для админа)
+  /**
+   * Удаление клиента (только для админа)
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.clientsService.remove(id);
+  @HttpCode(HttpStatus.OK)
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    await this.clientsService.remove(id);
   }
 } 
