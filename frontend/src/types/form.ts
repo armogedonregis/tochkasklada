@@ -1,7 +1,7 @@
 import { LucideIcon } from 'lucide-react';
 import { Path } from 'react-hook-form';
 
-export type IFormType = 'input' | 'select' | 'title' | 'checkbox';
+export type IFormType = 'input' | 'select' | 'title' | 'checkbox' | 'searchSelect';
 
 export interface SelectOption {
   label: string;
@@ -32,6 +32,16 @@ interface SelectFormArea<T> extends BaseFormArea {
   isSearchable?: boolean;
 }
 
+// Тип для выпадающего списка с поиском и поддержкой RTK Query
+interface SearchSelectFormArea<T> extends BaseFormArea {
+  type: 'searchSelect';
+  fieldName: Path<T>;
+  placeholder?: string;
+  options: SelectOption[];  // Опции для отображения
+  onSearch?: (query: string) => void;  // Функция, которая вызывается при изменении поискового запроса
+  isMulti?: boolean;  // Опция для выбора нескольких значений
+}
+
 // Тип для чекбоксов
 interface CheckboxFormArea<T> extends BaseFormArea {
   type: 'checkbox';
@@ -46,4 +56,9 @@ interface TitleFormArea extends BaseFormArea {
 }
 
 // Объединение всех типов
-export type IForm<T> = InputFormArea<T> | SelectFormArea<T> | CheckboxFormArea<T> | TitleFormArea; 
+export type IForm<T> = 
+  | InputFormArea<T> 
+  | SelectFormArea<T> 
+  | CheckboxFormArea<T> 
+  | TitleFormArea
+  | SearchSelectFormArea<T>; 

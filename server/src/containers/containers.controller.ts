@@ -19,23 +19,6 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 /**
- * Публичный контроллер для методов, доступных всем авторизованным пользователям
- */
-@Controller('containers')
-@UseGuards(JwtAuthGuard)
-export class ContainersPublicController {
-  constructor(private readonly containersService: ContainersService) {}
-
-  /**
-   * Получение всех контейнеров с фильтрацией (для клиента)
-   */
-  @Get()
-  async findAll(@Query() query: FindContainersDto) {
-    return await this.containersService.findContainers(query);
-  }
-}
-
-/**
  * Контроллер только для администраторов
  * Управление контейнерами доступно только через административный интерфейс
  */

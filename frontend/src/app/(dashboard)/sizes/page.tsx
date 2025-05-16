@@ -1,158 +1,214 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   useGetSizesQuery, 
   useDeleteSizeMutation,
-  Size
+  useAddSizeMutation,
+  useUpdateSizeMutation
 } from '@/services/sizesApi';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Search } from 'lucide-react';
 import { BaseTable } from '@/components/table/BaseTable';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'react-toastify';
-import { SizeModal } from '@/components/modals/SizeModal';
+import { Size, CreateSizeDto, SizeSortField } from '@/types/size.types';
+import * as yup from 'yup';
+import { useTableControls } from '@/hooks/useTableControls';
+import { useFormModal } from '@/hooks/useFormModal';
+import { SortDirection } from '@/types/common.types';
 
-export default function Sizes() {
-  const { data: sizes, isLoading, isError, error } = useGetSizesQuery();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSize, setEditingSize] = useState<Size | null>(null);
+// Схема валидации для размеров
+const sizeValidationSchema = yup.object({
+  name: yup.string().required('Название обязательно'),
+  short_name: yup.string().required('Короткое название обязательно'),
+  size: yup.string().required('Размер обязателен'),
+  area: yup.string().required('Площадь обязательна')
+});
+
+// Тип для полей формы
+interface SizeFormFields {
+  name: string;
+  short_name: string;
+  size: string;
+  area: string;
+}
+
+export default function SizesPage() {
+  // Используем хук для управления состоянием таблицы
+  const tableControls = useTableControls<SizeSortField>({
+    defaultPageSize: 10,
+    searchDebounceMs: 300
+  });
   
-  // Мутации для операций удаления
+  // Получение данных о размерах с учетом параметров
+  const { data, error, isLoading, refetch } = useGetSizesQuery({
+    page: tableControls.queryParams.page,
+    limit: tableControls.queryParams.limit,
+    search: tableControls.queryParams.search,
+    sortBy: tableControls.queryParams.sortBy,
+    sortDirection: tableControls.queryParams.sortDirection as SortDirection
+  });
+  
+  // Данные размеров теперь находятся в свойстве data пагинированного ответа
+  const sizes = data?.data || [];
+  // Используем мета-информацию из ответа
+  const totalCount = data?.meta?.totalCount || 0;
+  const pageCount = data?.meta?.totalPages || 1;
+  
+  // Мутации для операций с размерами
   const [deleteSize] = useDeleteSizeMutation();
-  
-  // Фильтрация размеров по поисковому запросу
-  const filteredSizes = sizes ? sizes.filter(size => 
-    size.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    size.size.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    size.area.toLowerCase().includes(searchQuery.toLowerCase())
-  ) : [];
+  const [addSize] = useAddSizeMutation();
+  const [updateSize] = useUpdateSizeMutation();
 
-  // Обработчики для модального окна
-  const handleOpenModal = (size?: Size) => {
-    setEditingSize(size || null);
-    setIsModalOpen(true);
-  };
+  // Хук для управления модальным окном
+  const modal = useFormModal<SizeFormFields, Size>({
+    onSubmit: async (values) => {
+      if (modal.editItem) {
+        await updateSize({ 
+          id: modal.editItem.id,
+          ...values
+        }).unwrap();
+        toast.success('Размер успешно обновлен');
+      } else {
+        await addSize(values).unwrap();
+        toast.success('Размер успешно добавлен');
+      }
+    },
+    onError: () => {
+      toast.error('Ошибка при сохранении размера');
+    }
+  });
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingSize(null);
-  };
-
-  // Обработчики действий для таблицы
-  const handleEdit = (size: Size) => {
-    handleOpenModal(size);
-  };
-
-  const handleDelete = async (id: string) => {
+  // Обработчик удаления
+  const handleDelete = async (size: Size) => {
     if (window.confirm('Вы уверены, что хотите удалить этот размер?')) {
       try {
-        await deleteSize(id).unwrap();
-        toast.success('Размер удален');
+        await deleteSize(size.id).unwrap();
+        toast.success('Размер успешно удален');
       } catch (error) {
         toast.error('Ошибка при удалении размера');
-        console.error('Ошибка при удалении размера:', error);
       }
     }
   };
 
-  const handleDeleteAdapter = (size: Size) => {
-    handleDelete(size.id);
-  };
-
-  // Определение колонок для таблицы
+  // Определение колонок таблицы
   const columns: ColumnDef<Size>[] = [
     {
       accessorKey: 'name',
       header: 'Название',
-      cell: ({ row }) => {
-        return <div className="py-2 px-1">{row.original.name}</div>;
-      },
+    },
+    {
+      accessorKey: 'short_name',
+      header: 'Короткое название',
     },
     {
       accessorKey: 'size',
       header: 'Размер',
-      cell: ({ row }) => {
-        return <div className="py-2 px-1">{row.original.size}</div>;
-      },
     },
     {
       accessorKey: 'area',
       header: 'Площадь',
-      cell: ({ row }) => {
-        return <div className="py-2 px-1">{row.original.area}</div>;
-      },
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Дата создания',
+      cell: ({ row }) => row.original.createdAt 
+        ? new Date(row.original.createdAt).toLocaleDateString('ru-RU') 
+        : '-',
+    },
+    {
+      accessorKey: 'updatedAt',
+      header: 'Дата обновления',
+      cell: ({ row }) => row.original.updatedAt 
+        ? new Date(row.original.updatedAt).toLocaleDateString('ru-RU') 
+        : '-',
     },
   ];
 
+  // Поля формы для модального окна
+  const modalFields = [
+    {
+      type: 'input' as const,
+      fieldName: 'name' as const,
+      label: 'Название',
+      placeholder: 'Например: Большая'
+    },
+    {
+      type: 'input' as const,
+      fieldName: 'short_name' as const,
+      label: 'Короткое название',
+      placeholder: 'Например: L'
+    },
+    {
+      type: 'input' as const,
+      fieldName: 'size' as const,
+      label: 'Размер',
+      placeholder: 'Например: 2x3 м'
+    },
+    {
+      type: 'input' as const,
+      fieldName: 'area' as const,
+      label: 'Площадь',
+      placeholder: 'Например: 6 м²'
+    }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Размеры ячеек</h1>
-        <Button onClick={() => handleOpenModal()} className="flex items-center">
-          <Plus className="mr-2 h-4 w-4" />
+    <>
+      {/* Панель добавления */}
+      <div className="flex justify-between items-center mb-4 px-4 pt-4">
+        <Button onClick={modal.openCreate}>
           Добавить размер
         </Button>
       </div>
 
-      <div className="mb-6">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <Input
-            type="text"
-            placeholder="Поиск размеров..."
-            className="pl-10 py-2"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+      {/* Таблица */}
+      <div className="rounded-md border">
+        <BaseTable
+          data={sizes}
+          columns={columns}
+          searchColumn="name"
+          searchPlaceholder="Поиск по названию размера..."
+          onEdit={modal.openEdit}
+          onDelete={handleDelete}
+          tableId="sizes-table"
+          totalCount={totalCount}
+          pageCount={pageCount}
+          onPaginationChange={tableControls.handlePaginationChange}
+          onSortingChange={tableControls.handleSortingChange}
+          onSearchChange={tableControls.handleSearchChange}
+          isLoading={isLoading}
+          error={error}
+          onRetry={refetch}
+          sortableFields={SizeSortField}
+          pagination={tableControls.pagination}
+          sorting={tableControls.sorting}
+          persistSettings={true}
+        />
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-8">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 dark:border-blue-400 border-r-transparent"></div>
-          <p className="mt-4 text-gray-700 dark:text-gray-300">Загрузка размеров...</p>
-        </div>
-      ) : isError ? (
-        <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-md border border-red-200 dark:border-red-800">
-          <p className="text-red-700 dark:text-red-300">
-            Ошибка при загрузке данных: {(error as any)?.data?.message || 'Неизвестная ошибка'}
-          </p>
-        </div>
-      ) : sizes && sizes.length > 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-          <BaseTable
-            data={filteredSizes}
-            columns={columns}
-            pageSize={10}
-            enableColumnReordering={true}
-            persistColumnOrder={true}
-            tableId="sizes-table"
-            enableActions={true}
-            onEdit={handleEdit}
-            onDelete={handleDeleteAdapter}
-          />
-        </div>
-      ) : (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-          <p className="text-lg text-gray-600 dark:text-gray-300">Нет доступных размеров</p>
-          <Button onClick={() => handleOpenModal()} className="mt-4">
-            Добавить первый размер
-          </Button>
-        </div>
-      )}
-
-      {/* Модальное окно для создания/редактирования размера */}
-      <SizeModal 
-        isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
-        size={editingSize}
-        title={editingSize ? 'Редактировать размер' : 'Добавить новый размер'}
+      {/* Модальное окно */}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title={modal.editItem ? 'Редактировать размер' : 'Добавить размер'}
+        fields={modalFields}
+        validationSchema={sizeValidationSchema}
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        defaultValues={modal.editItem ? {
+          name: modal.editItem.name,
+          short_name: modal.editItem.short_name,
+          size: modal.editItem.size,
+          area: modal.editItem.area
+        } : {
+          name: '',
+          short_name: '',
+          size: '',
+          area: ''
+        }}
       />
-    </div>
+    </>
   );
 } 

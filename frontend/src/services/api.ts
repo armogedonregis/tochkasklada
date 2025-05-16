@@ -9,7 +9,7 @@ const getToken = (): string | null => {
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: '/api',
+    baseUrl: 'http://localhost:5000/api',
     credentials: 'include',
     prepareHeaders: (headers, { getState, type }) => {
       const token = getToken();
@@ -34,6 +34,7 @@ export const api = createApi({
     'Panels',
     'Relays',
     'RelayAccess',
+    'CellRentals',
   ],
   endpoints: () => ({}),
 }); 

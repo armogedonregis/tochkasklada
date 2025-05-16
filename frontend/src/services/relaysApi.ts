@@ -1,89 +1,73 @@
 import { api } from './api';
-import { Relay, CreateRelayRequest, UpdateRelayRequest } from '../types/relay.types';
+import { 
+  Relay, 
+  RelayType, 
+  CreateRelayDto, 
+  UpdateRelayDto, 
+  ToggleRelayDto 
+} from '../types/relay.types';
 
 export const relaysApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Получение списка реле
-    getRelays: builder.query<Relay[], void>({
-      query: () => ({
-        url: '/relays',
-        method: 'GET',
-      }),
-      providesTags: (result) => 
-        result
-          ? [
-              ...result.map(({ id }) => ({ type: 'Relays' as const, id })),
-              { type: 'Relays' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Relays' as const, id: 'LIST' }],
-    }),
-    
-    // Получение реле по ID
-    getRelayById: builder.query<Relay, string>({
-      query: (id) => ({
-        url: `/relays/${id}`,
-        method: 'GET',
-      }),
+    getRelay: builder.query<Relay, string>({
+      query: (id) => `/admin/relays/${id}`,
       providesTags: (result, error, id) => [{ type: 'Relays', id }],
     }),
     
-    // Создание реле
-    createRelay: builder.mutation<Relay, CreateRelayRequest>({
+    createRelay: builder.mutation<Relay, CreateRelayDto>({
       query: (relay) => ({
-        url: '/relays',
+        url: '/admin/relays',
         method: 'POST',
         body: relay,
       }),
-      invalidatesTags: [{ type: 'Relays' as const, id: 'LIST' }],
+      invalidatesTags: [{ type: 'Relays', id: 'LIST' }, { type: 'Panels', id: 'LIST' }],
     }),
 
-    // Обновление реле
-    updateRelay: builder.mutation<Relay, UpdateRelayRequest>({
+    updateRelay: builder.mutation<Relay, UpdateRelayDto & { id: string }>({
       query: ({ id, ...data }) => ({
-        url: `/relays/${id}`,
+        url: `/admin/relays/${id}`,
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Relays', id }],
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'Relays', id },
+        { type: 'Relays', id: 'LIST' }
+      ],
     }),
     
-    // Удаление реле
     deleteRelay: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/relays/${id}`,
+        url: `/admin/relays/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, id) => [
-        { type: 'Relays' as const, id },
-        { type: 'Relays' as const, id: 'LIST' },
-        'RelayAccess' as const
+        { type: 'Relays', id },
+        { type: 'Relays', id: 'LIST' },
+        { type: 'Panels', id: 'LIST' },
+        'RelayAccess'
       ],
     }),
 
-    // Управление реле (включение/выключение)
     toggleRelay: builder.mutation<void, { id: string; state: boolean }>({
       query: ({ id, state }) => ({
-        url: `/relays/${id}/toggle`,
+        url: `/admin/relays/${id}/toggle`,
         method: 'POST',
         body: { state },
       }),
       invalidatesTags: (result, error, { id }) => [{ type: 'Relays', id }],
     }),
 
-    // Отправка импульса на реле
     pulseRelay: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/relays/${id}/pulse`,
+        url: `/admin/relays/${id}/pulse`,
         method: 'POST',
       }),
     }),
   }),
-  overrideExisting: false,
 });
 
 export const {
-  useGetRelaysQuery,
-  useGetRelayByIdQuery,
+  useGetRelayQuery,
   useCreateRelayMutation,
   useUpdateRelayMutation,
   useDeleteRelayMutation,

@@ -1,4 +1,4 @@
-import { Relay } from './relay.types';
+import { FilterParams } from './common.types';
 
 export interface Panel {
   id: string;
@@ -7,13 +7,11 @@ export interface Panel {
   port: number;
   login: string;
   password: string;
-  isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  relays?: Relay[];
 }
 
-export interface CreatePanelRequest {
+export interface CreatePanelDto {
   name: string;
   ipAddress: string;
   port: number;
@@ -21,12 +19,12 @@ export interface CreatePanelRequest {
   password: string;
 }
 
-export interface UpdatePanelRequest {
-  id: string;
+export interface UpdatePanelDto {
   name?: string;
   ipAddress?: string;
   port?: number;
   login?: string;
   password?: string;
-  isActive?: boolean;
-} 
+}
+
+export interface PanelFilters extends FilterParams {} 

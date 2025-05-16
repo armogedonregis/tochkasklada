@@ -100,7 +100,6 @@ export class ContainersService {
             city: true
           }
         },
-        cells: true
       },
     });
 

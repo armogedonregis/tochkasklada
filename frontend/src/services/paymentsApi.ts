@@ -1,53 +1,34 @@
 import { api } from './api';
-
-export interface Payment {
-  id: string;
-  amount: number; // Сумма в рублях
-  orderId: string;
-  description?: string;
-  userId: string;
-  status: boolean;
-  tinkoffPaymentId?: string;
-  paymentUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-  user?: {
-    id: string;
-    email: string;
-  };
-}
-
-export interface CreatePaymentRequest {
-  amount: number; // Сумма в рублях
-  description?: string;
-}
-
-export interface AdminCreatePaymentRequest {
-  userId: string;
-  amount: number; // Сумма в рублях
-  description?: string;
-  status?: boolean;
-  tinkoffPaymentId?: string;
-  paymentUrl?: string;
-}
-
-export interface UpdatePaymentRequest {
-  id: string;
-  amount?: number; // Сумма в рублях
-  description?: string;
-  status?: boolean;
-  tinkoffPaymentId?: string;
-  paymentUrl?: string;
-}
+import { 
+  Payment, 
+  CreatePaymentDto, 
+  CreateAdminPaymentDto, 
+  UpdatePaymentDto,
+  PaymentFilters,
+  SetPaymentStatusDto,
+  PaginatedPaymentResponse
+} from '../types/payment.types';
 
 export const paymentsApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Получение всех платежей (для админа)
-    getAllPayments: builder.query<Payment[], void>({
-      query: () => ({
+    // Получение всех платежей (для админа) с фильтрацией
+    getAllPayments: builder.query<PaginatedPaymentResponse, PaymentFilters | void>({
+      query: (params) => ({
         url: '/payments',
-        method: 'GET',
+        params: params || undefined
       }),
+      providesTags: (result) => 
+        result 
+          ? [
+              ...result.data.map(({ id }) => ({ type: 'Payments' as const, id })),
+              { type: 'Payments', id: 'LIST' },
+            ]
+          : [{ type: 'Payments', id: 'LIST' }],
+    }),
+
+    // Получение платежей текущего пользователя
+    getUserPayments: builder.query<Payment[], void>({
+      query: () => '/payments/my',
       providesTags: (result) => 
         result 
           ? [
@@ -59,43 +40,40 @@ export const paymentsApi = api.injectEndpoints({
     
     // Получение платежа по orderId
     getPaymentByOrderId: builder.query<Payment, string>({
-      query: (orderId) => ({
-        url: `/payments/${orderId}`,
-        method: 'GET',
-      }),
+      query: (orderId) => `/payments/${orderId}`,
       providesTags: (result, error, orderId) => [{ type: 'Payments', id: orderId }],
     }),
     
     // Создание нового платежа
-    createPayment: builder.mutation<Payment, CreatePaymentRequest>({
+    createPayment: builder.mutation<Payment, CreatePaymentDto>({
       query: (data) => ({
         url: '/payments',
         method: 'POST',
-        body: data, // Не конвертируем сумму, отправляем как есть
+        body: data,
       }),
-      invalidatesTags: ['Payments'],
+      invalidatesTags: [{ type: 'Payments', id: 'LIST' }],
     }),
     
     // Администратор создает платеж
-    adminCreatePayment: builder.mutation<Payment, AdminCreatePaymentRequest>({
+    adminCreatePayment: builder.mutation<Payment, CreateAdminPaymentDto>({
       query: (data) => ({
         url: '/payments/admin',
         method: 'POST',
-        body: data, // Не конвертируем сумму, отправляем как есть
+        body: data,
       }),
-      invalidatesTags: ['Payments'],
+      invalidatesTags: [{ type: 'Payments', id: 'LIST' }],
     }),
     
     // Обновление платежа администратором
-    updatePayment: builder.mutation<Payment, UpdatePaymentRequest>({
+    updatePayment: builder.mutation<Payment, UpdatePaymentDto & { id: string }>({
       query: ({ id, ...data }) => ({
         url: `/payments/${id}`,
         method: 'PATCH',
-        body: data, // Не конвертируем сумму, отправляем как есть
+        body: data,
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: 'Payments', id },
-        'Payments',
+        { type: 'Payments', id: 'LIST' },
       ],
     }),
     
@@ -103,17 +81,17 @@ export const paymentsApi = api.injectEndpoints({
     setPaymentStatus: builder.mutation<Payment, { id: string; status: boolean }>({
       query: ({ id, status }) => ({
         url: `/payments/${id}/status`,
-        method: 'PUT',
+        method: 'PATCH',
         body: { status },
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: 'Payments', id },
-        'Payments',
+        { type: 'Payments', id: 'LIST' },
       ],
     }),
     
     // Удаление платежа
-    deletePayment: builder.mutation<{ success: boolean; message: string }, string>({
+    deletePayment: builder.mutation<void, string>({
       query: (id) => ({
         url: `/payments/${id}`,
         method: 'DELETE',
@@ -126,10 +104,7 @@ export const paymentsApi = api.injectEndpoints({
     
     // Получение ссылки на оплату для существующего платежа
     getPaymentLink: builder.query<{ success: boolean; url?: string; message?: string }, string>({
-      query: (orderId) => ({
-        url: `/payments/payment-link/${orderId}`,
-        method: 'GET',
-      }),
+      query: (orderId) => `/payments/payment-link/${orderId}`,
     }),
   }),
   overrideExisting: false,
@@ -137,6 +112,7 @@ export const paymentsApi = api.injectEndpoints({
 
 export const {
   useGetAllPaymentsQuery,
+  useGetUserPaymentsQuery,
   useGetPaymentByOrderIdQuery,
   useCreatePaymentMutation,
   useAdminCreatePaymentMutation,

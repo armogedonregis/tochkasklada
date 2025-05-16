@@ -1,13 +1,17 @@
 import { api } from './api';
-import { Panel, CreatePanelRequest, UpdatePanelRequest } from '../types/panel.types';
+import { 
+  Panel, 
+  CreatePanelDto, 
+  UpdatePanelDto, 
+  PanelFilters 
+} from '../types/panel.types';
 
 export const panelsApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Получение списка панелей
-    getPanels: builder.query<Panel[], void>({
-      query: () => ({
-        url: '/panels',
-        method: 'GET',
+    getPanels: builder.query<Panel[], PanelFilters | void>({
+      query: (params) => ({
+        url: '/admin/panels',
+        params: params || undefined
       }),
       providesTags: (result) => 
         result
@@ -18,42 +22,35 @@ export const panelsApi = api.injectEndpoints({
           : [{ type: 'Panels' as const, id: 'LIST' }],
     }),
     
-    // Получение панели по ID
-    getPanelById: builder.query<Panel, string>({
-      query: (id) => ({
-        url: `/panels/${id}`,
-        method: 'GET',
-      }),
+    getPanel: builder.query<Panel, string>({
+      query: (id) => `/admin/panels/${id}`,
       providesTags: (result, error, id) => [{ type: 'Panels', id }],
     }),
     
-    // Создание панели
-    createPanel: builder.mutation<Panel, CreatePanelRequest>({
+    createPanel: builder.mutation<Panel, CreatePanelDto>({
       query: (panel) => ({
-        url: '/panels',
+        url: '/admin/panels',
         method: 'POST',
         body: panel,
       }),
-      invalidatesTags: ['Panels'],
+      invalidatesTags: [{ type: 'Panels', id: 'LIST' }],
     }),
     
-    // Обновление панели
-    updatePanel: builder.mutation<Panel, UpdatePanelRequest>({
+    updatePanel: builder.mutation<Panel, UpdatePanelDto & { id: string }>({
       query: ({ id, ...patch }) => ({
-        url: `/panels/${id}`,
+        url: `/admin/panels/${id}`,
         method: 'PATCH',
         body: patch,
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: 'Panels', id },
-        'Panels',
+        { type: 'Panels', id: 'LIST' },
       ],
     }),
     
-    // Удаление панели
     deletePanel: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/panels/${id}`,
+        url: `/admin/panels/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, id) => [
@@ -63,22 +60,20 @@ export const panelsApi = api.injectEndpoints({
       ],
     }),
 
-    // Проверка соединения с панелью
-    checkPanelConnectionManual: builder.mutation<boolean, string>({
+    checkPanelConnection: builder.mutation<boolean, string>({
       query: (id) => ({
-        url: `/panels/${id}/check-connection`,
+        url: `/admin/panels/${id}/check-connection`,
         method: 'POST',
       }),
     }),
   }),
-  overrideExisting: false,
 });
 
 export const {
   useGetPanelsQuery,
-  useGetPanelByIdQuery,
+  useGetPanelQuery,
   useCreatePanelMutation,
   useUpdatePanelMutation,
   useDeletePanelMutation,
-  useCheckPanelConnectionManualMutation,
+  useCheckPanelConnectionMutation,
 } = panelsApi; 

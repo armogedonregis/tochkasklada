@@ -37,16 +37,6 @@ export class ClientsController {
   }
 
   /**
-   * Поиск клиентов с возможностью фильтрации и пагинации
-   */
-  @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN')
-  @Get('search')
-  async search(@Query() query: FindClientsDto) {
-    return this.clientsService.findClients(query);
-  }
-
-  /**
    * Добавление телефона клиенту
    * @returns Созданная запись телефона для RTK Query
    */

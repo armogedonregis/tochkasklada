@@ -6,7 +6,7 @@ import {
   useDeletePanelMutation,
   useCreatePanelMutation,
   useUpdatePanelMutation,
-  useCheckPanelConnectionManualMutation
+  // useCheckPanelConnectionManualMutation
 } from '@/services/panelsApi';
 import { 
   useToggleRelayMutation, 
@@ -23,7 +23,7 @@ import { Plus, Grid, Power, Loader2, Trash2, RefreshCw, Edit, MoreHorizontal, Ch
 import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'react-toastify';
-import { PanelModal } from '@/components/modals/PanelModal';
+// import { PanelModal } from '@/components/modals/PanelModal';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +52,7 @@ function ConnectionCell({
   panelId: string;
   onCheckConnection: (id: string) => void 
 }) {
-  const [checkStatus, { data: isConnected, isLoading }] = useCheckPanelConnectionManualMutation();
+  // const [checkStatus, { data: isConnected, isLoading }] = useCheckPanelConnectionManualMutation();
 
   const handleCheck = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -62,11 +62,11 @@ function ConnectionCell({
   return (
     <div className="flex items-center space-x-2">
       <Switch
-        checked={!!isConnected}
+        // checked={!!isConnected}
         disabled
       />
       <div className="flex items-center space-x-1">
-        <Power className={`h-4 w-4 ${isConnected ? 'text-green-500' : 'text-gray-400'}`} />
+        {/* <Power className={`h-4 w-4 ${isConnected ? 'text-green-500' : 'text-gray-400'}`} /> */}
         <Button 
           variant="ghost" 
           size="icon" 
@@ -74,7 +74,7 @@ function ConnectionCell({
           onClick={handleCheck}
           title="Проверить соединение"
         >
-          <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+          {/* <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} /> */}
         </Button>
       </div>
     </div>
@@ -102,7 +102,7 @@ export default function PanelsPage() {
   const [createRelay] = useCreateRelayMutation();
   const [deleteRelay] = useDeleteRelayMutation();
   const [updateRelay] = useUpdateRelayMutation();
-  const [checkConnection, { data: connectionStatus, isLoading: isConnectionChecking }] = useCheckPanelConnectionManualMutation();
+  // const [checkConnection, { data: connectionStatus, isLoading: isConnectionChecking }] = useCheckPanelConnectionManualMutation();
 
   // Обработчики действий
   const handleEditPanel = (panel: Panel) => {
@@ -251,8 +251,8 @@ export default function PanelsPage() {
   // Проверка соединения для конкретной панели
   const handleCheckConnection = async (panelId: string) => {
     try {
-      const isConnected = await checkConnection(panelId).unwrap();
-      toast.info(isConnected ? 'Соединение установлено' : 'Соединение не установлено');
+      // const isConnected = await checkConnection(panelId).unwrap();
+      // toast.info(isConnected ? 'Соединение установлено' : 'Соединение не установлено');
     } catch (error) {
       toast.error('Ошибка при проверке соединения');
       console.error('Ошибка проверки соединения:', error);
@@ -511,25 +511,7 @@ export default function PanelsPage() {
                       <CardContent className="p-3 pt-2">
                         <div className="flex flex-col items-center space-y-2">
                           <div className="flex items-center space-x-2 w-full justify-center">
-                            {relay.type === 'SECURITY' ? (
-                              // Для дверей (SECURITY) используем pulse (импульс)
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePulseRelay(relay.id)}
-                                className="px-3"
-                              >
-                                <Power className="h-4 w-4 mr-1" />
-                                Открыть
-                              </Button>
-                            ) : (
-                              // Для ворот (GATE) и света (LIGHT) используем toggle (переключение)
-                              <Switch
-                                checked={relay.isActive}
-                                onCheckedChange={() => handleToggleRelay(relay.id, relay.isActive || false)}
-                                title={relay.type === 'GATE' ? 'Открыть/Закрыть ворота' : 'Включить/Выключить свет'}
-                              />
-                            )}
+                            
                           </div>
                           
                           {expandedView && (
@@ -618,7 +600,7 @@ export default function PanelsPage() {
         </div>
       </div>
 
-      <BaseTable
+      {/* <BaseTable
         data={panels}
         columns={columns}
         searchPlaceholder="Поиск по названию или IP адресу..."
@@ -629,15 +611,15 @@ export default function PanelsPage() {
         renderRowSubComponent={RelayList}
         tableId="panels-table"
         persistColumnOrder={true}
-      />
+      /> */}
 
-      <PanelModal
+      {/* <PanelModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSavePanel}
         panel={editingPanel}
         title={editingPanel ? 'Редактировать панель' : 'Добавить панель'}
-      />
+      /> */}
       
       <RelayModal />
     </div>

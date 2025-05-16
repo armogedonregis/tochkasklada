@@ -1,32 +1,89 @@
 'use client';
 
-import { useState } from 'react';
 import { useGetCitiesQuery, useDeleteCityMutation, useAddCityMutation, useUpdateCityMutation } from '@/services/citiesApi';
 import { Button } from '@/components/ui/button';
-import { BaseTable } from '@/components/table/BaseTable';
-import { BaseLocationModal } from '@/components/modals/BaseLocationModal';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { City } from '@/services/citiesApi';
-import { Pencil, Trash2 } from 'lucide-react';
+import { City, CreateCityDto } from '@/types/city.types';
+import { CitySortField } from '@/types/city.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
+import { BaseTable } from '@/components/table/BaseTable';
+import { useTableControls } from '@/hooks/useTableControls';
+import { useFormModal } from '@/hooks/useFormModal';
 
+// Схема валидации для городов
 const cityValidationSchema = yup.object({
   title: yup.string().required('Название города обязательно'),
   short_name: yup.string().required('Короткое название обязательно')
 });
 
 export default function CitiesPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCity, setEditingCity] = useState<City | null>(null);
-  
-  const { data: cities = [], error, isLoading } = useGetCitiesQuery();
+  // Используем наш новый хук для управления состоянием таблицы
+  const tableControls = useTableControls<CitySortField>({
+    defaultPageSize: 10
+  });
+
+  // Получение данных с учетом пагинации, сортировки и поиска
+  const { data, isLoading, error, refetch } = useGetCitiesQuery(
+    tableControls.queryParams
+  );
+
   const [deleteCity] = useDeleteCityMutation();
   const [addCity] = useAddCityMutation();
   const [updateCity] = useUpdateCityMutation();
 
-  // Определение колонок таблицы
+  // Хук для управления модальным окном
+  const modal = useFormModal<CreateCityDto, City>({
+    onSubmit: async (values) => {
+      if (modal.editItem) {
+        await updateCity({ id: modal.editItem.id, ...values }).unwrap();
+        toast.success('Город успешно обновлен');
+      } else {
+        await addCity(values).unwrap();
+        toast.success('Город успешно добавлен');
+      }
+    },
+    onError: () => {
+      toast.error('Ошибка при сохранении города');
+    }
+  });
+
+  const handleDelete = async (city: City) => {
+    try {
+      await deleteCity(city.id).unwrap();
+      toast.success('Город успешно удален');
+    } catch (error) {
+      toast.error('Ошибка при удалении города');
+    }
+  };
+
+  const handleDeleteConfirm = (city: City) => {
+    if (window.confirm('Вы уверены, что хотите удалить этот город?')) {
+      handleDelete(city);
+    }
+  };
+
+  const modalFields = [
+    {
+      type: 'input' as const,
+      fieldName: 'title' as const,
+      label: 'Название города',
+      placeholder: 'Введите название города',
+    },
+    {
+      type: 'input' as const,
+      fieldName: 'short_name' as const,
+      label: 'Короткое название',
+      placeholder: 'Введите короткое название',
+    },
+  ];
+
   const columns: ColumnDef<City>[] = [
+    {
+      accessorKey: 'id',
+      header: 'ID',
+    },
     {
       accessorKey: 'title',
       header: 'Название',
@@ -35,77 +92,17 @@ export default function CitiesPage() {
       accessorKey: 'short_name',
       header: 'Короткое название',
     },
-  ];
-
-  // Обработчики действий
-  const handleEdit = (city: City) => {
-    setEditingCity(city);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот город?')) {
-      try {
-        await deleteCity(id).unwrap();
-        toast.success('Город успешно удален');
-      } catch (error) {
-        toast.error('Ошибка при удалении города');
-      }
-    }
-  };
-
-  const handleDeleteAdapter = (city: City) => {
-    handleDelete(city.id);
-  };
-
-  const handleSubmit = async (data: { title: string; short_name: string }) => {
-    try {
-      if (editingCity) {
-        await updateCity({ id: editingCity.id, ...data }).unwrap();
-        toast.success('Город успешно обновлен');
-      } else {
-        await addCity(data).unwrap();
-        toast.success('Город успешно добавлен');
-      }
-      setIsModalOpen(false);
-      setEditingCity(null);
-    } catch (error) {
-      toast.error(editingCity ? 'Ошибка при обновлении города' : 'Ошибка при добавлении города');
-    }
-  };
-
-  // Состояния загрузки и ошибки
-  if (error) {
-    return (
-      <div className="py-12 text-center">
-        <h3 className="text-xl text-red-500 mb-2">Ошибка при загрузке данных</h3>
-        <p className="text-gray-500 mb-4">Не удалось загрузить данные с сервера</p>
-        <Button onClick={() => window.location.reload()}>Попробовать снова</Button>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="py-12 text-center">
-        <h3 className="text-xl mb-2">Загрузка данных...</h3>
-        <p className="text-gray-500">Пожалуйста, подождите</p>
-      </div>
-    );
-  }
-
-  const modalFields = [
     {
-      type: 'input' as const,
-      fieldName: 'title' as const,
-      label: 'Название города',
-      placeholder: 'Введите название'
+      accessorKey: 'createdAt',
+      header: 'Дата создания',
+      cell: ({ row }) => new Date(row.original.createdAt!).toLocaleDateString('ru-RU'),
     },
     {
-      type: 'input' as const,
-      fieldName: 'short_name' as const,
-      label: 'Короткое название',
-      placeholder: 'Введите короткое название'
+      accessorKey: 'updatedAt',
+      header: 'Дата обновления',
+      cell: ({ row }) => row.original.updatedAt 
+        ? new Date(row.original.updatedAt).toLocaleDateString('ru-RU') 
+        : '-',
     }
   ];
 
@@ -113,40 +110,45 @@ export default function CitiesPage() {
     <>
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={modal.openCreate}>
           Добавить город
         </Button>
       </div>
 
       {/* Таблица */}
       <BaseTable
-        data={cities}
+        data={data?.data || []}
         columns={columns}
         searchColumn="title"
         searchPlaceholder="Поиск по названию города..."
-        enableActions={true}
-        onEdit={handleEdit}
-        onDelete={handleDeleteAdapter}
+        onEdit={modal.openEdit}
+        onDelete={handleDeleteConfirm}
         tableId="cities-table"
-        enableColumnReordering={true}
-        persistColumnOrder={true}
+        totalCount={data?.meta.totalCount || 0}
+        pageCount={data?.meta.totalPages || 0}
+        onPaginationChange={tableControls.handlePaginationChange}
+        onSortingChange={tableControls.handleSortingChange}
+        onSearchChange={tableControls.handleSearchChange}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
+        sortableFields={CitySortField}
+        pagination={tableControls.pagination}
+        sorting={tableControls.sorting}
       />
 
       {/* Модальное окно */}
-      <BaseLocationModal
-        isOpen={isModalOpen || !!editingCity}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingCity(null);
-        }}
-        title={editingCity ? 'Редактировать город' : 'Добавить город'}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title={modal.editItem ? 'Редактировать город' : 'Добавить город'}
         fields={modalFields}
         validationSchema={cityValidationSchema}
-        onSubmit={handleSubmit}
-        submitText={editingCity ? 'Сохранить' : 'Добавить'}
-        defaultValues={editingCity ? {
-          title: editingCity.title,
-          short_name: editingCity.short_name
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        defaultValues={modal.editItem ? {
+          title: modal.editItem.title,
+          short_name: modal.editItem.short_name
         } : undefined}
       />
     </>

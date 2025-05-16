@@ -1,112 +1,134 @@
 'use client';
 
-import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
+import { useState } from 'react';
 import { 
   useGetAllPaymentsQuery, 
   useAdminCreatePaymentMutation, 
   useUpdatePaymentMutation, 
   useDeletePaymentMutation,
-  useSetPaymentStatusMutation,
-  Payment
+  useSetPaymentStatusMutation
 } from '@/services/paymentsApi';
 import { useGetClientsQuery } from '@/services/clientsApi';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
+import { BaseTable } from '@/components/table/BaseTable';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
+import { ColumnDef } from '@tanstack/react-table';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChevronDown, ChevronRight, User, Check, X } from 'lucide-react';
+import { useTableControls } from '@/hooks/useTableControls';
+import { useFormModal } from '@/hooks/useFormModal';
 import { formatDistance } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { 
-  Plus, 
-  Trash2, 
-  Check, 
-  X, 
-  Edit, 
-  Save, 
-  Loader2, 
-  CreditCard,
-  ChevronDown,
-  ChevronRight,
-  User
-} from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { BaseTable } from "@/components/table/BaseTable";
-import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
-import { PaymentModal } from '@/components/modals/PaymentModal';
-import type { TableMeta } from "@tanstack/react-table";
+import * as yup from 'yup';
+import { Payment, PaymentSortField } from '@/types/payment.types';
+import { SortDirection } from '@/types/common.types';
+import { Client } from '@/types/client.types';
 
-// Расширяю тип TableMeta для использования с нашими данными
-declare module '@tanstack/react-table' {
-  interface TableMeta<TData extends unknown> {
-    updateData: (rowIndex: number, columnId: string, value: any) => void;
-    setHasUnsavedChanges: (value: boolean) => void;
-  }
-}
+// Схема валидации для платежей
+const paymentValidationSchema = yup.object({
+  userId: yup.string().required('Клиент обязателен'),
+  amount: yup.number().required('Сумма обязательна').min(1, 'Сумма должна быть больше 0'),
+  description: yup.string().required('Описание обязательно'),
+  orderId: yup.string().nullable(),
+  status: yup.boolean().default(false)
+});
 
-// Расширяем интерфейс для данных платежа
-interface PaymentTableData extends Payment {
-  formattedDate?: string;
-  formattedAmount?: string;
-  expanded?: boolean;
+// Тип для полей формы
+interface PaymentFormFields {
+  userId: string;
+  amount: number;
+  description: string;
+  orderId?: string;
+  status: boolean;
 }
 
 const PaymentsPage = () => {
-  const { data: payments = [], isLoading, error, refetch } = useGetAllPaymentsQuery();
-  const { data: clients = [], isLoading: isLoadingClients } = useGetClientsQuery();
-  const [adminCreatePayment, { isLoading: isCreating }] = useAdminCreatePaymentMutation();
-  const [updatePayment, { isLoading: isUpdating }] = useUpdatePaymentMutation();
-  const [deletePayment, { isLoading: isDeleting }] = useDeletePaymentMutation();
-  const [setPaymentStatus] = useSetPaymentStatusMutation();
-  
-  const [tableData, setTableData] = useState<PaymentTableData[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
-  const [activeTab, setActiveTab] = useState('all');
   const [expandedPayments, setExpandedPayments] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState('all');
 
-  // Конвертируем данные платежей для отображения в таблице
-  useEffect(() => {
-    if (payments && payments.length > 0) {
-      setTableData(
-        payments.map(payment => ({
-          ...payment,
-          formattedDate: formatDate(payment.createdAt),
-          formattedAmount: formatAmount(payment.amount)
-        }))
-      );
+  // Используем хук для управления состоянием таблицы
+  const tableControls = useTableControls<PaymentSortField>({
+    defaultPageSize: 10,
+    searchDebounceMs: 300
+  });
+  
+  // Получение данных о платежах с учетом параметров
+  const { data, error, isLoading, refetch } = useGetAllPaymentsQuery({
+    page: tableControls.queryParams.page,
+    limit: tableControls.queryParams.limit,
+    search: tableControls.queryParams.search,
+    sortBy: tableControls.queryParams.sortBy,
+    sortDirection: tableControls.queryParams.sortDirection as SortDirection,
+    status: activeTab === 'paid' ? true : activeTab === 'unpaid' ? false : undefined
+  });
+  
+  // Данные платежей из пагинированного ответа
+  const payments = data?.data || [];
+  // Используем мета-информацию из ответа
+  const totalCount = data?.meta?.totalCount || 0;
+  const pageCount = data?.meta?.totalPages || 1;
+  
+  // Получение клиентов
+  const { data: clientsData } = useGetClientsQuery();
+  const clients = clientsData?.data || [];
+  
+  // Мутации для операций с платежами
+  const [deletePayment] = useDeletePaymentMutation();
+  const [adminCreatePayment] = useAdminCreatePaymentMutation();
+  const [updatePayment] = useUpdatePaymentMutation();
+  const [setPaymentStatus] = useSetPaymentStatusMutation();
+
+  // Хук для управления модальным окном
+  const modal = useFormModal<PaymentFormFields, Payment>({
+    onSubmit: async (values) => {
+      if (modal.editItem) {
+        await updatePayment({ 
+          id: modal.editItem.id,
+          ...values
+        }).unwrap();
+        toast.success('Платеж успешно обновлен');
+      } else {
+        await adminCreatePayment(values).unwrap();
+        toast.success('Платеж создан успешно');
+      }
+    },
+    onError: () => {
+      toast.error('Ошибка при сохранении платежа');
     }
-  }, [payments]);
+  });
+
+  // Функция для переключения раскрытия информации о клиенте
+  const toggleExpandPayment = (paymentId: string) => {
+    setExpandedPayments(prev => 
+      prev.includes(paymentId)
+        ? prev.filter(id => id !== paymentId)
+        : [...prev, paymentId]
+    );
+  };
+
+  // Обработчик удаления
+  const handleDelete = async (payment: Payment) => {
+    if (window.confirm('Вы уверены, что хотите удалить этот платеж?')) {
+      try {
+        await deletePayment(payment.id).unwrap();
+        toast.success('Платеж успешно удален');
+      } catch (error) {
+        toast.error('Ошибка при удалении платежа');
+      }
+    }
+  };
+
+  // Обработчик изменения статуса платежа
+  const handleToggleStatus = async (id: string, newStatus: boolean) => {
+    try {
+      await setPaymentStatus({ id, status: newStatus }).unwrap();
+      toast.success(`Статус платежа ${newStatus ? 'оплачен' : 'не оплачен'}`);
+    } catch (error) {
+      toast.error('Не удалось изменить статус платежа');
+    }
+  };
 
   // Форматирование суммы - отображаем только целые рубли
   const formatAmount = (amount: number) => {
@@ -127,18 +149,9 @@ const PaymentsPage = () => {
     })})`;
   };
 
-  // Функция для переключения раскрытия информации о клиенте
-  const toggleExpandPayment = (paymentId: string) => {
-    setExpandedPayments(prev => 
-      prev.includes(paymentId)
-        ? prev.filter(id => id !== paymentId)
-        : [...prev, paymentId]
-    );
-  };
-
   // Компонент для отображения расширенной информации о клиенте
-  const ExpandedClientInfo = ({ payment }: { payment: PaymentTableData }) => {
-    const client = clients.find(c => c.userId === payment.userId);
+  const ExpandedClientInfo = ({ payment }: { payment: Payment }) => {
+    const client = clients.find((c: Client) => c.userId === payment.userId);
     const user = client?.user;
 
     if (!client) {
@@ -186,7 +199,7 @@ const PaymentsPage = () => {
   };
 
   // Определение колонок таблицы
-  const columns: ColumnDef<PaymentTableData>[] = [
+  const columns: ColumnDef<Payment>[] = [
     {
       id: 'expander',
       header: '',
@@ -220,12 +233,12 @@ const PaymentsPage = () => {
       id: 'user',
       header: 'Клиент',
       accessorFn: (row) => {
-        const client = clients.find(c => c.userId === row.userId);
+        const client = clients.find((c: Client) => c.userId === row.userId);
         return client ? `${client.name} (${client.user?.email || 'Нет email'})` : row.user?.email || 'Неизвестный клиент';
       },
       cell: ({ row }) => {
         // Отображаем только имя клиента
-        const client = clients.find(c => c.userId === row.original.userId);
+        const client = clients.find((c: Client) => c.userId === row.original.userId);
         return (
           <div>
             {client ? `${client.name} (${client.user?.email || 'Нет email'})` : row.original.user?.email || 'Неизвестный клиент'}
@@ -236,9 +249,9 @@ const PaymentsPage = () => {
     {
       id: 'amount',
       header: 'Сумма',
-      accessorFn: (row) => formatAmount(row.amount),
-      cell: ({ getValue }) => {
-        return <div>{String(getValue())}</div>;
+      accessorFn: (row) => row.amount,
+      cell: ({ row }) => {
+        return <div>{formatAmount(row.original.amount)}</div>;
       }
     },
     {
@@ -278,129 +291,59 @@ const PaymentsPage = () => {
     {
       id: 'createdAt',
       header: 'Дата создания',
-      accessorFn: (row) => row.formattedDate || formatDate(row.createdAt),
+      accessorFn: (row) => row.createdAt,
+      cell: ({ row }) => formatDate(row.original.createdAt),
     },
   ];
 
-  // Обработчик сохранения платежа (создание/редактирование)
-  const handleSaveFromModal = async (paymentData: any) => {
-    try {
-      if (editingPayment) {
-        // Обновление существующего платежа
-        await updatePayment({
-          id: editingPayment.id,
-          ...paymentData
-        }).unwrap();
-        toast.success('Платеж успешно обновлен');
-      } else {
-        // Создание нового платежа
-        await adminCreatePayment(paymentData).unwrap();
-        toast.success('Платеж создан успешно');
-      }
-      
-      setIsModalOpen(false);
-      setEditingPayment(null);
-    } catch (error) {
-      console.error('Ошибка при сохранении платежа:', error);
-      toast.error(`Ошибка при ${editingPayment ? 'обновлении' : 'создании'} платежа`);
+  // Поля формы для модального окна
+  const modalFields = [
+    {
+      type: 'select' as const,
+      fieldName: 'userId' as const,
+      label: 'Клиент',
+      placeholder: 'Выберите клиента',
+      options: clients.map((client: Client) => ({
+        label: `${client.name} (${client.user?.email || 'Нет email'})`,
+        value: client.userId
+      }))
+    },
+    {
+      type: 'input' as const,
+      fieldName: 'amount' as const,
+      label: 'Сумма',
+      placeholder: 'Например: 5000'
+    },
+    {
+      type: 'input' as const,
+      fieldName: 'description' as const,
+      label: 'Описание',
+      placeholder: 'Опишите платеж'
+    },
+    {
+      type: 'input' as const,
+      fieldName: 'orderId' as const,
+      label: 'ID заказа (необязательно)',
+      placeholder: 'ID заказа'
+    },
+    {
+      type: 'checkbox' as const,
+      fieldName: 'status' as const,
+      label: 'Оплачен'
     }
-  };
-
-  // Открыть модальное окно для создания платежа
-  const handleOpenCreateModal = () => {
-    setEditingPayment(null);
-    setIsModalOpen(true);
-  };
-
-  // Открыть модальное окно для редактирования платежа
-  const handleEdit = (payment: Payment) => {
-    setEditingPayment(payment);
-    setIsModalOpen(true);
-  };
-
-  // Закрыть модальное окно
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingPayment(null);
-  };
-
-  // Обработчик удаления платежа
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот платеж?')) {
-      try {
-        await deletePayment(id).unwrap();
-        toast.success('Платеж удален');
-        // Ручное обновление не требуется, так как теперь инвалидация настроена правильно
-      } catch (error) {
-        console.error('Ошибка при удалении платежа:', error);
-        toast.error('Не удалось удалить платеж');
-      }
-    }
-  };
-
-  // Адаптер для передачи функции удаления в BaseTable
-  const handleDeleteAdapter = async (payment: PaymentTableData) => {
-    await handleDelete(payment.id);
-  };
-
-  // Обработчик изменения статуса платежа
-  const handleToggleStatus = async (id: string, newStatus: boolean) => {
-    try {
-      await setPaymentStatus({ id, status: newStatus }).unwrap();
-      toast.success(`Статус платежа ${newStatus ? 'оплачен' : 'не оплачен'}`);
-    } catch (error) {
-      console.error('Ошибка при изменении статуса:', error);
-      toast.error('Не удалось изменить статус платежа');
-    }
-  };
-
-  // Фильтруем данные по вкладке
-  const getFilteredData = () => {
-    switch (activeTab) {
-      case 'paid':
-        return tableData.filter(p => p.status);
-      case 'unpaid':
-        return tableData.filter(p => !p.status);
-      default:
-        return tableData;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-        <span className="ml-2 text-gray-700 dark:text-gray-300">Загрузка платежей...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-md border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
-        <p>Ошибка при загрузке платежей.</p>
-        <Button 
-          variant="outline" 
-          className="mt-2" 
-          onClick={() => refetch()}
-        >
-          Попробовать снова
-        </Button>
-      </div>
-    );
-  }
+  ];
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Управление платежами</h1>
-        <Button onClick={handleOpenCreateModal} className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4" />
-          <span>Новый платеж</span>
+    <>
+      {/* Панель добавления */}
+      <div className="flex justify-between items-center mb-4 px-4 pt-4">
+        <Button onClick={modal.openCreate}>
+          Добавить платеж
         </Button>
       </div>
 
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-6">
+      {/* Вкладки */}
+      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-6 px-4">
         <TabsList>
           <TabsTrigger value="all">Все платежи</TabsTrigger>
           <TabsTrigger value="paid">Оплаченные</TabsTrigger>
@@ -408,35 +351,58 @@ const PaymentsPage = () => {
         </TabsList>
       </Tabs>
 
-      <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
+      {/* Таблица */}
+      <div className="rounded-md border">
         <BaseTable
-          data={getFilteredData()}
+          data={payments}
           columns={columns}
           searchColumn="orderId"
           searchPlaceholder="Поиск по ID платежа..."
-          pageSize={10}
-          enableColumnReordering={true}
-          persistColumnOrder={true}
+          onEdit={modal.openEdit}
+          onDelete={handleDelete}
           tableId="payments-table"
-          enableActions={true}
-          onEdit={handleEdit}
-          onDelete={handleDeleteAdapter}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          onPaginationChange={tableControls.handlePaginationChange}
+          onSortingChange={tableControls.handleSortingChange}
+          onSearchChange={tableControls.handleSearchChange}
+          isLoading={isLoading}
+          error={error}
+          onRetry={refetch}
+          sortableFields={PaymentSortField}
+          pagination={tableControls.pagination}
+          sorting={tableControls.sorting}
+          persistSettings={true}
           renderRowSubComponent={({ row }) => 
             expandedPayments.includes(row.original.id) ? <ExpandedClientInfo payment={row.original} /> : null
           }
         />
       </div>
 
-      {/* Модальное окно для создания/редактирования платежа */}
-      <PaymentModal 
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSave={handleSaveFromModal}
-        payment={editingPayment}
-        clients={clients}
-        title={editingPayment ? 'Редактировать платеж' : 'Создать новый платеж'}
+      {/* Модальное окно */}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title={modal.editItem ? 'Редактировать платеж' : 'Добавить платеж'}
+        fields={modalFields}
+        validationSchema={paymentValidationSchema}
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        defaultValues={modal.editItem ? {
+          userId: modal.editItem.userId,
+          amount: modal.editItem.amount,
+          description: modal.editItem.description,
+          orderId: modal.editItem.orderId || '',
+          status: modal.editItem.status
+        } : {
+          userId: '',
+          amount: 0,
+          description: '',
+          orderId: '',
+          status: false
+        }}
       />
-    </div>
+    </>
   );
 };
 

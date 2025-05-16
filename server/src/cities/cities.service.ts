@@ -72,9 +72,6 @@ export class CitiesService {
       skip,
       take: limit,
       orderBy,
-      include: {
-        locations: true,
-      },
     });
 
     // Рассчитываем количество страниц

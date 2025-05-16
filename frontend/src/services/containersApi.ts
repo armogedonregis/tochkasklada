@@ -1,61 +1,46 @@
 import { api } from './api';
-
-export interface Container {
-  id: number;
-  locId?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-// Тип для создания контейнера
-export interface CreateContainerDto {
-  id: number;
-  locId?: string;
-}
-
-export interface UpdateContainerDto {
-  locId?: string;
-}
+import { 
+  Container, 
+  CreateContainerDto, 
+  UpdateContainerDto, 
+  ContainerFilters,
+  PaginatedContainerResponse
+} from '../types/container.types';
 
 export const containersApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getContainers: builder.query<Container[], void>({
-      query: () => '/containers',
-      providesTags: (result) => 
-        result
-          ? [
-              ...result.map(({ id }) => ({ type: 'Containers' as const, id })),
-              { type: 'Containers', id: 'LIST' },
-            ]
-          : [{ type: 'Containers', id: 'LIST' }],
-    }),
-    getContainer: builder.query<Container, number>({
-      query: (id) => `/containers/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Containers', id }],
-    }),
-    getContainersByLocation: builder.query<Container[], string>({
-      query: (locId) => `/containers/location/${locId}`,
+    getContainers: builder.query<PaginatedContainerResponse, ContainerFilters | void>({
+      query: (params) => ({
+        url: '/admin/containers',
+        params: params || undefined
+      }),
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: 'Containers' as const, id })),
-              { type: 'Containers', id: 'LIST' },
-            ]
+            ...result.data.map(({ id }) => ({ type: 'Containers' as const, id })),
+            { type: 'Containers', id: 'LIST' },
+          ]
           : [{ type: 'Containers', id: 'LIST' }],
     }),
+
+    getContainer: builder.query<Container, string>({
+      query: (id) => `/admin/containers/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Containers', id }],
+    }),
+
     addContainer: builder.mutation<Container, CreateContainerDto>({
       query: (container) => ({
-        url: '/containers',
+        url: '/admin/containers',
         method: 'POST',
         body: container,
       }),
       invalidatesTags: [{ type: 'Containers', id: 'LIST' }],
     }),
-    updateContainer: builder.mutation<Container, UpdateContainerDto & { id: number }>({
+    updateContainer: builder.mutation<Container, UpdateContainerDto & { id: string }>({
       query: (container) => {
         const { id, ...body } = container;
         return {
-          url: `/containers/${id}`,
+          url: `/admin/containers/${id}`,
           method: 'PATCH',
           body: body,
         };
@@ -65,9 +50,9 @@ export const containersApi = api.injectEndpoints({
         { type: 'Containers', id: 'LIST' },
       ],
     }),
-    deleteContainer: builder.mutation<void, number>({
+    deleteContainer: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/containers/${id}`,
+        url: `/admin/containers/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, id) => [
@@ -79,11 +64,10 @@ export const containersApi = api.injectEndpoints({
   }),
 });
 
-export const {
-  useGetContainersQuery,
-  useGetContainerQuery,
-  useGetContainersByLocationQuery,
-  useAddContainerMutation,
-  useUpdateContainerMutation,
-  useDeleteContainerMutation,
+export const { 
+  useGetContainersQuery, 
+  useGetContainerQuery, 
+  useAddContainerMutation, 
+  useUpdateContainerMutation, 
+  useDeleteContainerMutation 
 } = containersApi;

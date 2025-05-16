@@ -1,59 +1,125 @@
 'use client';
 
 import { useState } from 'react';
-import { useGetCellsQuery, useDeleteCellMutation, useAddCellMutation, useUpdateCellMutation } from '@/services/cellsApi';
+import { useGetAdminCellsQuery, useDeleteCellMutation, useAddCellMutation, useUpdateCellMutation } from '@/services/cellsApi';
 import { useGetContainersQuery } from '@/services/containersApi';
-import { useGetLocationsQuery } from '@/services/locationsApi';
 import { useGetSizesQuery } from '@/services/sizesApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
-import { BaseLocationModal } from '@/components/modals/BaseLocationModal';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Cell, CreateCellRequest } from '@/services/cellsApi';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Cell, CreateCellDto, CellFilters, CellSortField as ImportedCellSortField } from '@/types/cell.types';
+import { Container } from '@/types/container.types';
+import { Size } from '@/types/size.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
+import { useTableControls } from '@/hooks/useTableControls';
+import { useFormModal } from '@/hooks/useFormModal';
+import { SortDirection } from '@/types/common.types';
 
+// Схема валидации для ячеек
 const cellValidationSchema = yup.object({
   name: yup.string().required('Название ячейки обязательно'),
-  containerId: yup.number().required('Выберите контейнер'),
+  containerId: yup.string().required('Выберите контейнер'),
   size_id: yup.string().required('Выберите размер'),
-  len_height: yup.string().required('Укажите размеры')
+  comment: yup.string().required('Укажите размеры')
 });
 
 // Тип для полей формы
-type CellFormFields = {
+interface CellFormFields {
   name: string;
-  containerId: number;
+  containerId: string;
   size_id: string;
-  len_height: string;
-};
+  comment: string;
+}
 
 export default function CellsPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCell, setEditingCell] = useState<Cell | null>(null);
+  // Используем хук для управления состоянием таблицы
+  const tableControls = useTableControls<ImportedCellSortField>({
+    defaultPageSize: 10,
+    searchDebounceMs: 300
+  });
   
-  const { data: cells = [], error, isLoading } = useGetCellsQuery();
-  const { data: containers = [] } = useGetContainersQuery();
-  const { data: locations = [] } = useGetLocationsQuery();
+  // Преобразуем параметры запроса из useTableControls в формат для cellsApi
+  const cellFilters: CellFilters = {
+    page: tableControls.queryParams.page,
+    limit: tableControls.queryParams.limit,
+    search: tableControls.queryParams.search,
+    sortBy: tableControls.queryParams.sortBy,
+    sortDirection: tableControls.queryParams.sortDirection as SortDirection
+  };
+  
+  // Получение данных о ячейках с учетом параметров
+  const { data, error, isLoading, refetch } = useGetAdminCellsQuery(cellFilters);
+  
+  // Данные ячеек теперь находятся в свойстве data пагинированного ответа
+  const cells = data?.data || [];
+  // Используем мета-информацию из ответа
+  const totalCount = data?.meta?.totalCount || 0;
+  const pageCount = data?.meta?.totalPages || 1;
+  
+  // Получение данных о размерах
   const { data: sizes = [] } = useGetSizesQuery();
+  
+  // Получение данных о контейнерах
+  const { data: containers = [] } = useGetContainersQuery();
+  const containersList = Array.isArray(containers) ? containers : containers.data || [];
+  
+  // Мутации для операций с ячейками
   const [deleteCell] = useDeleteCellMutation();
   const [addCell] = useAddCellMutation();
   const [updateCell] = useUpdateCellMutation();
 
-  // Вспомогательные функции
-  const getContainerInfo = (containerId: number) => {
-    return containers.find(container => container.id === containerId);
+  // Хук для управления модальным окном
+  const modal = useFormModal<CellFormFields, Cell>({
+    onSubmit: async (values) => {
+      if (modal.editItem) {
+        await updateCell({ 
+          id: modal.editItem.id,
+          name: values.name,
+          containerId: values.containerId,
+          size_id: values.size_id,
+          comment: values.comment
+        }).unwrap();
+        toast.success('Ячейка успешно обновлена');
+      } else {
+        await addCell({
+          name: values.name,
+          containerId: values.containerId,
+          size_id: values.size_id,
+          comment: values.comment
+        }).unwrap();
+        toast.success('Ячейка успешно добавлена');
+      }
+    },
+    onError: () => {
+      toast.error('Ошибка при сохранении ячейки');
+    }
+  });
+
+  // Обработчик удаления
+  const handleDelete = async (cell: Cell) => {
+    if (window.confirm('Вы уверены, что хотите удалить эту ячейку?')) {
+      try {
+        await deleteCell(cell.id).unwrap();
+        toast.success('Ячейка успешно удалена');
+      } catch (error) {
+        toast.error('Ошибка при удалении ячейки');
+      }
+    }
   };
 
-  const getLocationInfo = (locId?: string) => {
-    if (!locId) return undefined;
-    return locations.find(location => location.id === locId);
-  };
-
-  const getSizeInfo = (sizeId: string) => {
-    return sizes.find(size => size.id === sizeId);
-  };
+  // Форматируем контейнеры для селектора
+  const containerOptions = containersList.map((container: Container) => {
+    const containerName = typeof container.name === 'number' 
+      ? (container.name < 10 ? `0${container.name}` : `${container.name}`)
+      : container.name;
+    
+    return {
+      label: `${containerName} (${container.location?.short_name || 'Нет локации'})`,
+      value: container.id
+    };
+  });
 
   // Определение колонок таблицы
   const columns: ColumnDef<Cell>[] = [
@@ -62,14 +128,18 @@ export default function CellsPage() {
       header: 'Ячейка',
     },
     {
-      accessorKey: 'len_height',
+      accessorKey: 'comment',
       header: 'Размеры',
+      cell: ({ row }) => {
+        return row.original.comment || '-';
+      }
     },
     {
       id: 'size',
       header: 'Тип размера',
       cell: ({ row }) => {
-        const size = getSizeInfo(row.original.size_id);
+        const sizeId = row.original.size_id;
+        const size = sizes.find((s: Size) => s.id === sizeId);
         return size?.name || 'Не указан';
       },
     },
@@ -77,97 +147,59 @@ export default function CellsPage() {
       id: 'container',
       header: 'Контейнер',
       cell: ({ row }) => {
-        const id = row.original.containerId;
+        // Находим контейнер по ID
+        const container = containersList.find(
+          (c: Container) => c.id === row.original.containerId
+        );
+        if (!container) return 'Не найден';
+        
         // Форматируем номер с лидирующим нулем если нужно
-        return `${id < 10 ? `0${id}` : id}`;
+        const containerName = typeof container.name === 'number'
+          ? (container.name < 10 ? `0${container.name}` : `${container.name}`)
+          : container.name;
+          
+        return containerName;
       },
     },
     {
       id: 'location',
       header: 'Локация',
       cell: ({ row }) => {
-        const container = getContainerInfo(row.original.containerId);
-        const location = container && container.locId ? getLocationInfo(container.locId) : undefined;
-        return location?.name || 'Не указана';
+        // Находим контейнер по ID
+        const container = containersList.find(
+          (c: Container) => c.id === row.original.containerId
+        );
+        return container?.location?.short_name || 'Не указана';
       },
     },
     {
       id: 'city',
       header: 'Город',
       cell: ({ row }) => {
-        const container = getContainerInfo(row.original.containerId);
-        const location = container && container.locId ? getLocationInfo(container.locId) : undefined;
-        return location?.city?.title || 'Не указан';
+        // Находим контейнер по ID
+        const container = containersList.find(
+          (c: Container) => c.id === row.original.containerId
+        );
+        return container?.location?.city?.short_name || 'Не указан';
       },
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Дата создания',
+      cell: ({ row }) => row.original.createdAt 
+        ? new Date(row.original.createdAt).toLocaleDateString('ru-RU') 
+        : '-',
+    },
+    {
+      accessorKey: 'updatedAt',
+      header: 'Дата обновления',
+      cell: ({ row }) => row.original.updatedAt 
+        ? new Date(row.original.updatedAt).toLocaleDateString('ru-RU') 
+        : '-',
     },
   ];
 
-  // Обработчики действий
-  const handleEdit = (cell: Cell) => {
-    setEditingCell(cell);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Вы уверены, что хотите удалить эту ячейку?')) {
-      try {
-        await deleteCell(id).unwrap();
-        toast.success('Ячейка успешно удалена');
-      } catch (error) {
-        toast.error('Ошибка при удалении ячейки');
-      }
-    }
-  };
-
-  const handleDeleteAdapter = (cell: Cell) => {
-    handleDelete(cell.id);
-  };
-
-  const handleSubmit = async (data: CellFormFields) => {
-    try {
-      if (editingCell) {
-        await updateCell({ 
-          id: editingCell.id, 
-          ...data,
-          containerId: Number(data.containerId) // Убедимся, что containerId - число
-        }).unwrap();
-        toast.success('Ячейка успешно обновлена');
-      } else {
-        await addCell({
-          ...data,
-          containerId: Number(data.containerId) // Убедимся, что containerId - число
-        }).unwrap();
-        toast.success('Ячейка успешно добавлена');
-      }
-      setIsModalOpen(false);
-      setEditingCell(null);
-    } catch (error) {
-      toast.error(editingCell 
-        ? 'Ошибка при обновлении ячейки' 
-        : 'Ошибка при добавлении ячейки');
-    }
-  };
-
-  // Состояния загрузки и ошибки
-  if (error) {
-    return (
-      <div className="py-12 text-center">
-        <h3 className="text-xl text-red-500 mb-2">Ошибка при загрузке данных</h3>
-        <p className="text-gray-500 mb-4">Не удалось загрузить данные с сервера</p>
-        <Button onClick={() => window.location.reload()}>Попробовать снова</Button>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="py-12 text-center">
-        <h3 className="text-xl mb-2">Загрузка данных...</h3>
-        <p className="text-gray-500">Пожалуйста, подождите</p>
-      </div>
-    );
-  }
-
+  // Поля формы для модального окна
   const modalFields = [
     {
       type: 'input' as const,
@@ -175,74 +207,86 @@ export default function CellsPage() {
       label: 'Название ячейки',
       placeholder: 'Например: A1'
     },
+    // Используем обычный селект для контейнеров
     {
       type: 'select' as const,
       fieldName: 'containerId' as const,
       label: 'Контейнер',
-      options: containers.map(container => ({
-        label: `${container.id < 10 ? `0${container.id}` : container.id}`,
-        value: container.id.toString()
-      }))
+      placeholder: 'Выберите контейнер',
+      options: containerOptions
     },
     {
       type: 'select' as const,
       fieldName: 'size_id' as const,
       label: 'Размер',
-      options: sizes.map(size => ({
+      options: sizes.map((size: Size) => ({
         label: size.name,
         value: size.id
       }))
     },
     {
       type: 'input' as const,
-      fieldName: 'len_height' as const,
-      label: 'Размеры',
-      placeholder: '2x2,4x1,75'
+      fieldName: 'comment' as const,
+      label: 'Комментарий',
+      placeholder: 'Комментарий...'
     }
   ];
 
   return (
     <>
-      {/* Панель поиска и добавления */}
+      {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={modal.openCreate}>
           Добавить ячейку
         </Button>
       </div>
 
       {/* Таблица */}
-      <BaseTable
-        data={cells}
-        columns={columns}
-        searchColumn="name"
-        searchPlaceholder="Поиск по названию ячейки..."
-        enableActions={true}
-        onEdit={handleEdit}
-        onDelete={handleDeleteAdapter}
-        tableId="cells-table"
-        enableColumnReordering={true}
-        persistColumnOrder={true}
-      />
+      <div className="rounded-md border">
+        <BaseTable
+          data={cells}
+          columns={columns}
+          searchColumn="name"
+          searchPlaceholder="Поиск по названию ячейки..."
+          onEdit={modal.openEdit}
+          onDelete={handleDelete}
+          tableId="cells-table"
+          totalCount={totalCount}
+          pageCount={pageCount}
+          onPaginationChange={tableControls.handlePaginationChange}
+          onSortingChange={tableControls.handleSortingChange}
+          onSearchChange={tableControls.handleSearchChange}
+          isLoading={isLoading}
+          error={error}
+          onRetry={refetch}
+          sortableFields={ImportedCellSortField}
+          pagination={tableControls.pagination}
+          sorting={tableControls.sorting}
+          persistSettings={true}
+        />
+      </div>
 
       {/* Модальное окно */}
-      <BaseLocationModal
-        isOpen={isModalOpen || !!editingCell}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingCell(null);
-        }}
-        title={editingCell ? 'Редактировать ячейку' : 'Добавить ячейку'}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title={modal.editItem ? 'Редактировать ячейку' : 'Добавить ячейку'}
         fields={modalFields}
         validationSchema={cellValidationSchema}
-        onSubmit={handleSubmit}
-        submitText={editingCell ? 'Сохранить' : 'Добавить'}
-        defaultValues={editingCell ? {
-          name: editingCell.name,
-          containerId: editingCell.containerId,
-          size_id: editingCell.size_id,
-          len_height: editingCell.len_height || ''
-        } : undefined}
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        defaultValues={modal.editItem ? {
+          name: modal.editItem.name,
+          containerId: modal.editItem.containerId,
+          size_id: modal.editItem.size_id,
+          comment: modal.editItem.comment || ''
+        } : {
+          name: '',
+          containerId: '',
+          size_id: '',
+          comment: ''
+        }}
       />
     </>
   );
-} 
+}

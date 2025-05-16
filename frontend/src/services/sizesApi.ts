@@ -1,34 +1,17 @@
 import { api } from './api';
-
-export interface Size {
-  id: string;
-  name: string;
-  size: string;
-  area: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateSizeDto {
-  name: string;
-  size: string;
-  area: string;
-}
-
-export interface UpdateSizeDto {
-  name?: string;
-  size?: string;
-  area?: string;
-}
+import { Size, CreateSizeDto, UpdateSizeDto, SizeFilters, PaginatedSizeResponse } from '../types/size.types';
 
 export const sizesApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getSizes: builder.query<Size[], void>({
-      query: () => '/sizes',
+    getSizes: builder.query<PaginatedSizeResponse, SizeFilters | void>({
+      query: (params) => ({
+        url: '/sizes',
+        params: params || undefined
+      }),
       providesTags: (result) => 
         result
           ? [
-              ...result.map(({ id }) => ({ type: 'Sizes' as const, id })),
+              ...result.data.map(({ id }) => ({ type: 'Sizes' as const, id })),
               { type: 'Sizes' as const, id: 'LIST' },
             ]
           : [{ type: 'Sizes' as const, id: 'LIST' }],
@@ -56,7 +39,7 @@ export const sizesApi = api.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Sizes', id },
-        'Sizes',
+        { type: 'Sizes', id: 'LIST' },
       ],
     }),
 
@@ -65,7 +48,7 @@ export const sizesApi = api.injectEndpoints({
         url: `/sizes/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: (result, error, id) => [
+      invalidatesTags: (_result, _error, id) => [
         { type: 'Sizes' as const, id },
         { type: 'Sizes' as const, id: 'LIST' },
         'Cells' as const

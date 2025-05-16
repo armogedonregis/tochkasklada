@@ -1,60 +1,68 @@
 import { api } from './api';
-import { RelayAccess, CreateRelayAccessRequest, UpdateRelayAccessRequest } from '../types/relay-access.types';
+import { 
+  RelayAccess, 
+  CreateRelayAccessDto, 
+  CheckRelayAccessDto, 
+  RelayAccessFilters 
+} from '../types/relay-access.types';
 
 export const relayAccessApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Получение списка доступов
-    getRelayAccesses: builder.query<RelayAccess[], void>({
-      query: () => ({
-        url: '/relay-access',
-        method: 'GET',
+    getRelayAccesses: builder.query<RelayAccess[], RelayAccessFilters | void>({
+      query: (params) => ({
+        url: '/admin/relay-access',
+        params: params || undefined
       }),
-      providesTags: ['RelayAccess'],
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'RelayAccess' as const, id })),
+              { type: 'RelayAccess', id: 'LIST' },
+            ]
+          : [{ type: 'RelayAccess', id: 'LIST' }],
     }),
     
-    // Получение доступов пользователя
-    getUserRelayAccesses: builder.query<RelayAccess[], string>({
-      query: (userId) => ({
-        url: `/relay-access/user/${userId}`,
-        method: 'GET',
-      }),
-      providesTags: (result, error, userId) => [{ type: 'RelayAccess', id: userId }],
+    getRelayAccessesByRental: builder.query<RelayAccess[], string>({
+      query: (rentalId) => `/admin/relay-access/rental/${rentalId}`,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'RelayAccess' as const, id })),
+              { type: 'RelayAccess', id: 'LIST' },
+            ]
+          : [{ type: 'RelayAccess', id: 'LIST' }],
     }),
     
-    // Выдача доступа
-    grantAccess: builder.mutation<RelayAccess, CreateRelayAccessRequest>({
+    grantAccess: builder.mutation<RelayAccess, CreateRelayAccessDto>({
       query: (access) => ({
-        url: '/relay-access',
+        url: '/admin/relay-access',
         method: 'POST',
         body: access,
       }),
-      invalidatesTags: ['RelayAccess'],
+      invalidatesTags: [{ type: 'RelayAccess', id: 'LIST' }],
     }),
     
-    // Проверка доступа
-    checkAccess: builder.mutation<boolean, { userId: string; relayId: string }>({
+    checkAccess: builder.mutation<boolean, CheckRelayAccessDto>({
       query: (data) => ({
-        url: '/relay-access/check',
+        url: '/admin/relay-access/check',
         method: 'POST',
         body: data,
       }),
     }),
     
-    // Отзыв доступа
     revokeAccess: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/relay-access/${id}`,
+        url: `/admin/relay-access/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['RelayAccess'],
+      invalidatesTags: [{ type: 'RelayAccess', id: 'LIST' }],
     }),
   }),
-  overrideExisting: false,
 });
 
 export const {
   useGetRelayAccessesQuery,
-  useGetUserRelayAccessesQuery,
+  useGetRelayAccessesByRentalQuery,
   useGrantAccessMutation,
   useCheckAccessMutation,
   useRevokeAccessMutation,

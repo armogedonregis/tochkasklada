@@ -1,31 +1,17 @@
 import { api } from './api';
-
-export interface City {
-  id: string;
-  title: string;
-  short_name: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateCityDto {
-  title: string;
-  short_name: string;
-}
-
-export interface UpdateCityDto {
-  title?: string;
-  short_name?: string;
-}
+import { City, CreateCityDto, UpdateCityDto, CityFilters, PaginatedCityResponse } from '../types/city.types';
 
 export const citiesApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getCities: builder.query<City[], void>({
-      query: () => '/cities',
+    getCities: builder.query<PaginatedCityResponse, CityFilters | void>({
+      query: (params) => ({
+        url: '/cities',
+        params: params || undefined
+      }),
       providesTags: (result) => 
         result 
           ? [
-              ...result.map(({ id }) => ({ type: 'Cities' as const, id })),
+              ...result.data.map(({ id }) => ({ type: 'Cities' as const, id })),
               { type: 'Cities', id: 'LIST' },
             ]
           : [{ type: 'Cities', id: 'LIST' }],
@@ -36,7 +22,7 @@ export const citiesApi = api.injectEndpoints({
     }),
     addCity: builder.mutation<City, CreateCityDto>({
       query: (city) => ({
-        url: '/cities',
+        url: '/admin/cities',
         method: 'POST',
         body: city,
       }),
@@ -46,7 +32,7 @@ export const citiesApi = api.injectEndpoints({
       query: (city) => {
         const { id, ...body } = city;
         return {
-          url: `/cities/${id}`,
+          url: `/admin/cities/${id}`,
           method: 'PUT',
           body: body,
         };
@@ -55,7 +41,7 @@ export const citiesApi = api.injectEndpoints({
     }),
     deleteCity: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/cities/${id}`,
+        url: `/admin/cities/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, id) => [

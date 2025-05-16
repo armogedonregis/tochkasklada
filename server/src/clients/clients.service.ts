@@ -190,10 +190,6 @@ export class ClientsService {
     });
   }
 
-  async findAll(queryParams: FindClientsDto = {}) {
-    return this.findClients(queryParams);
-  }
-
   async findOne(id: string) {
     return this.prisma.client.findUnique({
       where: { id },
@@ -229,7 +225,7 @@ export class ClientsService {
   /**
    * Поиск клиентов с пагинацией и фильтрацией
    */
-  async findClients(queryParams: FindClientsDto) {
+  async findAll(queryParams: FindClientsDto) {
     const { 
       search, 
       page = 1, 

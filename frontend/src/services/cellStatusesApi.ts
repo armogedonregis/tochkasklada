@@ -1,81 +1,55 @@
 import { api } from './api';
-
-export interface CellStatus {
-  id: string;
-  name: string;
-  color: string;
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateCellStatusDto {
-  name: string;
-  color: string;
-  isActive?: boolean;
-}
-
-export interface UpdateCellStatusDto {
-  name?: string;
-  color?: string;
-  isActive?: boolean;
-}
+import { 
+  CellStatus, 
+  CreateCellStatusDto, 
+  UpdateCellStatusDto 
+} from '../types/cell-status.types';
 
 export const cellStatusesApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getCellStatuses: builder.query<CellStatus[], void>({
-      query: () => '/cell-statuses',
-      providesTags: ['CellStatuses'],
+      query: () => '/admin/cell-statuses',
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'CellStatuses' as const, id })),
+              { type: 'CellStatuses', id: 'LIST' },
+            ]
+          : [{ type: 'CellStatuses', id: 'LIST' }],
     }),
 
     getCellStatus: builder.query<CellStatus, string>({
-      query: (id) => `/cell-statuses/${id}`,
+      query: (id) => `/admin/cell-statuses/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'CellStatuses', id }],
     }),
 
     addCellStatus: builder.mutation<CellStatus, CreateCellStatusDto>({
       query: (status) => ({
-        url: '/cell-statuses',
+        url: '/admin/cell-statuses',
         method: 'POST',
         body: status,
       }),
-      invalidatesTags: ['CellStatuses'],
+      invalidatesTags: [{ type: 'CellStatuses', id: 'LIST' }],
     }),
 
     updateCellStatus: builder.mutation<CellStatus, UpdateCellStatusDto & { id: string }>({
       query: ({ id, ...status }) => ({
-        url: `/cell-statuses/${id}`,
+        url: `/admin/cell-statuses/${id}`,
         method: 'PATCH',
         body: status,
       }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'CellStatuses', id },
-        'CellStatuses',
+        { type: 'CellStatuses', id: 'LIST' },
       ],
     }),
 
     deleteCellStatus: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/cell-statuses/${id}`,
+        url: `/admin/cell-statuses/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['CellStatuses', 'Cells'],
-    }),
-
-    assignStatusToCell: builder.mutation<void, { cellId: string; statusId: string }>({
-      query: ({ cellId, statusId }) => ({
-        url: `/cell-statuses/assign/${statusId}/to-cell/${cellId}`,
-        method: 'PUT',
-      }),
-      invalidatesTags: ['Cells', 'CellStatuses'],
-    }),
-
-    removeStatusFromCell: builder.mutation<void, string>({
-      query: (cellId) => ({
-        url: `/cell-statuses/remove-from-cell/${cellId}`,
-        method: 'DELETE',
-      }),
-      invalidatesTags: ['Cells', 'CellStatuses'],
     }),
   }),
 });
@@ -86,6 +60,4 @@ export const {
   useAddCellStatusMutation,
   useUpdateCellStatusMutation,
   useDeleteCellStatusMutation,
-  useAssignStatusToCellMutation,
-  useRemoveStatusFromCellMutation,
 } = cellStatusesApi; 

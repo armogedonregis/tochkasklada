@@ -1,24 +1,29 @@
-import { Relay } from './relay.types';
+import { FilterParams } from './common.types';
 
 export interface RelayAccess {
   id: string;
-  userId: string;
   relayId: string;
+  cellRentalId?: string;
   validUntil: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  relay?: Relay;
 }
 
-export interface CreateRelayAccessRequest {
-  userId: string;
+export interface CreateRelayAccessDto {
   relayId: string;
-  validUntil: string;
+  cellRentalId?: string;
+  validUntil: Date | string;
+  isActive?: boolean;
 }
 
-export interface UpdateRelayAccessRequest {
-  id: string;
-  validUntil?: string;
+export interface CheckRelayAccessDto {
+  cellRentalId: string;
+  relayId: string;
+}
+
+export interface RelayAccessFilters extends FilterParams {
+  relayId?: string;
+  cellRentalId?: string;
   isActive?: boolean;
 } 

@@ -1,73 +1,70 @@
 'use client';
 
-import { useState } from 'react';
 import { useGetLocationsQuery, useDeleteLocationMutation, useAddLocationMutation, useUpdateLocationMutation } from '@/services/locationsApi';
 import { useGetCitiesQuery } from '@/services/citiesApi';
 import { Button } from '@/components/ui/button';
-import { BaseTable } from '@/components/table/BaseTable';
-import { BaseLocationModal } from '@/components/modals/BaseLocationModal';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Location, CreateLocationDto } from '@/services/locationsApi';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Location, CreateLocationDto, LocationSortField } from '@/types/location.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
+import { BaseTable } from '@/components/table/BaseTable';
+import { useTableControls } from '@/hooks/useTableControls';
+import { useFormModal } from '@/hooks/useFormModal';
 
+// Схема валидации для локаций
 const locationValidationSchema = yup.object({
   name: yup.string().required('Название локации обязательно'),
   short_name: yup.string().required('Короткое название обязательно'),
-  address: yup.string().required('Адрес обязателен'),
+  address: yup.string().optional(),
   cityId: yup.string().required('Выберите город')
 });
 
-// Определяем тип полей формы для типизации
-type LocationFormFields = {
-  name: string;
-  short_name: string;
-  address: string;
-  cityId: string;
-};
-
 export default function LocationsPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  // Используем хук для управления состоянием таблицы
+  const tableControls = useTableControls<LocationSortField>({
+    defaultPageSize: 10
+  });
+
+  // Получение данных локаций с учетом пагинации, сортировки и поиска
+  const { data, isLoading, error, refetch } = useGetLocationsQuery(
+    tableControls.queryParams
+  );
   
-  const { data: locations = [], error, isLoading } = useGetLocationsQuery();
-  const { data: cities = [], isLoading: isCitiesLoading } = useGetCitiesQuery();
+  const locations = data?.data || [];
+  const totalCount = data?.meta?.totalCount || 0;
+  const pageCount = data?.meta?.totalPages || 0;
+  
+  // Получение списка городов для селектора
+  const { data: citiesData = { data: [] }, isLoading: isCitiesLoading } = useGetCitiesQuery();
+  const cities = citiesData.data;
+  
+  // Мутации для CRUD операций
   const [deleteLocation] = useDeleteLocationMutation();
   const [addLocation] = useAddLocationMutation();
   const [updateLocation] = useUpdateLocationMutation();
 
-  // Определение колонок таблицы
-  const columns: ColumnDef<Location>[] = [
-    {
-      accessorKey: 'name',
-      header: 'Название',
+  // Хук для управления модальным окном
+  const modal = useFormModal<CreateLocationDto, Location>({
+    onSubmit: async (values) => {
+      if (modal.editItem) {
+        await updateLocation({ id: modal.editItem.id, ...values }).unwrap();
+        toast.success('Локация успешно обновлена');
+      } else {
+        await addLocation(values).unwrap();
+        toast.success('Локация успешно добавлена');
+      }
     },
-    {
-      accessorKey: 'short_name',
-      header: 'Короткое название',
-    },
-    {
-      accessorKey: 'address',
-      header: 'Адрес',
-    },
-    {
-      id: 'city',
-      header: 'Город',
-      cell: ({ row }) => row.original.city?.title || 'Не указан',
-    },
-  ];
+    onError: () => {
+      toast.error('Ошибка при сохранении локации');
+    }
+  });
 
-  // Обработчики действий
-  const handleEdit = (location: Location) => {
-    setEditingLocation(location);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
+  // Обработчик удаления
+  const handleDelete = async (location: Location) => {
     if (window.confirm('Вы уверены, что хотите удалить эту локацию?')) {
       try {
-        await deleteLocation(id).unwrap();
+        await deleteLocation(location.id).unwrap();
         toast.success('Локация успешно удалена');
       } catch (error) {
         toast.error('Ошибка при удалении локации');
@@ -75,48 +72,7 @@ export default function LocationsPage() {
     }
   };
 
-  const handleDeleteAdapter = (location: Location) => {
-    handleDelete(location.id);
-  };
-
-  const handleSubmit = async (data: LocationFormFields) => {
-    try {
-      if (editingLocation) {
-        await updateLocation({ id: editingLocation.id, ...data }).unwrap();
-        toast.success('Локация успешно обновлена');
-      } else {
-        await addLocation(data).unwrap();
-        toast.success('Локация успешно добавлена');
-      }
-      setIsModalOpen(false);
-      setEditingLocation(null);
-    } catch (error) {
-      toast.error(editingLocation 
-        ? 'Ошибка при обновлении локации' 
-        : 'Ошибка при добавлении локации');
-    }
-  };
-
-  // Состояния загрузки и ошибки
-  if (error) {
-    return (
-      <div className="py-12 text-center">
-        <h3 className="text-xl text-red-500 mb-2">Ошибка при загрузке данных</h3>
-        <p className="text-gray-500 mb-4">Не удалось загрузить данные с сервера</p>
-        <Button onClick={() => window.location.reload()}>Попробовать снова</Button>
-      </div>
-    );
-  }
-
-  if (isLoading || isCitiesLoading) {
-    return (
-      <div className="py-12 text-center">
-        <h3 className="text-xl mb-2">Загрузка данных...</h3>
-        <p className="text-gray-500">Пожалуйста, подождите</p>
-      </div>
-    );
-  }
-
+  // Поля формы
   const modalFields = [
     {
       type: 'input' as const,
@@ -147,11 +103,51 @@ export default function LocationsPage() {
     }
   ];
 
+  // Определение колонок таблицы
+  const columns: ColumnDef<Location>[] = [
+    {
+      accessorKey: 'id',
+      header: 'ID',
+    },
+    {
+      accessorKey: 'name',
+      header: 'Название',
+    },
+    {
+      accessorKey: 'short_name',
+      header: 'Короткое название',
+    },
+    {
+      accessorKey: 'address',
+      header: 'Адрес',
+    },
+    {
+      accessorKey: 'city',
+      id: 'city',
+      header: 'Город',
+      cell: ({ row }) => row.original.city?.title || 'Не указан',
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Дата создания',
+      cell: ({ row }) => row.original.createdAt 
+        ? new Date(row.original.createdAt).toLocaleDateString('ru-RU') 
+        : '-',
+    },
+    {
+      accessorKey: 'updatedAt',
+      header: 'Дата обновления',
+      cell: ({ row }) => row.original.updatedAt 
+        ? new Date(row.original.updatedAt).toLocaleDateString('ru-RU') 
+        : '-',
+    }
+  ];
+
   return (
     <>
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={modal.openCreate}>
           Добавить локацию
         </Button>
       </div>
@@ -162,31 +158,37 @@ export default function LocationsPage() {
         columns={columns}
         searchColumn="name"
         searchPlaceholder="Поиск по названию локации..."
-        enableActions={true}
-        onEdit={handleEdit}
-        onDelete={handleDeleteAdapter}
+        onEdit={modal.openEdit}
+        onDelete={handleDelete}
         tableId="locations-table"
-        enableColumnReordering={true}
-        persistColumnOrder={true}
+        totalCount={totalCount}
+        pageCount={pageCount}
+        onPaginationChange={tableControls.handlePaginationChange}
+        onSortingChange={tableControls.handleSortingChange}
+        onSearchChange={tableControls.handleSearchChange}
+        isLoading={isLoading || isCitiesLoading}
+        error={error}
+        onRetry={refetch}
+        sortableFields={LocationSortField}
+        pagination={tableControls.pagination}
+        sorting={tableControls.sorting}
+        persistSettings={true}
       />
 
       {/* Модальное окно */}
-      <BaseLocationModal
-        isOpen={isModalOpen || !!editingLocation}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingLocation(null);
-        }}
-        title={editingLocation ? 'Редактировать локацию' : 'Добавить локацию'}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title={modal.editItem ? 'Редактировать локацию' : 'Добавить локацию'}
         fields={modalFields}
         validationSchema={locationValidationSchema}
-        onSubmit={handleSubmit}
-        submitText={editingLocation ? 'Сохранить' : 'Добавить'}
-        defaultValues={editingLocation ? {
-          name: editingLocation.name,
-          short_name: editingLocation.short_name,
-          address: editingLocation.address,
-          cityId: editingLocation.cityId,
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        defaultValues={modal.editItem ? {
+          name: modal.editItem.name,
+          short_name: modal.editItem.short_name,
+          address: modal.editItem.address,
+          cityId: modal.editItem.cityId,
         } : undefined}
       />
     </>

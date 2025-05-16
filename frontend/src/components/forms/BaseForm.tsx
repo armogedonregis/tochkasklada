@@ -4,25 +4,13 @@ import React from 'react';
 import { useForm, UseFormReturn, FieldValues, DefaultValues, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { ObjectSchema } from 'yup';
-import { Input } from '@/components/ui/input';
-import { IForm, IFormType } from '@/types/form';
-import { 
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage 
-} from '@/components/ui/form';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+import { IForm } from '@/types/form';
+import { Form } from '@/components/ui/form';
+import FormInput from './FormInput';
+import FormSelect from './FormSelect';
+import FormCheckbox from './FormCheckbox';
+import FormTitle from './FormTitle';
+import FormSearchSelect from './FormSearchSelect';
 
 interface BaseFormProps<T extends FieldValues> {
   fields: IForm<T>[];
@@ -57,6 +45,8 @@ const BaseForm = <T extends FieldValues>({
         values[field.fieldName] = '';
       } else if (field.type === 'checkbox') {
         values[field.fieldName] = false;
+      } else if (field.type === 'searchSelect') {
+        values[field.fieldName] = null;
       }
     });
     
@@ -72,112 +62,59 @@ const BaseForm = <T extends FieldValues>({
     switch (item.type) {
       case 'input':
         return (
-          <FormField
+          <FormInput
             key={item.fieldName}
-            control={form.control}
+            form={form}
             name={item.fieldName}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{item.label}</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    {item.icon && (
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        {React.createElement(item.icon, {
-                          className: "h-5 w-5 text-gray-400"
-                        })}
-                      </div>
-                    )}
-                    <Input
-                      placeholder={item.placeholder}
-                      className={item.icon ? 'pl-10' : ''}
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label={item.label}
+            placeholder={item.placeholder}
+            icon={item.icon}
           />
         );
       
       case 'select':
         return (
-          <FormField
+          <FormSelect
             key={item.fieldName}
-            control={form.control}
+            form={form}
             name={item.fieldName}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{item.label}</FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    // Автоматическое преобразование для числовых значений
-                    const numValue = Number(value);
-                    if (!isNaN(numValue) && typeof field.value === 'number') {
-                      field.onChange(numValue);
-                    } else {
-                      field.onChange(value);
-                    }
-                  }}
-                  defaultValue={field.value !== undefined && field.value !== null 
-                    ? String(field.value) 
-                    : ""}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={item.placeholder || 'Выберите значение'} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {item.options.map((option) => (
-                      <SelectItem
-                        key={option.value}
-                        value={String(option.value)}
-                      >
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            label={item.label}
+            placeholder={item.placeholder}
+            options={item.options}
+          />
+        );
+      
+      case 'searchSelect':
+        return (
+          <FormSearchSelect
+            key={item.fieldName}
+            form={form}
+            name={item.fieldName}
+            label={item.label}
+            placeholder={item.placeholder}
+            options={item.options || []}
+            isMulti={item.isMulti}
+            onSearch={item.onSearch}
           />
         );
       
       case 'checkbox':
         return (
-          <FormField
+          <FormCheckbox
             key={item.fieldName}
-            control={form.control}
+            form={form}
             name={item.fieldName}
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-2">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>{item.label}</FormLabel>
-                  {item.description && (
-                    <FormDescription>{item.description}</FormDescription>
-                  )}
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
+            label={item.label}
+            description={item.description}
           />
         );
       
       case 'title':
         return (
-          <h4 key={item.fieldName || `title-${item.label}`} className="text-gray-900 dark:text-white py-5 font-bold text-base">
-            {item.label}
-          </h4>
+          <FormTitle
+            key={item.fieldName || `title-${item.label}`}
+            label={item.label}
+          />
         );
       
       default:

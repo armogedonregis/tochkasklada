@@ -1,49 +1,54 @@
 'use client';
 
 import { useState } from 'react';
-import { useGetContainersQuery, useDeleteContainerMutation, useAddContainerMutation, useUpdateContainerMutation } from '@/services/containersApi';
-import { useGetLocationsQuery } from '@/services/locationsApi';
-import { useGetCellsByContainerQuery } from '@/services/cellsApi';
+import { useGetContainersQuery, useGetContainerQuery, useDeleteContainerMutation, useAddContainerMutation, useUpdateContainerMutation } from '@/services/containersApi';
+import { useLazyGetLocationsQuery } from '@/services/locationsApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
-import { BaseLocationModal } from '@/components/modals/BaseLocationModal';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Container, CreateContainerDto } from '@/services/containersApi';
-import { Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Container, ContainerWithExpanded, Cell, CreateContainerDto, ContainerSortField } from '@/types/container.types';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
+import { useTableControls } from '@/hooks/useTableControls';
+import { useFormModal } from '@/hooks/useFormModal';
 
-// Расширяем тип Container, добавляя свойство expanded
-interface ContainerWithExpanded extends Container {
-  expanded: boolean;
-}
-
+// Схема валидации для контейнеров (name как строка в форме, но преобразуется в число)
 const containerValidationSchema = yup.object({
-  id: yup.string()
-    .required('ID контейнера обязателен')
-    .matches(/^(0[1-9]|[1-9][0-9])$/, 'ID должен быть в формате 01-99'),
+  name: yup.number()
+    .required('Номер контейнера обязателен'),
   locId: yup.string().required('Выберите локацию')
 });
 
-// Тип для полей формы
-type ContainerFormFields = {
-  id: string;
-  locId?: string;
-};
-
 export default function ContainersPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingContainer, setEditingContainer] = useState<Container | null>(null);
-  const [expandedContainers, setExpandedContainers] = useState<number[]>([]);
+  // Состояние для развернутых контейнеров
+  const [expandedContainers, setExpandedContainers] = useState<string[]>([]);
   
-  const { data: containers = [], error, isLoading } = useGetContainersQuery();
-  const { data: locations = [], isLoading: isLocationsLoading } = useGetLocationsQuery();
+  // Используем хук для управления состоянием таблицы
+  const tableControls = useTableControls<ContainerSortField>({
+    defaultPageSize: 10
+  });
+
+  // Получение данных контейнеров с учетом параметров
+  const { data, error, isLoading, refetch } = useGetContainersQuery(
+    tableControls.queryParams
+  );
+  
+  const containers = data?.data || [];
+  const totalCount = data?.meta?.totalCount || 0;
+  const pageCount = data?.meta?.totalPages || 0;
+
+  // Lazy запрос для поиска локаций
+  const [getLocations, { data: locationsData = { data: [] }, isLoading: isLocationsLoading }] = useLazyGetLocationsQuery();
+  
+  // Мутации для операций с контейнерами
   const [deleteContainer] = useDeleteContainerMutation();
   const [addContainer] = useAddContainerMutation();
   const [updateContainer] = useUpdateContainerMutation();
 
   // Функция для переключения состояния развернутости контейнера
-  const toggleExpandContainer = (containerId: number) => {
+  const toggleExpandContainer = (containerId: string) => {
     setExpandedContainers(prev => 
       prev.includes(containerId) 
         ? prev.filter(id => id !== containerId) 
@@ -51,11 +56,71 @@ export default function ContainersPage() {
     );
   };
 
-  // Вспомогательные функции
-  const getLocationInfo = (locId?: string) => {
-    if (!locId) return undefined;
-    return locations.find(location => location.id === locId);
+  // Находим максимальный ID для предложения следующего номера
+  const getNextId = () => {
+    if (containers.length === 0) return '01';
+    const maxName = Math.max(...containers.map(c => c.name));
+    const nextName = maxName + 1;
+    return nextName < 10 ? `0${nextName}` : `${nextName}`;
   };
+
+  // Модифицируем данные для таблицы, чтобы добавить развернутую информацию
+  const tableData: ContainerWithExpanded[] = containers.map(container => ({
+    ...container,
+    expanded: expandedContainers.includes(container.id)
+  }));
+
+  // Хук для управления модальным окном
+  const modal = useFormModal<CreateContainerDto, Container>({
+    onSubmit: async (values) => {
+      // Преобразуем name из строки в число для отправки на сервер
+      const nameNumber = values.name;
+      
+      if (modal.editItem) {
+        await updateContainer({ 
+          id: modal.editItem.id,
+          name: nameNumber,
+          locId: values.locId 
+        }).unwrap();
+        toast.success('Контейнер успешно обновлен');
+      } else {
+        await addContainer({
+          name: nameNumber,
+          locId: values.locId
+        }).unwrap();
+        toast.success('Контейнер успешно добавлен');
+      }
+    },
+    onError: () => {
+      toast.error('Ошибка при сохранении контейнера');
+    }
+  });
+
+  // Обработчик удаления
+  const handleDelete = async (container: Container) => {
+    if (window.confirm('Вы уверены, что хотите удалить этот контейнер?')) {
+      try {
+        await deleteContainer(container.id).unwrap();
+        toast.success('Контейнер успешно удален');
+      } catch (error) {
+        toast.error('Ошибка при удалении контейнера');
+      }
+    }
+  };
+
+  // Функция для поиска локаций
+  const handleLocationSearch = (query: string) => {
+    getLocations({
+      search: query,
+      limit: 10
+    });
+  };
+
+  // Форматируем локации для селектора
+  const locationOptions = locationsData.data.map(location => ({
+    label: `${location.name} (${location.city?.short_name || 'Нет города'})`,
+    value: location.id
+  }));
 
   // Определение колонок таблицы
   const columns: ColumnDef<ContainerWithExpanded>[] = [
@@ -80,41 +145,59 @@ export default function ContainersPage() {
       enableHiding: false,
     },
     {
-      id: 'id',
+      accessorKey: 'name',
+      id: 'name',
       header: 'Номер',
       cell: ({ row }) => {
-        const id = row.original.id;
+        const name = row.original.name;
         // Форматируем номер с лидирующим нулем если нужно
-        return `${id < 10 ? `0${id}` : id}`;
+        return `${name < 10 ? `0${name}` : name}`;
       },
     },
     {
+      accessorKey: 'location',
       id: 'location',
       header: 'Локация',
       cell: ({ row }) => {
-        const locId = row.original.locId;
-        const location = locId ? getLocationInfo(locId) : undefined;
-        return location?.name || 'Не указана';
+        const location = row.original.location;
+        return location?.short_name || 'Не указана';
       },
     },
     {
       id: 'city',
       header: 'Город',
       cell: ({ row }) => {
-        const locId = row.original.locId;
-        const location = locId ? getLocationInfo(locId) : undefined;
-        return location?.city?.title || 'Не указан';
+        const location = row.original.location;
+        return location?.city?.short_name || 'Не указан';
       },
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Дата создания',
+      cell: ({ row }) => row.original.createdAt 
+        ? new Date(row.original.createdAt).toLocaleDateString('ru-RU') 
+        : '-',
+    },
+    {
+      accessorKey: 'updatedAt',
+      header: 'Дата обновления',
+      cell: ({ row }) => row.original.updatedAt 
+        ? new Date(row.original.updatedAt).toLocaleDateString('ru-RU') 
+        : '-',
     },
   ];
 
   // Компонент для отображения расширенной информации о ячейках контейнера
-  const ExpandedContainerCells = ({ containerId }: { containerId: number }) => {
-    const { data: cells = [], isLoading } = useGetCellsByContainerQuery(containerId);
-
+  const ExpandedContainerCells = ({ containerId }: { containerId: string }) => {
+    // Используем запрос для получения контейнера с ячейками
+    const { data: containerWithCells, isLoading } = useGetContainerQuery(containerId);
+    const containerCells = containerWithCells?.cells || [];
+    
     if (isLoading) return <div className="p-4 pl-12">Загрузка ячеек...</div>;
+    
+    if (!containerWithCells) return <div className="p-4 pl-12">Контейнер не найден</div>;
 
-    if (cells.length === 0) return (
+    if (containerCells.length === 0) return (
       <div className="p-4 pl-12 text-sm text-gray-500">
         В этом контейнере нет ячеек. 
         <Button variant="link" className="p-0 h-auto text-sm" onClick={() => {
@@ -139,7 +222,7 @@ export default function ContainersPage() {
               </tr>
             </thead>
             <tbody>
-              {cells.map(cell => (
+              {containerCells.map((cell: Cell) => (
                 <tr key={cell.id} className="border-t border-gray-200">
                   <td className="p-2 text-gray-700">{cell.name}</td>
                   <td className="p-2 text-gray-700">{cell.size?.size || '-'}</td>
@@ -162,112 +245,30 @@ export default function ContainersPage() {
     );
   };
 
-  // Обработчики действий
-  const handleEdit = (container: Container) => {
-    setEditingContainer(container);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот контейнер?')) {
-      try {
-        await deleteContainer(id).unwrap();
-        toast.success('Контейнер успешно удален');
-      } catch (error) {
-        toast.error('Ошибка при удалении контейнера');
-      }
-    }
-  };
-
-  const handleDeleteAdapter = (container: ContainerWithExpanded) => {
-    handleDelete(container.id);
-  };
-
-  const handleSubmit = async (data: ContainerFormFields) => {
-    try {
-      // Преобразуем id из строки в число
-      const idNumber = parseInt(data.id, 10);
-      
-      if (editingContainer) {
-        await updateContainer({ 
-          id: editingContainer.id, 
-          locId: data.locId 
-        }).unwrap();
-        toast.success('Контейнер успешно обновлен');
-      } else {
-        await addContainer({
-          id: idNumber,
-          locId: data.locId
-        }).unwrap();
-        toast.success('Контейнер успешно добавлен');
-      }
-      setIsModalOpen(false);
-      setEditingContainer(null);
-    } catch (error) {
-      toast.error(editingContainer 
-        ? 'Ошибка при обновлении контейнера' 
-        : 'Ошибка при добавлении контейнера');
-    }
-  };
-
-  // Состояния загрузки и ошибки
-  if (error) {
-    return (
-      <div className="py-12 text-center">
-        <h3 className="text-xl text-red-500 mb-2">Ошибка при загрузке данных</h3>
-        <p className="text-gray-500 mb-4">Не удалось загрузить данные с сервера</p>
-        <Button onClick={() => window.location.reload()}>Попробовать снова</Button>
-      </div>
-    );
-  }
-
-  if (isLoading || isLocationsLoading) {
-    return (
-      <div className="py-12 text-center">
-        <h3 className="text-xl mb-2">Загрузка данных...</h3>
-        <p className="text-gray-500">Пожалуйста, подождите</p>
-      </div>
-    );
-  }
-
-  // Находим максимальный ID для предложения следующего номера
-  const getNextId = () => {
-    if (containers.length === 0) return '01';
-    const maxId = Math.max(...containers.map(c => c.id));
-    const nextId = maxId + 1;
-    return nextId < 10 ? `0${nextId}` : `${nextId}`;
-  };
-
+  // Поля формы для модального окна
   const modalFields = [
     {
       type: 'input' as const,
-      fieldName: 'id' as const,
-      label: 'ID контейнера',
-      placeholder: 'Например: 01',
-      defaultValue: !editingContainer ? getNextId() : undefined
+      fieldName: 'name' as const,
+      label: 'Номер контейнера',
+      placeholder: 'Например: 01'
     },
+    // Используем searchSelect с onSearch для поиска локаций
     {
-      type: 'select' as const,
+      type: 'searchSelect' as const,
       fieldName: 'locId' as const,
       label: 'Локация',
-      options: locations.map(location => ({
-        label: location.name,
-        value: location.id
-      }))
+      placeholder: 'Поиск локации...',
+      options: locationOptions,
+      onSearch: handleLocationSearch
     }
   ];
-
-  // Модифицируем данные для таблицы, чтобы добавить развернутую информацию
-  const tableData: ContainerWithExpanded[] = containers.map(container => ({
-    ...container,
-    expanded: expandedContainers.includes(container.id)
-  }));
 
   return (
     <>
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={modal.openCreate}>
           Добавить контейнер
         </Button>
       </div>
@@ -277,36 +278,45 @@ export default function ContainersPage() {
         <BaseTable
           data={tableData}
           columns={columns}
-          searchColumn="id"
+          searchColumn="name"
           searchPlaceholder="Поиск по номеру контейнера..."
           renderRowSubComponent={({ row }) => 
             expandedContainers.includes(row.original.id) ? <ExpandedContainerCells containerId={row.original.id} /> : null
           }
-          enableActions={true}
-          onEdit={handleEdit}
-          onDelete={handleDeleteAdapter}
+          onEdit={modal.openEdit}
+          onDelete={handleDelete}
           tableId="containers-table"
-          enableColumnReordering={true}
-          persistColumnOrder={true}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          onPaginationChange={tableControls.handlePaginationChange}
+          onSortingChange={tableControls.handleSortingChange}
+          onSearchChange={tableControls.handleSearchChange}
+          isLoading={isLoading}
+          error={error}
+          onRetry={refetch}
+          sortableFields={ContainerSortField}
+          pagination={tableControls.pagination}
+          sorting={tableControls.sorting}
+          persistSettings={true}
         />
       </div>
 
       {/* Модальное окно */}
-      <BaseLocationModal
-        isOpen={isModalOpen || !!editingContainer}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingContainer(null);
-        }}
-        title={editingContainer ? 'Редактировать контейнер' : 'Добавить контейнер'}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title={modal.editItem ? 'Редактировать контейнер' : 'Добавить контейнер'}
         fields={modalFields}
         validationSchema={containerValidationSchema}
-        onSubmit={handleSubmit}
-        submitText={editingContainer ? 'Сохранить' : 'Добавить'}
-        defaultValues={editingContainer ? {
-          id: editingContainer.id < 10 ? `0${editingContainer.id}` : `${editingContainer.id}`,
-          locId: editingContainer.locId
-        } : undefined}
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        defaultValues={modal.editItem ? {
+          name: modal.editItem.name < 10 ? `0${modal.editItem.name}` : `${modal.editItem.name}`,
+          locId: modal.editItem.locId || ''
+        } : {
+          name: getNextId(),
+          locId: ''
+        }}
       />
     </>
   );

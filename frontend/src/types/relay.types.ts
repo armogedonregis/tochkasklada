@@ -1,29 +1,35 @@
-import { Panel } from './panel.types';
-
-export type RelayType = 'SECURITY' | 'LIGHT' | 'GATE';
+export enum RelayType {
+  SECURITY = 'SECURITY', // Дверь
+  LIGHT = 'LIGHT',       // Свет
+  GATE = 'GATE'          // Ворота
+}
 
 export interface Relay {
   id: string;
-  relayNumber: number;
   name: string;
+  relayNumber: number;
   type: RelayType;
-  isActive?: boolean;
+  panelId: string;
+  cellId?: string;
   createdAt: string;
   updatedAt: string;
-  panelId: string;
-  panel?: Panel;
 }
 
-export interface CreateRelayRequest {
+export interface CreateRelayDto {
   name: string;
   relayNumber: number;
   type: RelayType;
   panelId: string;
+  cellId?: string;
 }
 
-export interface UpdateRelayRequest {
-  id: string;
+export interface UpdateRelayDto {
   name?: string;
   relayNumber?: number;
   type?: RelayType;
+  cellId?: string;
+}
+
+export interface ToggleRelayDto {
+  state: boolean;
 } 
