@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   Payment, 
   CreatePaymentDto, 
@@ -7,7 +7,7 @@ import {
   PaymentFilters,
   SetPaymentStatusDto,
   PaginatedPaymentResponse
-} from '../types/payment.types';
+} from './payments.types';
 
 export const paymentsApi = api.injectEndpoints({
   endpoints: (builder) => ({

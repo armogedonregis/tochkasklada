@@ -1,21 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { useGetAdminCellsQuery, useDeleteCellMutation, useAddCellMutation, useUpdateCellMutation } from '@/services/cellsApi';
-import { useGetContainersQuery } from '@/services/containersApi';
-import { useGetSizesQuery } from '@/services/sizesApi';
+import { useGetAdminCellsQuery, useDeleteCellMutation, useAddCellMutation, useUpdateCellMutation } from '@/services/cellService/cellsApi';
+import { useGetContainersQuery } from '@/services/containersService/containersApi';
+import { useGetSizesQuery } from '@/services/sizesService/sizesApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Cell, CreateCellDto, CellFilters, CellSortField as ImportedCellSortField } from '@/types/cell.types';
-import { Container } from '@/types/container.types';
-import { Size } from '@/types/size.types';
+import { Cell, CreateCellDto, CellFilters, CellSortField as ImportedCellSortField } from '@/services/cellService/cell.types';
+import { Container } from '@/services/containersService/container.types';
+import { Size } from '@/services/sizesService/sizes.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { SortDirection } from '@/types/common.types';
+import { SortDirection } from '@/services/services.types';
 
 // Схема валидации для ячеек
 const cellValidationSchema = yup.object({

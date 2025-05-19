@@ -1,5 +1,5 @@
-import { FilterParams, PaginatedResponse, SortDirection } from './common.types';
-import { User } from './payment.types';
+import { FilterParams, PaginatedResponse, SortDirection } from '../services.types';
+import { User } from '../paymentsService/payments.types';
 
 // Перечисление полей сортировки для клиентов
 export enum ClientSortField {

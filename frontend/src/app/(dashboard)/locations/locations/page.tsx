@@ -1,17 +1,16 @@
 'use client';
 
-import { useGetLocationsQuery, useDeleteLocationMutation, useAddLocationMutation, useUpdateLocationMutation } from '@/services/locationsApi';
-import { useGetCitiesQuery } from '@/services/citiesApi';
+import { useGetLocationsQuery, useDeleteLocationMutation, useAddLocationMutation, useUpdateLocationMutation } from '@/services/locationsService/locationsApi';
+import { useGetCitiesQuery } from '@/services/citiesService/citiesApi';
 import { Button } from '@/components/ui/button';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Location, CreateLocationDto, LocationSortField } from '@/types/location.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { BaseTable } from '@/components/table/BaseTable';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-
+import { Location, CreateLocationDto, LocationSortField } from '@/services/locationsService/location.types';
 // Схема валидации для локаций
 const locationValidationSchema = yup.object({
   name: yup.string().required('Название локации обязательно'),

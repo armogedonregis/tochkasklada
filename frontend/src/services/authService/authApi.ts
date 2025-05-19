@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../api';
 
 // Типы для запросов аутентификации
 export interface LoginRequest {

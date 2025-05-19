@@ -1,5 +1,3 @@
-import { FilterParams } from './common.types';
-
 export interface Panel {
   id: string;
   name: string;

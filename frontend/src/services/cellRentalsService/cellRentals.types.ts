@@ -1,6 +1,6 @@
-import { FilterParams, DateRangeParams } from './common.types';
-import { Cell } from './cell.types';
-import { Client } from './client.types';
+import { FilterParams, DateRangeParams } from '../services.types';
+import { Cell } from '../cellService/cell.types';
+import { Client } from '../clientsService/client.types';
 
 export interface CellRental {
   id: string;

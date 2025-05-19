@@ -1,16 +1,15 @@
 'use client';
 
-import { useGetCitiesQuery, useDeleteCityMutation, useAddCityMutation, useUpdateCityMutation } from '@/services/citiesApi';
+import { useGetCitiesQuery, useDeleteCityMutation, useAddCityMutation, useUpdateCityMutation } from '@/services/citiesService/citiesApi';
 import { Button } from '@/components/ui/button';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { City, CreateCityDto } from '@/types/city.types';
-import { CitySortField } from '@/types/city.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { BaseTable } from '@/components/table/BaseTable';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
+import { City, CitySortField, CreateCityDto } from '@/services/citiesService/city.types';
 
 // Схема валидации для городов
 const cityValidationSchema = yup.object({

@@ -1,11 +1,11 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   Container, 
   CreateContainerDto, 
   UpdateContainerDto, 
   ContainerFilters,
   PaginatedContainerResponse
-} from '../types/container.types';
+} from './container.types';
 
 export const containersApi = api.injectEndpoints({
   endpoints: (builder) => ({

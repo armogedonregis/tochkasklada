@@ -1,4 +1,4 @@
-import { FilterParams, DateRangeParams, PaginatedResponse, SortDirection } from './common.types';
+import { FilterParams, DateRangeParams, PaginatedResponse, SortDirection } from '../services.types';
 
 // Перечисление полей сортировки для платежей
 export enum PaymentSortField {

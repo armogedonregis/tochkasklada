@@ -6,12 +6,12 @@ import {
   useCreateClientMutation,
   useUpdateClientMutation,
   useDeleteClientMutation 
-} from '@/services/clientsApi';
+} from '@/services/clientsService/clientsApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
-import { Client, ClientSortField } from '@/types/client.types';
+import { Client, ClientSortField } from '@/services/clientsService/clients.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { useTableControls } from '@/hooks/useTableControls';

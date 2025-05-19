@@ -1,10 +1,10 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   CellRental, 
   CreateCellRentalDto, 
   UpdateCellRentalDto, 
   CellRentalFilters 
-} from '../types/cell-rental.types';
+} from './cellRentals.types';
 
 export const cellRentalsApi = api.injectEndpoints({
   endpoints: (builder) => ({

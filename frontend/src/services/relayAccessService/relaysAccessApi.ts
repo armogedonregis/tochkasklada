@@ -1,9 +1,9 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   RelayAccess, 
   CreateRelayAccessDto, 
   CheckRelayAccessDto
-} from '../types/relay-access.types';
+} from './relaysAccess.types';
 
 export const relayAccessApi = api.injectEndpoints({
   endpoints: (builder) => ({

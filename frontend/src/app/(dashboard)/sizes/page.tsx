@@ -6,17 +6,17 @@ import {
   useDeleteSizeMutation,
   useAddSizeMutation,
   useUpdateSizeMutation
-} from '@/services/sizesApi';
+} from '@/services/sizesService/sizesApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'react-toastify';
-import { Size, CreateSizeDto, SizeSortField } from '@/types/size.types';
+import { Size, CreateSizeDto } from '@/services/sizesService/sizes.types';
 import * as yup from 'yup';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { SortDirection } from '@/types/common.types';
+import { SortDirection } from '@/services/services.types';
 
 // Схема валидации для размеров
 const sizeValidationSchema = yup.object({

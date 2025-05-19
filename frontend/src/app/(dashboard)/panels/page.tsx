@@ -7,16 +7,16 @@ import {
   useCreatePanelMutation,
   useUpdatePanelMutation,
   // useCheckPanelConnectionManualMutation
-} from '@/services/panelsApi';
+} from '@/services/panelsService/panelsApi';
 import { 
   useToggleRelayMutation, 
   usePulseRelayMutation,
   useCreateRelayMutation,
   useDeleteRelayMutation,
   useUpdateRelayMutation
-} from '@/services/relaysApi';
-import { Panel } from '@/types/panel.types';
-import { Relay, RelayType } from '@/types/relay.types';
+} from '@/services/relaysService/relaysApi';
+import { Panel } from '@/services/panelsService/panels.types';
+import { Relay, RelayType } from '@/services/relaysService/relays.types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Grid, Power, Loader2, Trash2, RefreshCw, Edit, MoreHorizontal, ChevronDown, ChevronRight } from 'lucide-react';

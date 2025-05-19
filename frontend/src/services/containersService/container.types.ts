@@ -1,5 +1,5 @@
-import { FilterParams, PaginatedResponse, SortDirection } from './common.types';
-import { Location } from './location.types';
+import { FilterParams, PaginatedResponse, SortDirection } from '../services.types';
+import { Location } from '../locationsService/location.types';
 
 /**
  * Enum для полей сортировки контейнеров

@@ -1,0 +1,16 @@
+export const tagTypes = [
+    'Auth',
+    'Clients',
+    'User',
+    'Cities',
+    'Locations',
+    'Containers',
+    'Sizes',
+    'Payments',
+    'Cells',
+    'CellStatuses',
+    'CellRentals',
+    'Panels',
+    'Relays',
+    'RelayAccess',
+] as const;

@@ -1,11 +1,11 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   Relay, 
   RelayType, 
   CreateRelayDto, 
   UpdateRelayDto, 
   ToggleRelayDto 
-} from '../types/relay.types';
+} from './relays.types';
 
 export const relaysApi = api.injectEndpoints({
   endpoints: (builder) => ({

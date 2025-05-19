@@ -1,9 +1,9 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   Panel, 
   CreatePanelDto, 
   UpdatePanelDto
-} from '../types/panel.types';
+} from './panels.types';
 
 export const panelsApi = api.injectEndpoints({
   endpoints: (builder) => ({

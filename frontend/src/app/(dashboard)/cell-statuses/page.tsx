@@ -4,8 +4,7 @@ import React, { useState } from 'react';
 import { 
   useGetCellStatusesQuery,
   useDeleteCellStatusMutation,
-  CellStatus
-} from '@/services/cellStatusesApi';
+} from '@/services/cellStatusesService/cellStatusesApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Search } from 'lucide-react';
@@ -13,6 +12,7 @@ import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'react-toastify';
 import { CellStatusModal } from '@/components/modals/CellStatusModal';
+import { CellStatus } from '@/services/cellStatusesService/cellStatuses.types';
 
 export default function CellStatuses() {
   const { data: statuses, isLoading, isError, error } = useGetCellStatusesQuery();

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useGetContainersQuery, useGetContainerQuery, useDeleteContainerMutation, useAddContainerMutation, useUpdateContainerMutation } from '@/services/containersApi';
-import { useLazyGetLocationsQuery } from '@/services/locationsApi';
-import { useGetSizesQuery } from '@/services/sizesApi';
+import { useGetContainersQuery, useGetContainerQuery, useDeleteContainerMutation, useAddContainerMutation, useUpdateContainerMutation } from '@/services/containersService/containersApi';
+import { useLazyGetLocationsQuery } from '@/services/locationsService/locationsApi';
+import { useGetSizesQuery } from '@/services/sizesService/sizesApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ColumnDef } from '@tanstack/react-table';
-import { Container, ContainerWithExpanded, Cell, ContainerSortField } from '@/types/container.types';
+import { Container, ContainerWithExpanded, Cell, ContainerSortField } from '@/services/containersService/container.types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTableControls } from '@/hooks/useTableControls';

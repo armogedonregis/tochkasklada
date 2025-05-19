@@ -7,8 +7,8 @@ import {
   useUpdatePaymentMutation, 
   useDeletePaymentMutation,
   useSetPaymentStatusMutation
-} from '@/services/paymentsApi';
-import { useGetClientsQuery } from '@/services/clientsApi';
+} from '@/services/paymentsService/paymentsApi';
+import { useGetClientsQuery } from '@/services/clientsService/clientsApi';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
@@ -22,9 +22,9 @@ import { useFormModal } from '@/hooks/useFormModal';
 import { formatDistance } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import * as yup from 'yup';
-import { Payment, PaymentSortField } from '@/types/payment.types';
-import { SortDirection } from '@/types/common.types';
-import { Client } from '@/types/client.types';
+import { Payment, PaymentSortField } from '@/services/paymentsService/payments.types';
+import { SortDirection } from '@/services/services.types';
+import { Client } from '@/services/clientsService/clients.types';
 
 // Схема валидации для платежей
 const paymentValidationSchema = yup.object({

@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { tagTypes } from './tagTypes';
 
-// Помощник для управления токенами
 const getToken = (): string | null => {
   return localStorage.getItem('token');
 };
@@ -20,21 +20,6 @@ export const api = createApi({
       return headers;
     }
   }),
-  tagTypes: [
-    'Cities',
-    'Locations',
-    'Containers',
-    'Cells',
-    'Sizes',
-    'User',
-    'Auth',
-    'Clients',
-    'Payments',
-    'CellStatuses',
-    'Panels',
-    'Relays',
-    'RelayAccess',
-    'CellRentals',
-  ],
+  tagTypes: tagTypes,
   endpoints: () => ({}),
 }); 

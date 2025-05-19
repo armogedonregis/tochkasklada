@@ -1,5 +1,5 @@
-import { api } from './api';
-import { City, CreateCityDto, UpdateCityDto, CityFilters, PaginatedCityResponse } from '../types/city.types';
+import { api } from '../api';
+import { City, CreateCityDto, UpdateCityDto, CityFilters, PaginatedCityResponse } from './city.types';
 
 export const citiesApi = api.injectEndpoints({
   endpoints: (builder) => ({

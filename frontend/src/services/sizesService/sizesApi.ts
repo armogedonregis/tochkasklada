@@ -1,5 +1,5 @@
-import { api } from './api';
-import { Size, CreateSizeDto, UpdateSizeDto } from '../types/size.types';
+import { api } from '../api';
+import { Size, CreateSizeDto, UpdateSizeDto } from './sizes.types';
 
 export const sizesApi = api.injectEndpoints({
   endpoints: (builder) => ({

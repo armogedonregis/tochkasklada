@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   Client, 
   ClientPhone,
@@ -6,7 +6,7 @@ import {
   UpdateClientDto, 
   ClientFilters,
   PaginatedClientResponse
-} from '../types/client.types';
+} from '../clientsService/clients.types';
 
 
 // Расширение базового API для работы с клиентами

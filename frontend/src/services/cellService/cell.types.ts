@@ -1,5 +1,5 @@
-import { FilterParams, PaginatedResponse, SortDirection } from './common.types';
-import { Size } from './size.types';
+import { FilterParams, PaginatedResponse, SortDirection } from '../services.types';
+import { Size } from '../sizesService/sizes.types';
 
 // Перечисление полей сортировки для ячеек
 export enum CellSortField {

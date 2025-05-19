@@ -1,5 +1,5 @@
-import { api } from './api';
-import { Location, CreateLocationDto, UpdateLocationDto, LocationFilters, PaginatedLocationResponse } from '../types/location.types';
+import { api } from '../api';
+import { Location, CreateLocationDto, UpdateLocationDto, LocationFilters, PaginatedLocationResponse } from './location.types';
 
 
 export const locationsApi = api.injectEndpoints({

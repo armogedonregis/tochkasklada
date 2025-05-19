@@ -1,9 +1,9 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   CellStatus, 
   CreateCellStatusDto, 
   UpdateCellStatusDto 
-} from '../types/cell-status.types';
+} from './cellStatuses.types';
 
 export const cellStatusesApi = api.injectEndpoints({
   endpoints: (builder) => ({

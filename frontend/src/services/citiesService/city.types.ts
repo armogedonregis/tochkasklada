@@ -1,4 +1,4 @@
-import { FilterParams, PaginatedResponse, SortDirection } from './common.types';
+import { FilterParams, PaginatedResponse, SortDirection } from '../services.types';
 
 /**
  * Enum для полей сортировки городов

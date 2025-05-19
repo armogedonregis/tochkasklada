@@ -1,11 +1,11 @@
-import { api } from './api';
+import { api } from '../api';
 import { 
   Cell, 
   CreateCellDto, 
   UpdateCellDto, 
   CellFilters,
   PaginatedCellResponse
-} from '../types/cell.types';
+} from './cell.types';
 
 export const cellsApi = api.injectEndpoints({
   endpoints: (builder) => ({
