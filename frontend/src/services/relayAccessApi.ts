@@ -2,17 +2,13 @@ import { api } from './api';
 import { 
   RelayAccess, 
   CreateRelayAccessDto, 
-  CheckRelayAccessDto, 
-  RelayAccessFilters 
+  CheckRelayAccessDto
 } from '../types/relay-access.types';
 
 export const relayAccessApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getRelayAccesses: builder.query<RelayAccess[], RelayAccessFilters | void>({
-      query: (params) => ({
-        url: '/admin/relay-access',
-        params: params || undefined
-      }),
+    getRelayAccesses: builder.query<RelayAccess[], void>({
+      query: () => '/admin/relay-access',
       providesTags: (result) =>
         result
           ? [

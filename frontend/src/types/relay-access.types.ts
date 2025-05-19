@@ -20,10 +20,4 @@ export interface CreateRelayAccessDto {
 export interface CheckRelayAccessDto {
   cellRentalId: string;
   relayId: string;
-}
-
-export interface RelayAccessFilters extends FilterParams {
-  relayId?: string;
-  cellRentalId?: string;
-  isActive?: boolean;
 } 

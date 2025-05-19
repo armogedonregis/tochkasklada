@@ -25,6 +25,4 @@ export interface UpdatePanelDto {
   port?: number;
   login?: string;
   password?: string;
-}
-
-export interface PanelFilters extends FilterParams {} 
+} 

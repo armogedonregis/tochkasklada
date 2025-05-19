@@ -6,7 +6,7 @@ import { IsString, IsNotEmpty } from 'class-validator';
 export class CreateSizeDto {
   /**
    * Название размера ячейки
-   * @example "Большая"
+   * @example "Кладовка"
    */
   @IsString()
   @IsNotEmpty()
@@ -14,7 +14,7 @@ export class CreateSizeDto {
 
   /**
    * Короткое название размера ячейки
-   * @example "L"
+   * @example "XL"
    */
   @IsString()
   @IsNotEmpty()

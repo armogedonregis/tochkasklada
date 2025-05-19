@@ -3,27 +3,37 @@
 import { useState } from 'react';
 import { useGetContainersQuery, useGetContainerQuery, useDeleteContainerMutation, useAddContainerMutation, useUpdateContainerMutation } from '@/services/containersApi';
 import { useLazyGetLocationsQuery } from '@/services/locationsApi';
+import { useGetSizesQuery } from '@/services/sizesApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
-import { BaseFormModal } from '@/components/modals/BaseFormModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ColumnDef } from '@tanstack/react-table';
-import { Container, ContainerWithExpanded, Cell, CreateContainerDto, ContainerSortField } from '@/types/container.types';
+import { Container, ContainerWithExpanded, Cell, ContainerSortField } from '@/types/container.types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
-import * as yup from 'yup';
 import { useTableControls } from '@/hooks/useTableControls';
-import { useFormModal } from '@/hooks/useFormModal';
 
-// Схема валидации для контейнеров (name как строка в форме, но преобразуется в число)
-const containerValidationSchema = yup.object({
-  name: yup.number()
-    .required('Номер контейнера обязателен'),
-  locId: yup.string().required('Выберите локацию')
-});
+// Массив букв для ячеек
+const cellLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export default function ContainersPage() {
   // Состояние для развернутых контейнеров
   const [expandedContainers, setExpandedContainers] = useState<string[]>([]);
+  
+  // Состояние для модального окна
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editItem, setEditItem] = useState<Container | null>(null);
+  
+  // Состояние формы
+  const [formData, setFormData] = useState({
+    name: '',
+    locId: '',
+    cells: {} as Record<string, { checked: boolean, sizeId: string }>
+  });
   
   // Используем хук для управления состоянием таблицы
   const tableControls = useTableControls<ContainerSortField>({
@@ -40,12 +50,25 @@ export default function ContainersPage() {
   const pageCount = data?.meta?.totalPages || 0;
 
   // Lazy запрос для поиска локаций
-  const [getLocations, { data: locationsData = { data: [] }, isLoading: isLocationsLoading }] = useLazyGetLocationsQuery();
+  const [getLocations, { data: locationsData = { data: [] }}] = useLazyGetLocationsQuery();
   
   // Мутации для операций с контейнерами
   const [deleteContainer] = useDeleteContainerMutation();
   const [addContainer] = useAddContainerMutation();
   const [updateContainer] = useUpdateContainerMutation();
+
+  // Получаем список размеров для ячеек
+  const { data: sizesData } = useGetSizesQuery();
+  const sizes = sizesData || [];
+  
+  // Форматируем размеры для селектора
+  const sizeOptions = sizes.map(size => ({
+    label: `${size.name} (${size.size}, ${size.area})`,
+    value: size.id
+  }));
+  
+  // Получаем ID первого размера для установки по умолчанию
+  const defaultSizeId = sizeOptions.length > 0 ? sizeOptions[0].value.toString() : '';
 
   // Функция для переключения состояния развернутости контейнера
   const toggleExpandContainer = (containerId: string) => {
@@ -70,31 +93,128 @@ export default function ContainersPage() {
     expanded: expandedContainers.includes(container.id)
   }));
 
-  // Хук для управления модальным окном
-  const modal = useFormModal<CreateContainerDto, Container>({
-    onSubmit: async (values) => {
-      // Преобразуем name из строки в число для отправки на сервер
-      const nameNumber = values.name;
-      
-      if (modal.editItem) {
+  // Обработчик изменения ввода
+  const handleInputChange = (name: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Обработчик изменения чекбокса ячейки
+  const handleCellCheckChange = (letter: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      cells: {
+        ...prev.cells,
+        [letter]: {
+          checked,
+          sizeId: prev.cells[letter]?.sizeId || defaultSizeId
+        }
+      }
+    }));
+  };
+
+  // Обработчик изменения размера ячейки
+  const handleCellSizeChange = (letter: string, sizeId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      cells: {
+        ...prev.cells,
+        [letter]: {
+          ...prev.cells[letter],
+          sizeId
+        }
+      }
+    }));
+  };
+
+  // Обработчик отправки формы
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Проверяем обязательные поля
+    if (!formData.name.trim()) {
+      toast.error('Введите номер контейнера');
+      return;
+    }
+    
+    if (!formData.locId) {
+      toast.error('Выберите локацию');
+      return;
+    }
+    
+    // Подготавливаем массив ячеек
+    const cells = Object.entries(formData.cells)
+      .filter(([_, data]) => data.checked)
+      .map(([letter, data]) => ({
+        name: letter,
+        size_id: data.sizeId
+      }));
+    
+    try {
+      if (editItem) {
+        // При редактировании просто обновляем основные данные контейнера
         await updateContainer({ 
-          id: modal.editItem.id,
-          name: nameNumber,
-          locId: values.locId 
+          id: editItem.id,
+          name: formData.name,
+          locId: formData.locId 
         }).unwrap();
         toast.success('Контейнер успешно обновлен');
       } else {
+        // При создании добавляем ячейки, если они указаны
         await addContainer({
-          name: nameNumber,
-          locId: values.locId
+          name: formData.name,
+          locId: formData.locId,
+          cells: cells.length > 0 ? cells : undefined
         }).unwrap();
         toast.success('Контейнер успешно добавлен');
       }
-    },
-    onError: () => {
+      closeModal();
+    } catch (error) {
       toast.error('Ошибка при сохранении контейнера');
     }
-  });
+  };
+
+  // Функции для управления модальным окном
+  const openCreateModal = () => {
+    // Инициализируем пустую форму с дефолтным номером
+    const initialCells = {} as Record<string, { checked: boolean, sizeId: string }>;
+    cellLetters.forEach(letter => {
+      initialCells[letter] = { checked: false, sizeId: defaultSizeId };
+    });
+    
+    setFormData({
+      name: getNextId(),
+      locId: '',
+      cells: initialCells
+    });
+    
+    setEditItem(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (container: Container) => {
+    // Инициализируем форму данными из контейнера
+    const initialCells = {} as Record<string, { checked: boolean, sizeId: string }>;
+    cellLetters.forEach(letter => {
+      initialCells[letter] = { checked: false, sizeId: defaultSizeId };
+    });
+    
+    setFormData({
+      name: container.name < 10 ? `0${container.name}` : `${container.name}`,
+      locId: container.locId || '',
+      cells: initialCells
+    });
+    
+    setEditItem(container);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditItem(null);
+  };
 
   // Обработчик удаления
   const handleDelete = async (container: Container) => {
@@ -109,10 +229,10 @@ export default function ContainersPage() {
   };
 
   // Функция для поиска локаций
-  const handleLocationSearch = (query: string) => {
+  const handleLocationSearch = () => {
     getLocations({
-      search: query,
-      limit: 10
+      search: '',
+      limit: 20
     });
   };
 
@@ -245,30 +365,55 @@ export default function ContainersPage() {
     );
   };
 
-  // Поля формы для модального окна
-  const modalFields = [
-    {
-      type: 'input' as const,
-      fieldName: 'name' as const,
-      label: 'Номер контейнера',
-      placeholder: 'Например: 01'
-    },
-    // Используем searchSelect с onSearch для поиска локаций
-    {
-      type: 'searchSelect' as const,
-      fieldName: 'locId' as const,
-      label: 'Локация',
-      placeholder: 'Поиск локации...',
-      options: locationOptions,
-      onSearch: handleLocationSearch
-    }
-  ];
+  // Компонент для отображения чекбокса с селектором
+  const CellCheckboxWithSelect = ({ letter }: { letter: string }) => {
+    const cellData = formData.cells[letter] || { checked: false, sizeId: defaultSizeId };
+    
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex flex-row items-center space-x-1">
+          <Checkbox
+            id={`cell-${letter}`}
+            checked={cellData.checked}
+            onCheckedChange={(checked) => handleCellCheckChange(letter, !!checked)}
+            className="w-3.5 h-3.5"
+          />
+          <Label htmlFor={`cell-${letter}`} className="text-xs font-medium cursor-pointer">
+            Ячейка {letter}
+          </Label>
+        </div>
+
+        <div className={`flex-1 transition-opacity ${cellData.checked ? 'opacity-100' : 'opacity-50'}`}>
+          <Select
+            value={cellData.sizeId}
+            onValueChange={(value) => handleCellSizeChange(letter, value)}
+            disabled={!cellData.checked}
+          >
+            <SelectTrigger className="h-7 text-xs min-h-0 py-0">
+              <SelectValue placeholder="Размер" />
+            </SelectTrigger>
+            <SelectContent>
+              {sizeOptions.map(option => (
+                <SelectItem 
+                  key={option.value.toString()} 
+                  value={option.value.toString()}
+                  className="text-xs py-1"
+                >
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={modal.openCreate}>
+        <Button onClick={openCreateModal}>
           Добавить контейнер
         </Button>
       </div>
@@ -283,7 +428,7 @@ export default function ContainersPage() {
           renderRowSubComponent={({ row }) => 
             expandedContainers.includes(row.original.id) ? <ExpandedContainerCells containerId={row.original.id} /> : null
           }
-          onEdit={modal.openEdit}
+          onEdit={openEditModal}
           onDelete={handleDelete}
           tableId="containers-table"
           totalCount={totalCount}
@@ -302,22 +447,92 @@ export default function ContainersPage() {
       </div>
 
       {/* Модальное окно */}
-      <BaseFormModal
-        isOpen={modal.isOpen}
-        onClose={modal.closeModal}
-        title={modal.editItem ? 'Редактировать контейнер' : 'Добавить контейнер'}
-        fields={modalFields}
-        validationSchema={containerValidationSchema}
-        onSubmit={modal.handleSubmit}
-        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
-        defaultValues={modal.editItem ? {
-          name: modal.editItem.name < 10 ? `0${modal.editItem.name}` : `${modal.editItem.name}`,
-          locId: modal.editItem.locId || ''
-        } : {
-          name: getNextId(),
-          locId: ''
-        }}
-      />
+      <Dialog open={isModalOpen} onOpenChange={(open) => {
+        if (!open) closeModal();
+      }}>
+        <DialogContent 
+          className="p-0 sm:max-w-[600px]"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <div className="w-full p-6 bg-white dark:bg-gray-800 rounded-lg">
+            <DialogHeader className="mb-4 relative">
+              <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
+                {editItem ? 'Редактировать контейнер' : 'Добавить контейнер с ячейками'}
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                {/* Поле для номера контейнера */}
+                <div className="space-y-2">
+                  <Label htmlFor="name">Номер контейнера</Label>
+                  <Input 
+                    id="name"
+                    placeholder="Например: 01" 
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                  />
+                </div>
+                
+                {/* Поле для локации */}
+                <div className="space-y-2">
+                  <Label htmlFor="location">Локация</Label>
+                  <Select
+                    value={formData.locId}
+                    onValueChange={(value) => handleInputChange('locId', value)}
+                    onOpenChange={() => {
+                      // При открытии загружаем локации если их нет
+                      if (locationOptions.length === 0) {
+                        handleLocationSearch();
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="location">
+                      <SelectValue placeholder="Выберите локацию" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locationOptions.map(option => (
+                        <SelectItem key={option.value.toString()} value={option.value.toString()}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Заголовок для ячеек */}
+                <div>
+                  <h3 className="font-medium text-base mb-2">Ячейки контейнера</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {cellLetters.map(letter => (
+                      <CellCheckboxWithSelect key={letter} letter={letter} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Кнопки */}
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  type="button"
+                  onClick={closeModal}
+                  className="h-11 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-transparent border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  variant="outline"
+                >
+                  Отмена
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-11 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#F62D40] to-[#F8888F] rounded-md hover:from-[#E11830] hover:to-[#E76A73] disabled:opacity-50 disabled:pointer-events-none transition-all"
+                >
+                  {editItem ? 'Сохранить' : 'Добавить'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 } 

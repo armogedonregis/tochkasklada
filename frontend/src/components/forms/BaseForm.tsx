@@ -11,6 +11,7 @@ import FormSelect from './FormSelect';
 import FormCheckbox from './FormCheckbox';
 import FormTitle from './FormTitle';
 import FormSearchSelect from './FormSearchSelect';
+import FormCheckboxWithSelect from './FormCheckboxWithSelect';
 
 interface BaseFormProps<T extends FieldValues> {
   fields: IForm<T>[];
@@ -106,6 +107,20 @@ const BaseForm = <T extends FieldValues>({
             name={item.fieldName}
             label={item.label}
             description={item.description}
+          />
+        );
+      
+      case 'checkboxWithSelect':
+        return (
+          <FormCheckboxWithSelect
+            key={item.fieldName}
+            form={form}
+            name={item.fieldName}
+            selectField={item.selectField}
+            label={item.label}
+            checkboxLabel={item.checkboxLabel}
+            selectLabel={item.selectLabel}
+            options={item.options}
           />
         );
       

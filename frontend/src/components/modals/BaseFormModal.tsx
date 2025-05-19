@@ -21,6 +21,7 @@ interface BaseFormModalProps<T extends FieldValues> {
   cancelText?: string;
   defaultValues?: DefaultValues<T>;
   className?: string;
+  useGrid?: boolean;
 }
 
 export const BaseFormModal = <T extends FieldValues>({
@@ -34,7 +35,8 @@ export const BaseFormModal = <T extends FieldValues>({
   submitText = 'Сохранить',
   cancelText = 'Отмена',
   defaultValues,
-  className = 'sm:max-w-[570px]'
+  className = 'sm:max-w-[570px]',
+  useGrid = false
 }: BaseFormModalProps<T>) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -70,7 +72,7 @@ export const BaseFormModal = <T extends FieldValues>({
             onSubmit={onSubmit}
             containerClassName="space-y-4"
             formClassName="space-y-6"
-            inputClassName="space-y-4"
+            inputClassName={useGrid ? "grid grid-cols-2 gap-2" : "space-y-4"}
             defaultValues={defaultValues}
             renderButtons={(form) => (
               <div className="flex justify-end space-x-3 pt-4">

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateSizeDto, UpdateSizeDto, FindSizesDto, SizeSortField, SortDirection } from './dto';
+import { CreateSizeDto, UpdateSizeDto } from './dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -8,80 +8,20 @@ export class SizesService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Поиск размеров ячеек с пагинацией, сортировкой и фильтрацией
+   * Получение всех размеров ячеек
    */
-  async findSizes(queryParams: FindSizesDto) {
-    const {
-      search,
-      page = 1,
-      limit = 10,
-      sortBy = SizeSortField.NAME,
-      sortDirection = SortDirection.ASC
-    } = queryParams;
-
-    // Базовые условия фильтрации
-    let where: Prisma.SizeCellsWhereInput = {};
-
-    // Если указана поисковая строка, строим сложное условие для поиска
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { short_name: { contains: search, mode: 'insensitive' } },
-        { size: { contains: search, mode: 'insensitive' } },
-        { area: { contains: search, mode: 'insensitive' } }
-      ];
+  async findSizes() {
+    try {
+      const sizes = await this.prisma.sizeCells.findMany({
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+      
+      return sizes;
+    } catch (error) {
+      throw new InternalServerErrorException(`Ошибка при получении размеров ячеек: ${error.message}`);
     }
-
-    // Вычисляем параметры пагинации
-    const skip = (page - 1) * limit;
-
-    // Настройка сортировки
-    let orderBy: Prisma.SizeCellsOrderByWithRelationInput = {};
-    
-    // В зависимости от выбранного поля сортировки
-    switch (sortBy) {
-      case SizeSortField.NAME:
-        orderBy.name = sortDirection;
-        break;
-      case SizeSortField.SHORT_NAME:
-        orderBy.short_name = sortDirection;
-        break;
-      case SizeSortField.SIZE:
-        orderBy.size = sortDirection;
-        break;
-      case SizeSortField.AREA:
-        orderBy.area = sortDirection;
-        break;
-      case SizeSortField.CREATED_AT:
-      default:
-        orderBy.createdAt = sortDirection;
-        break;
-    }
-
-    // Запрос на получение общего количества
-    const totalCount = await this.prisma.sizeCells.count({ where });
-
-    // Запрос на получение данных с пагинацией
-    const sizes = await this.prisma.sizeCells.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy
-    });
-
-    // Рассчитываем количество страниц
-    const totalPages = Math.ceil(totalCount / limit);
-
-    // Возвращаем результат с мета-информацией
-    return {
-      data: sizes,
-      meta: {
-        totalCount,
-        page,
-        limit,
-        totalPages,
-      },
-    };
   }
 
   /**

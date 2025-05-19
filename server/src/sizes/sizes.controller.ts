@@ -9,11 +9,10 @@ import {
   HttpCode, 
   HttpStatus,
   ParseUUIDPipe,
-  UseGuards,
-  Query
+  UseGuards
 } from '@nestjs/common';
 import { SizesService } from './sizes.service';
-import { CreateSizeDto, UpdateSizeDto, FindSizesDto } from './dto';
+import { CreateSizeDto, UpdateSizeDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -26,11 +25,11 @@ export class SizesController {
   constructor(private readonly sizesService: SizesService) {}
 
   /**
-   * Поиск размеров ячеек с пагинацией и фильтрацией
+   * Получение всех размеров ячеек
    */
   @Get()
-  findSizes(@Query() query: FindSizesDto) {
-    return this.sizesService.findSizes(query);
+  findSizes() {
+    return this.sizesService.findSizes();
   }
 
   /**

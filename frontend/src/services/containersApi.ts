@@ -34,7 +34,7 @@ export const containersApi = api.injectEndpoints({
         method: 'POST',
         body: container,
       }),
-      invalidatesTags: [{ type: 'Containers', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Containers', id: 'LIST' }, 'Cells'],
     }),
     updateContainer: builder.mutation<Container, UpdateContainerDto & { id: string }>({
       query: (container) => {

@@ -2,17 +2,13 @@ import { api } from './api';
 import { 
   Panel, 
   CreatePanelDto, 
-  UpdatePanelDto, 
-  PanelFilters 
+  UpdatePanelDto
 } from '../types/panel.types';
 
 export const panelsApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getPanels: builder.query<Panel[], PanelFilters | void>({
-      query: (params) => ({
-        url: '/admin/panels',
-        params: params || undefined
-      }),
+    getPanels: builder.query<Panel[], void>({
+      query: () => '/admin/panels',
       providesTags: (result) => 
         result
           ? [

@@ -1,14 +1,4 @@
-import { FilterParams, PaginatedResponse, SortDirection } from './common.types';
-
-// Перечисление полей сортировки для размеров
-export enum SizeSortField {
-  NAME = 'name',
-  SHORT_NAME = 'short_name',
-  SIZE = 'size',
-  AREA = 'area',
-  CREATED_AT = 'createdAt'
-}
-
+// Интерфейс для размера ячейки
 export interface Size {
   id: string;
   name: string;
@@ -19,6 +9,7 @@ export interface Size {
   updatedAt?: string;
 }
 
+// DTO для создания размера
 export interface CreateSizeDto {
   name: string;
   short_name: string;
@@ -26,16 +17,10 @@ export interface CreateSizeDto {
   area: string;
 }
 
+// DTO для обновления размера
 export interface UpdateSizeDto {
   name?: string;
   short_name?: string;
   size?: string;
   area?: string;
-}
-
-export interface SizeFilters extends FilterParams {
-  sortBy?: SizeSortField;
-  sortDirection?: SortDirection;
-}
-
-export type PaginatedSizeResponse = PaginatedResponse<Size>; 
+} 

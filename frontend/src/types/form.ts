@@ -1,7 +1,7 @@
 import { LucideIcon } from 'lucide-react';
 import { Path } from 'react-hook-form';
 
-export type IFormType = 'input' | 'select' | 'title' | 'checkbox' | 'searchSelect';
+export type IFormType = 'input' | 'select' | 'title' | 'checkbox' | 'searchSelect' | 'checkboxWithSelect';
 
 export interface SelectOption {
   label: string;
@@ -49,6 +49,16 @@ interface CheckboxFormArea<T> extends BaseFormArea {
   description?: string;
 }
 
+// Тип для чекбоксов с селектором
+interface CheckboxWithSelectFormArea<T> extends BaseFormArea {
+  type: 'checkboxWithSelect';
+  fieldName: Path<T>;         // Имя поля для чекбокса
+  selectField: Path<T>;       // Имя поля для селектора
+  options: SelectOption[];    // Опции для селектора
+  checkboxLabel?: string;     // Опциональная метка для чекбокса
+  selectLabel?: string;       // Опциональная метка для селектора
+}
+
 // Тип для заголовков
 interface TitleFormArea extends BaseFormArea {
   type: 'title';
@@ -61,4 +71,5 @@ export type IForm<T> =
   | SelectFormArea<T> 
   | CheckboxFormArea<T> 
   | TitleFormArea
-  | SearchSelectFormArea<T>; 
+  | SearchSelectFormArea<T>
+  | CheckboxWithSelectFormArea<T>; 

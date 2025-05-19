@@ -1,17 +1,14 @@
 import { api } from './api';
-import { Size, CreateSizeDto, UpdateSizeDto, SizeFilters, PaginatedSizeResponse } from '../types/size.types';
+import { Size, CreateSizeDto, UpdateSizeDto } from '../types/size.types';
 
 export const sizesApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getSizes: builder.query<PaginatedSizeResponse, SizeFilters | void>({
-      query: (params) => ({
-        url: '/sizes',
-        params: params || undefined
-      }),
+    getSizes: builder.query<Size[], void>({
+      query: () => '/sizes',
       providesTags: (result) => 
         result
           ? [
-              ...result.data.map(({ id }) => ({ type: 'Sizes' as const, id })),
+              ...result.map(({ id }) => ({ type: 'Sizes' as const, id })),
               { type: 'Sizes' as const, id: 'LIST' },
             ]
           : [{ type: 'Sizes' as const, id: 'LIST' }],

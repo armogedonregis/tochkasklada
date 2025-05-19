@@ -56,4 +56,16 @@ export interface ContainerFilters extends FilterParams {
   sortDirection?: SortDirection;
 }
 
-export type PaginatedContainerResponse = PaginatedResponse<Container>; 
+export type PaginatedContainerResponse = PaginatedResponse<Container>;
+
+// Новый тип для ячейки в DTO создания контейнера
+export interface CreateCellWithContainer {
+  name: string;  // Буква ячейки (A-H)
+  size_id: string;  // ID размера ячейки
+  use: boolean;  // Флаг, указывающий, нужно ли создавать эту ячейку
+}
+
+// DTO для создания нового контейнера с ячейками
+export interface CreateContainerWithCellsDto extends CreateContainerDto {
+  cells?: CreateCellWithContainer[];  // Массив ячеек для создания
+} 
