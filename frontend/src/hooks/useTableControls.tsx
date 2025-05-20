@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { SortingState, PaginationState } from '@tanstack/react-table';
-import { SortDirection } from '@/types/common.types';
+import { SortDirection } from '@/services/services.types';
 
 interface TableControlsOptions<SortField extends string> {
   defaultPageSize?: number;

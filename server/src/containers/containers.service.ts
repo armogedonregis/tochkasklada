@@ -126,7 +126,11 @@ export class ContainersService {
       where: { id },
       include: {
         location: true,
-        cells: true
+        cells: {
+          include: {
+            size: true
+          }
+        }
       }
     });
 

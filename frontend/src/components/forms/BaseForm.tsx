@@ -70,6 +70,7 @@ const BaseForm = <T extends FieldValues>({
             label={item.label}
             placeholder={item.placeholder}
             icon={item.icon}
+            type={item.inputType}
           />
         );
       

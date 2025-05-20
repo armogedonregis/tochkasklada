@@ -158,7 +158,8 @@ export default function ContainersPage() {
         await updateContainer({ 
           id: editItem.id,
           name: formData.name,
-          locId: formData.locId 
+          locId: formData.locId,
+          cells: cells.length > 0 ? cells : undefined
         }).unwrap();
         toast.success('Контейнер успешно обновлен');
       } else {
@@ -320,10 +321,7 @@ export default function ContainersPage() {
     if (containerCells.length === 0) return (
       <div className="p-4 pl-12 text-sm text-gray-500">
         В этом контейнере нет ячеек. 
-        <Button variant="link" className="p-0 h-auto text-sm" onClick={() => {
-          // Здесь можно добавить логику перехода на страницу добавления ячеек
-          window.location.href = `/locations/cells/add?containerId=${containerId}`;
-        }}>
+        <Button variant="link" className="p-0 h-auto text-sm" onClick={() => openEditModal(containerWithCells)}>
           Добавить ячейки
         </Button>
       </div>
@@ -337,16 +335,16 @@ export default function ContainersPage() {
             <thead>
               <tr className="text-left text-gray-500">
                 <th className="p-2">Название</th>
-                <th className="p-2">Размер</th>
-                <th className="p-2">Площадь</th>
+                <th className="p-2">Тип ячейки</th>
+                <th className="p-2">Размер/Площадь</th>
               </tr>
             </thead>
             <tbody>
               {containerCells.map((cell: Cell) => (
                 <tr key={cell.id} className="border-t border-gray-200">
                   <td className="p-2 text-gray-700">{cell.name}</td>
-                  <td className="p-2 text-gray-700">{cell.size?.size || '-'}</td>
-                  <td className="p-2 text-gray-700">{cell.size?.area || '-'} м²</td>
+                  <td className="p-2 text-gray-700">{cell.size?.short_name || '-'}</td>
+                  <td className="p-2 text-gray-700">{cell.size?.area + " / " + cell.size?.size || '-'}</td>
                 </tr>
               ))}
             </tbody>

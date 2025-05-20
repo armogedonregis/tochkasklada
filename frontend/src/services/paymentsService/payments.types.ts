@@ -25,14 +25,17 @@ export interface Payment {
   createdAt: string;
   updatedAt: string;
   user?: User;
+  cellId?: string;
 }
 
 export interface CreatePaymentDto {
   userId: string;
   amount: number;
   description: string;
-  orderId?: string;
   status?: boolean;
+  cellId?: string;
+  rentalMonths?: number;
+  statusId?: string;
 }
 
 export interface CreateAdminPaymentDto {
@@ -49,8 +52,10 @@ export interface UpdatePaymentDto {
   userId?: string;
   amount?: number;
   description?: string;
-  orderId?: string;
   status?: boolean;
+  cellId?: string;
+  rentalMonths?: number;
+  statusId?: string;
 }
 
 export interface SetPaymentStatusDto {

@@ -42,6 +42,12 @@ const CreditCardIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
+const FreeCellIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+  </svg>
+);
+
 const BriefcaseIcon = ({ className = "w-5 h-5" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -119,16 +125,6 @@ export const Navigation: React.FC<NavigationProps> = ({
   const [currentPage, setCurrentPage] = useState<Pages | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-
-  // Имитируем данные из Flutter-приложения
-  const [dashboardItems, setDashboardItems] = useState({
-    freeCells: 5,
-    clientsToday: 3,
-    clientsThisMonth: 12,
-    paymentsToday: 7,
-    paymentsThisMonth: 25,
-    newUsersToday: 2
-  });
 
   // Имитация сохранения состояния
   useEffect(() => {
@@ -211,7 +207,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           activeIcon={<MapIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Локации"
           page={Pages.locs}
-          newItems={dashboardItems.freeCells}
+          // newItems={dashboardItems.freeCells}
           isNavOpened={isNavOpened}
           currentPage={currentPage}
           onClick={() => navigateTo(Pages.locs, '/locations')}
@@ -222,7 +218,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Клиенты"
           page={Pages.clients}
-          newItems={dashboardItems.clientsToday}
+          // newItems={dashboardItems.clientsToday}
           isNavOpened={isNavOpened}
           currentPage={currentPage}
           onClick={() => navigateTo(Pages.clients, '/clients')}
@@ -233,10 +229,20 @@ export const Navigation: React.FC<NavigationProps> = ({
           activeIcon={<CreditCardIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Платежи"
           page={Pages.payments}
-          newItems={dashboardItems.paymentsToday}
+          // newItems={dashboardItems.paymentsToday}
           isNavOpened={isNavOpened}
           currentPage={currentPage}
           onClick={() => navigateTo(Pages.payments, '/payments')}
+        />
+
+        <MenuItem 
+          icon={<FreeCellIcon className="text-gray-500" />}
+          activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+          pageName="Свободные ячейки"
+          page={Pages.freeCells}
+          isNavOpened={isNavOpened}
+          currentPage={currentPage}
+          onClick={() => navigateTo(Pages.freeCells, '/free-cells')}
         />
 
         {/* Разделитель */}

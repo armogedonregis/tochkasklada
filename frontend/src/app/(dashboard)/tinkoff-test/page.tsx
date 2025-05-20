@@ -6,7 +6,7 @@ import {
   useCreatePaymentMutation, 
   useGetPaymentByOrderIdQuery,
   useLazyGetPaymentLinkQuery
-} from '@/services/paymentsApi';
+} from '@/services/paymentsService/paymentsApi';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/button';
 import { 
@@ -39,7 +39,7 @@ import {
 const TinkoffTestPage = () => {
   const [createPayment, { isLoading: isCreating }] = useCreatePaymentMutation();
   const [getPaymentLink, { isLoading: isLoadingLink }] = useLazyGetPaymentLinkQuery();
-  const { data: payments = [], isLoading, refetch } = useGetAllPaymentsQuery();
+  const { data: payments, isLoading, refetch } = useGetAllPaymentsQuery();
   
   const [amount, setAmount] = useState('100');
   const [description, setDescription] = useState('Тестовый платеж');
@@ -77,6 +77,7 @@ const TinkoffTestPage = () => {
     try {
       const result = await createPayment({
         amount: parseFloat(amount),
+        userId: '1',
         description: description || 'Тестовый платеж Тинькофф'
       }).unwrap();
       
@@ -115,7 +116,7 @@ const TinkoffTestPage = () => {
   };
 
   // Отображение недавних платежей
-  const recentPayments = payments
+  const recentPayments = payments && payments.data
     .filter(p => p.description?.includes('Тестовый платеж Тинькофф'))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
@@ -219,7 +220,7 @@ const TinkoffTestPage = () => {
                   <Loader2 className="h-6 w-6 animate-spin" />
                   <span className="ml-2">Загрузка платежей...</span>
                 </div>
-              ) : recentPayments.length > 0 ? (
+              ) : recentPayments && recentPayments.length > 0 ? (
                 <div className="space-y-4">
                   {recentPayments.map((payment) => (
                     <div key={payment.id} className="p-4 border rounded-lg">
@@ -232,12 +233,12 @@ const TinkoffTestPage = () => {
                       <div className="text-xs text-gray-500 mb-2">{formatDate(payment.createdAt)}</div>
                       <div className="text-sm mb-2 truncate">{payment.description}</div>
                       
-                      {payment.paymentUrl && (
+                      {(payment as any)?.paymentUrl && (
                         <Button 
                           variant="outline" 
                           size="sm" 
                           className="mt-2 w-full"
-                          onClick={() => openPaymentLink(payment.paymentUrl!)}
+                          onClick={() => openPaymentLink((payment as any).paymentUrl!)}
                         >
                           <ExternalLink className="mr-2 h-3 w-3" />
                           Открыть ссылку

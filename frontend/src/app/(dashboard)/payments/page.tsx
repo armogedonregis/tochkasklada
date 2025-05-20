@@ -25,14 +25,16 @@ import * as yup from 'yup';
 import { Payment, PaymentSortField } from '@/services/paymentsService/payments.types';
 import { SortDirection } from '@/services/services.types';
 import { Client } from '@/services/clientsService/clients.types';
+import { useGetAdminCellsQuery } from '@/services/cellService/cellsApi';
+import { CellSortField } from '@/services/cellService/cell.types';
 
 // Схема валидации для платежей
 const paymentValidationSchema = yup.object({
   userId: yup.string().required('Клиент обязателен'),
   amount: yup.number().required('Сумма обязательна').min(1, 'Сумма должна быть больше 0'),
   description: yup.string().required('Описание обязательно'),
-  orderId: yup.string().nullable(),
-  status: yup.boolean().default(false)
+  status: yup.boolean().default(false),
+  cellId: yup.string().required('Ячейка обязательна')
 });
 
 // Тип для полей формы
@@ -40,8 +42,8 @@ interface PaymentFormFields {
   userId: string;
   amount: number;
   description: string;
-  orderId?: string;
   status: boolean;
+  cellId: string;
 }
 
 const PaymentsPage = () => {
@@ -50,6 +52,11 @@ const PaymentsPage = () => {
 
   // Используем хук для управления состоянием таблицы
   const tableControls = useTableControls<PaymentSortField>({
+    defaultPageSize: 10,
+    searchDebounceMs: 300
+  });
+
+  const cellsControls = useTableControls<CellSortField>({
     defaultPageSize: 10,
     searchDebounceMs: 300
   });
@@ -63,6 +70,10 @@ const PaymentsPage = () => {
     sortDirection: tableControls.queryParams.sortDirection as SortDirection,
     status: activeTab === 'paid' ? true : activeTab === 'unpaid' ? false : undefined
   });
+
+  const { data: cells } = useGetAdminCellsQuery(cellsControls.queryParams);
+
+
   
   // Данные платежей из пагинированного ответа
   const payments = data?.data || [];
@@ -83,6 +94,7 @@ const PaymentsPage = () => {
   // Хук для управления модальным окном
   const modal = useFormModal<PaymentFormFields, Payment>({
     onSubmit: async (values) => {
+      console.log(values);
       if (modal.editItem) {
         await updatePayment({ 
           id: modal.editItem.id,
@@ -321,15 +333,22 @@ const PaymentsPage = () => {
       placeholder: 'Опишите платеж'
     },
     {
-      type: 'input' as const,
-      fieldName: 'orderId' as const,
-      label: 'ID заказа (необязательно)',
-      placeholder: 'ID заказа'
-    },
-    {
       type: 'checkbox' as const,
       fieldName: 'status' as const,
       label: 'Оплачен'
+    },
+    {
+      type: 'searchSelect' as const,
+      fieldName: 'cellId' as const,
+      label: 'Ячейка',
+      placeholder: 'Введите ID ячейки',
+      onSearch: (search: string) => {
+        cellsControls.handleSearchChange(search);
+      },
+      options: cells?.data.map((cell: any) => ({
+        label: cell.container.location.city.short_name + cell.container.name + cell.container.location.short_name + '-' + cell.name,
+        value: cell.id
+      })) || []
     }
   ];
 
@@ -392,14 +411,14 @@ const PaymentsPage = () => {
           userId: modal.editItem.userId,
           amount: modal.editItem.amount,
           description: modal.editItem.description,
-          orderId: modal.editItem.orderId || '',
-          status: modal.editItem.status
+          status: modal.editItem.status,
+          cellId: modal.editItem.cellId 
         } : {
           userId: '',
           amount: 0,
           description: '',
-          orderId: '',
-          status: false
+          status: false,
+          cellId: ''
         }}
       />
     </>

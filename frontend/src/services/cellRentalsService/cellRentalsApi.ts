@@ -3,13 +3,14 @@ import {
   CellRental, 
   CreateCellRentalDto, 
   UpdateCellRentalDto, 
-  CellRentalFilters 
+  CellRentalFilters, 
+  PaginatedCellRentalResponse
 } from './cellRentals.types';
 
 export const cellRentalsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // Получение всех аренд для админа
-    getCellRentals: builder.query<CellRental[], CellRentalFilters | void>({
+    getCellRentals: builder.query<PaginatedCellRentalResponse, CellRentalFilters | void>({
       query: (params) => ({
         url: '/admin/cell-rentals',
         params: params || undefined
@@ -17,7 +18,7 @@ export const cellRentalsApi = api.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: 'CellRentals' as const, id })),
+              ...result.data.map(({ id }) => ({ type: 'CellRentals' as const, id })),
               { type: 'CellRentals', id: 'LIST' },
             ]
           : [{ type: 'CellRentals', id: 'LIST' }],

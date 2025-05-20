@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useLoginMutation } from "@/services/authApi";
+import { useLoginMutation } from "@/services/authService/authApi";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "@/store/slice/userSlice";
 

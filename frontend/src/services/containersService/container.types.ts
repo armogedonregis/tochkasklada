@@ -34,8 +34,9 @@ export interface Cell {
   id: string;
   name: number;
   size?: {
+    short_name?: string;
+    area?: string;
     size?: string;
-    area?: number;
   };
 }
 
@@ -48,7 +49,9 @@ export interface CreateContainerDto {
 export interface UpdateContainerDto {
   name?: string;
   locId?: string;
+  cells?: { name: string; size_id: string }[];
 }
+
 
 export interface ContainerFilters extends FilterParams {
   locId?: string;
@@ -62,7 +65,6 @@ export type PaginatedContainerResponse = PaginatedResponse<Container>;
 export interface CreateCellWithContainer {
   name: string;  // Буква ячейки (A-H)
   size_id: string;  // ID размера ячейки
-  use: boolean;  // Флаг, указывающий, нужно ли создавать эту ячейку
 }
 
 // DTO для создания нового контейнера с ячейками

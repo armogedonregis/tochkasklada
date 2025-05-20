@@ -1,21 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  useGetPanelsQuery, 
+import {
+  useGetPanelsQuery,
   useDeletePanelMutation,
   useCreatePanelMutation,
   useUpdatePanelMutation,
-  // useCheckPanelConnectionManualMutation
 } from '@/services/panelsService/panelsApi';
-import { 
-  useToggleRelayMutation, 
+import {
+  useToggleRelayMutation,
   usePulseRelayMutation,
   useCreateRelayMutation,
   useDeleteRelayMutation,
   useUpdateRelayMutation
 } from '@/services/relaysService/relaysApi';
-import { Panel } from '@/services/panelsService/panels.types';
+import { CreatePanelDto, Panel } from '@/services/panelsService/panels.types';
 import { Relay, RelayType } from '@/services/relaysService/relays.types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,14 +22,13 @@ import { Plus, Grid, Power, Loader2, Trash2, RefreshCw, Edit, MoreHorizontal, Ch
 import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'react-toastify';
-// import { PanelModal } from '@/components/modals/PanelModal';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -43,14 +41,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
+import { useFormModal } from '@/hooks/useFormModal';
+import * as yup from 'yup';
 
 // Отдельный компонент для отображения статуса соединения
-function ConnectionCell({ 
+function ConnectionCell({
   panelId,
-  onCheckConnection 
-}: { 
+  onCheckConnection
+}: {
   panelId: string;
-  onCheckConnection: (id: string) => void 
+  onCheckConnection: (id: string) => void
 }) {
   // const [checkStatus, { data: isConnected, isLoading }] = useCheckPanelConnectionManualMutation();
 
@@ -67,9 +68,9 @@ function ConnectionCell({
       />
       <div className="flex items-center space-x-1">
         {/* <Power className={`h-4 w-4 ${isConnected ? 'text-green-500' : 'text-gray-400'}`} /> */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="h-6 w-6"
           onClick={handleCheck}
           title="Проверить соединение"
@@ -80,6 +81,13 @@ function ConnectionCell({
     </div>
   );
 }
+
+
+const panelValidationSchema = yup.object<CreatePanelDto>({
+  name: yup.string().required('Название панели обязательно'),
+  ipAddress: yup.string().required('IP адрес обязательно'),
+  port: yup.number().required('Порт обязательно')
+});
 
 export default function PanelsPage() {
   const { data: panels = [], isLoading, refetch } = useGetPanelsQuery();
@@ -103,6 +111,45 @@ export default function PanelsPage() {
   const [deleteRelay] = useDeleteRelayMutation();
   const [updateRelay] = useUpdateRelayMutation();
   // const [checkConnection, { data: connectionStatus, isLoading: isConnectionChecking }] = useCheckPanelConnectionManualMutation();
+
+
+    // Хук для управления модальным окном
+    const modal = useFormModal<CreatePanelDto, Panel>({
+      onSubmit: async (values) => {
+        if (modal.editItem) {
+          await updatePanel({ id: modal.editItem.id, ...values }).unwrap();
+          toast.success('Город успешно обновлен');
+        } else {
+          await createPanel(values).unwrap();
+          toast.success('Город успешно добавлен');
+        }
+      },
+      onError: () => {
+        toast.error('Ошибка при сохранении города');
+      }
+    });
+
+
+    const modalFields = [
+      {
+        type: 'input' as const,
+        fieldName: 'name' as const,
+        label: 'Название панели',
+        placeholder: 'Введите название панели',
+      },
+      {
+        type: 'input' as const,
+        fieldName: 'ipAddress' as const,
+        label: 'IP адрес',
+        placeholder: 'Введите IP адрес',
+      },
+      {
+        type: 'input' as const,
+        fieldName: 'port' as const,
+        label: 'Порт',
+        placeholder: 'Введите порт',
+      },
+    ];
 
   // Обработчики действий
   const handleEditPanel = (panel: Panel) => {
@@ -143,13 +190,13 @@ export default function PanelsPage() {
 
   const toggleExpandPanel = (panelId: string) => {
     const isCurrentlyExpanded = expandedPanels.includes(panelId);
-    
-    setExpandedPanels(prev => 
+
+    setExpandedPanels(prev =>
       isCurrentlyExpanded
         ? prev.filter(id => id !== panelId)
         : [...prev, panelId]
     );
-    
+
     // Если разворачиваем панель, открываем аккордеон для этой панели
     if (!isCurrentlyExpanded) {
       setOpenAccordion(prev => ({
@@ -157,7 +204,7 @@ export default function PanelsPage() {
         [panelId]: "relays"
       }));
     }
-    
+
     setRelayPage(1); // Сбрасываем страницу при открытии/закрытии панели
   };
 
@@ -201,11 +248,11 @@ export default function PanelsPage() {
           relayNumber: data.relayNumber,
           type: data.type
         }).unwrap();
-        
+
         toast.success('Реле обновлено');
       } else if (currentPanelId) {
         // Для создания нового реле
-        await createRelay({ 
+        await createRelay({
           name: data.name,
           relayNumber: data.relayNumber,
           type: data.type,
@@ -213,7 +260,7 @@ export default function PanelsPage() {
         }).unwrap();
         toast.success('Реле создано');
       }
-      
+
       setIsRelayModalOpen(false);
       setEditingRelay(null);
       setCurrentPanelId(null);
@@ -267,7 +314,7 @@ export default function PanelsPage() {
       cell: ({ row }) => {
         const isExpanded = expandedPanels.includes(row.original.id);
         return (
-          <div 
+          <div
             className="flex items-center justify-center cursor-pointer w-full h-full"
             onClick={(e) => {
               e.stopPropagation();
@@ -313,9 +360,9 @@ export default function PanelsPage() {
       cell: ({ row }) => {
         const panel = row.original;
         return (
-          <ConnectionCell 
+          <ConnectionCell
             panelId={panel.id}
-            onCheckConnection={handleCheckConnection} 
+            onCheckConnection={handleCheckConnection}
           />
         );
       },
@@ -340,7 +387,7 @@ export default function PanelsPage() {
           <DialogHeader>
             <DialogTitle>{editingRelay ? 'Редактировать реле' : 'Добавить реле'}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="relayName" className="text-right">Название</Label>
@@ -352,7 +399,7 @@ export default function PanelsPage() {
                 placeholder="Введите название реле"
               />
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="relayNumber" className="text-right">Номер реле</Label>
               <Input
@@ -365,7 +412,7 @@ export default function PanelsPage() {
                 onChange={(e) => handleChange('relayNumber', parseInt(e.target.value))}
               />
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="relayType" className="text-right">Тип реле</Label>
               <Select
@@ -383,7 +430,7 @@ export default function PanelsPage() {
               </Select>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRelayModalOpen(false)}>
               Отмена
@@ -400,7 +447,7 @@ export default function PanelsPage() {
   // Компонент для отображения реле панели
   const RelayList = ({ row }: { row: any }) => {
     const panel = row.original;
-    
+
     if (!panel || !panel.relays?.length) {
       return (
         <div className="p-4 text-center">
@@ -414,7 +461,7 @@ export default function PanelsPage() {
         </div>
       );
     }
-    
+
     // Пагинация для реле
     const totalRelays = panel.relays.length;
     const totalPages = Math.ceil(totalRelays / relaysPerPage);
@@ -424,10 +471,10 @@ export default function PanelsPage() {
 
     return (
       <div className="p-4">
-        <Accordion 
-          type="single" 
-          collapsible 
-          value={openAccordion[panel.id]} 
+        <Accordion
+          type="single"
+          collapsible
+          value={openAccordion[panel.id]}
           onValueChange={(value) => {
             setOpenAccordion(prev => ({
               ...prev,
@@ -452,7 +499,7 @@ export default function PanelsPage() {
                     Добавить реле
                   </Button>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"
@@ -462,9 +509,9 @@ export default function PanelsPage() {
                   >
                     <Grid className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
+                  <Button
+                    variant="outline"
+                    size="icon"
                     onClick={() => handleCheckConnection(panel.id)}
                     title="Проверить соединение"
                   >
@@ -472,7 +519,7 @@ export default function PanelsPage() {
                   </Button>
                 </div>
               </div>
-              
+
               <div className={`grid ${expandedView ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'} gap-4`}>
                 {paginatedRelays.map((relay: Relay) => {
                   const typeInfo = getRelayTypeInfo(relay.type);
@@ -511,9 +558,9 @@ export default function PanelsPage() {
                       <CardContent className="p-3 pt-2">
                         <div className="flex flex-col items-center space-y-2">
                           <div className="flex items-center space-x-2 w-full justify-center">
-                            
+
                           </div>
-                          
+
                           {expandedView && (
                             <div className="text-center w-full mt-2 text-xs text-gray-500 dark:text-gray-400">
                               <p>Последнее изменение: {new Date(relay.updatedAt).toLocaleString()}</p>
@@ -525,22 +572,22 @@ export default function PanelsPage() {
                   );
                 })}
               </div>
-              
+
               {/* Пагинация для реле */}
               {totalPages > 1 && (
                 <div className="flex justify-center mt-4">
                   <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setRelayPage(1)}
                       disabled={relayPage === 1}
                     >
                       Первая
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setRelayPage(p => Math.max(1, p - 1))}
                       disabled={relayPage === 1}
                     >
@@ -549,17 +596,17 @@ export default function PanelsPage() {
                     <div className="mx-2 flex items-center">
                       Страница {relayPage} из {totalPages}
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setRelayPage(p => Math.min(totalPages, p + 1))}
                       disabled={relayPage === totalPages}
                     >
                       Следующая
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setRelayPage(totalPages)}
                       disabled={relayPage === totalPages}
                     >
@@ -593,7 +640,7 @@ export default function PanelsPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={handleCreatePanel}>
+          <Button onClick={modal.openCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Добавить панель
           </Button>
@@ -613,14 +660,20 @@ export default function PanelsPage() {
         persistColumnOrder={true}
       /> */}
 
-      {/* <PanelModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSavePanel}
-        panel={editingPanel}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
         title={editingPanel ? 'Редактировать панель' : 'Добавить панель'}
-      /> */}
-      
+        fields={modalFields}
+        validationSchema={panelValidationSchema}
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        defaultValues={modal.editItem ? {
+          name: modal.editItem.name,
+          ipAddress: modal.editItem.ipAddress,
+          port: modal.editItem.port,
+        } : undefined} />
+
       <RelayModal />
     </div>
   );

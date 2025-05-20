@@ -20,6 +20,7 @@ interface InputFormArea<T> extends BaseFormArea {
   type: 'input';
   fieldName: Path<T>;
   placeholder?: string;
+  inputType?: string;
 }
 
 // Тип для select полей

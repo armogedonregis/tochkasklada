@@ -150,13 +150,15 @@ interface BaseTableProps<TData, TSortField extends string = string> {
   disableActions?: boolean;
   
   // Пагинация и сортировка
-  pagination: PaginationState;
-  sorting: SortingState;
-  totalCount: number;
-  pageCount: number;
-  onPaginationChange: (pagination: PaginationState) => void;
-  onSortingChange: (sorting: SortingState) => void;
-  onSearchChange: (search: string) => void;
+  isDisabledPagination?: boolean;
+  isDisabledSorting?: boolean;
+  pagination?: PaginationState;
+  sorting?: SortingState;
+  totalCount?: number;
+  pageCount?: number;
+  onPaginationChange?: (pagination: PaginationState) => void;
+  onSortingChange?: (sorting: SortingState) => void;
+  onSearchChange?: (search: string) => void;
   
   // Состояния
   isLoading?: boolean;
@@ -190,6 +192,8 @@ export function BaseTable<TData, TSortField extends string = string>({
   disableActions = false,
   
   // Пагинация и сортировка
+  isDisabledPagination = false,
+  isDisabledSorting = false,
   pagination,
   sorting,
   totalCount = 0,
@@ -378,6 +382,7 @@ export function BaseTable<TData, TSortField extends string = string>({
     columns: columnsWithResize,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: (updaterOrValue) => {
+      if (isDisabledSorting || !onSortingChange || !sorting) return;
       if (typeof updaterOrValue === 'function') {
         const newSorting = updaterOrValue(sorting);
         onSortingChange(newSorting);
@@ -386,6 +391,7 @@ export function BaseTable<TData, TSortField extends string = string>({
       }
     },
     onPaginationChange: (updaterOrValue) => {
+      if (isDisabledPagination || !onPaginationChange || !pagination) return;
       if (typeof updaterOrValue === 'function') {
         const newPagination = updaterOrValue(pagination);
         onPaginationChange(newPagination);
@@ -429,6 +435,7 @@ export function BaseTable<TData, TSortField extends string = string>({
     // Серверная обработка
     manualPagination: true,
     manualSorting: true,
+    enableSorting: sortableFields !== undefined,
     manualFiltering: true,
     pageCount,
     // Включаем функциональность изменения размера
@@ -443,6 +450,7 @@ export function BaseTable<TData, TSortField extends string = string>({
 
   // Обработчик поиска
   const handleSearch = (value: string) => {
+    if (!onSearchChange) return;
     onSearchChange(value);
   };
 
@@ -643,16 +651,18 @@ export function BaseTable<TData, TSortField extends string = string>({
       </div>
 
       {/* Пагинация */}
-      <TablePagination
-        currentPage={pagination.pageIndex}
-        pageCount={pageCount}
-        pageSize={pagination.pageSize}
-        totalCount={totalCount}
-        onPageChange={(page) => onPaginationChange({ ...pagination, pageIndex: page })}
-        onPageSizeChange={(size) => onPaginationChange({ ...pagination, pageSize: size })}
-        canPreviousPage={table.getCanPreviousPage()}
-        canNextPage={table.getCanNextPage()}
-      />
+      {!isDisabledPagination && onPaginationChange && pagination && (
+        <TablePagination
+          currentPage={pagination.pageIndex}
+          pageCount={pageCount}
+          pageSize={pagination.pageSize}
+          totalCount={totalCount}
+          onPageChange={(page) => onPaginationChange({ ...pagination, pageIndex: page })}
+          onPageSizeChange={(size) => onPaginationChange({ ...pagination, pageSize: size })}
+          canPreviousPage={table.getCanPreviousPage()}
+          canNextPage={table.getCanNextPage()}
+        />
+      )}
     </div>
   );
 } 

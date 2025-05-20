@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
-import { useLazyGetCurrentUserQuery } from "@/services/authApi";
+import { useLazyGetCurrentUserQuery } from "@/services/authService/authApi";
 import { useDispatch } from "react-redux";
 import { setUser, logout } from "@/store/slice/userSlice";
 import { Button } from "@/components/ui/button";

@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { 
   useGetCellStatusesQuery,
   useDeleteCellStatusMutation,
+  useUpdateCellStatusMutation,
+  useAddCellStatusMutation,
 } from '@/services/cellStatusesService/cellStatusesApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,38 +13,60 @@ import { Plus, Search } from 'lucide-react';
 import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'react-toastify';
-import { CellStatusModal } from '@/components/modals/CellStatusModal';
-import { CellStatus } from '@/services/cellStatusesService/cellStatuses.types';
+import { CellRentalStatus, CellStatus } from '@/services/cellStatusesService/cellStatuses.types';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
+import { useFormModal } from '@/hooks/useFormModal';
+import * as yup from 'yup';
+
+// Схема валидации для клиента
+const cellStatusValidationSchema = yup.object({
+  name: yup.string().required('Название обязательно'),
+  color: yup.string().required('Цвет обязателен'),
+  statusType: yup.string().required('Тип статуса обязателен'),
+});
+
+const StatusMap = {
+  [CellRentalStatus.ACTIVE]: 'Активная аренда',
+  [CellRentalStatus.EXPIRING_SOON]: 'Скоро истекает',
+  [CellRentalStatus.EXPIRED]: 'Просрочена',
+  [CellRentalStatus.CLOSED]: 'Договор закрыт администратором',
+  [CellRentalStatus.RESERVATION]: 'Бронь',
+  [CellRentalStatus.EXTENDED]: 'Продлен',
+  [CellRentalStatus.PAYMENT_SOON]: 'Скоро оплата',
+}
 
 export default function CellStatuses() {
   const { data: statuses, isLoading, isError, error } = useGetCellStatusesQuery();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingStatus, setEditingStatus] = useState<CellStatus | null>(null);
+    // Мутации для операций удаления
+    const [deleteCellStatus] = useDeleteCellStatusMutation();
+    const [updateCellStatus] = useUpdateCellStatusMutation();
+    const [createCellStatus] = useAddCellStatusMutation();
+
+  const modal = useFormModal<CellStatus, CellStatus>({
+    onSubmit: async (values) => {
+      
+      if (modal.editItem) {
+        await updateCellStatus({ 
+          id: modal.editItem.id,
+          name: values.name,
+          color: values.color,
+          statusType: values.statusType
+        }).unwrap();
+        toast.success('Статус успешно обновлен');
+      } else {
+        await createCellStatus({
+          name: values.name,
+          color: values.color,
+          statusType: values.statusType
+        }).unwrap();
+        toast.success('Статус успешно создан');
+      }
+    },
+    onError: () => {
+      toast.error('Ошибка при сохранении клиента');
+    }
+  });
   
-  // Мутации для операций удаления
-  const [deleteCellStatus] = useDeleteCellStatusMutation();
-
-  // Фильтрация статусов по поисковому запросу
-  const filteredStatuses = statuses ? statuses.filter(status => 
-    status.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) : [];
-
-  // Обработчики для модального окна
-  const handleOpenModal = (status?: CellStatus) => {
-    setEditingStatus(status || null);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingStatus(null);
-  };
-
-  // Обработчики действий для таблицы
-  const handleEdit = (status: CellStatus) => {
-    handleOpenModal(status);
-  };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот статус?')) {
@@ -59,6 +83,28 @@ export default function CellStatuses() {
   const handleDeleteAdapter = (status: CellStatus) => {
     handleDelete(status.id);
   };
+
+  const modalFields = [
+    {
+      type: 'input' as const,
+      fieldName: 'name' as const,
+      label: 'Название',
+      placeholder: 'Название статуса'
+    },
+    {
+      type: 'input' as const,
+      fieldName: 'color' as const,
+      label: 'Цвет',
+      inputType: 'color',
+      placeholder: '#000000'
+    },
+    {
+      type: 'select' as const,
+      fieldName: 'statusType' as const,
+      label: 'Тип статуса',
+      options: Object.values(CellRentalStatus).map(status => ({ label: StatusMap[status], value: status }))
+    }
+  ];
 
   // Определение колонок для таблицы
   const columns: ColumnDef<CellStatus>[] = [
@@ -87,18 +133,11 @@ export default function CellStatuses() {
       },
     },
     {
-      accessorKey: 'isActive',
-      header: 'Активен',
+      accessorKey: 'statusType',
+      header: 'Тип статуса',
       cell: ({ row }) => {
         const status = row.original;
-        return (
-          <div className="py-2 px-1">
-            {status.isActive ? 
-              <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Да</span> : 
-              <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">Нет</span>
-            }
-          </div>
-        );
+        return <div className="py-2 px-1">{StatusMap[status.statusType as CellRentalStatus]}</div>;
       },
     },
   ];
@@ -107,25 +146,10 @@ export default function CellStatuses() {
     <div className="container mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Статусы ячеек</h1>
-        <Button onClick={() => handleOpenModal()} className="flex items-center">
+        <Button onClick={modal.openCreate} className="flex items-center">
           <Plus className="mr-2 h-4 w-4" />
           Добавить статус
         </Button>
-      </div>
-
-      <div className="mb-6">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <Input
-            type="text"
-            placeholder="Поиск статусов..."
-            className="pl-10 py-2"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
       </div>
 
       {isLoading ? (
@@ -142,32 +166,42 @@ export default function CellStatuses() {
       ) : statuses && statuses.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
           <BaseTable
-            data={filteredStatuses}
+            data={statuses}
             columns={columns}
-            pageSize={10}
-            enableColumnReordering={true}
-            persistColumnOrder={true}
             tableId="cell-statuses-table"
-            enableActions={true}
-            onEdit={handleEdit}
+            isDisabledPagination
+            isDisabledSorting
+            onEdit={modal.openEdit}
             onDelete={handleDeleteAdapter}
           />
         </div>
       ) : (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
           <p className="text-lg text-gray-600 dark:text-gray-300">Нет доступных статусов</p>
-          <Button onClick={() => handleOpenModal()} className="mt-4">
+          <Button onClick={modal.openCreate} className="mt-4">
             Добавить первый статус
           </Button>
         </div>
       )}
 
       {/* Модальное окно для создания/редактирования статуса */}
-      <CellStatusModal 
-        isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
-        status={editingStatus}
-        title={editingStatus ? 'Редактировать статус' : 'Добавить новый статус'}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title={modal.editItem ? 'Редактировать статус' : 'Добавить новый статус'}
+        fields={modalFields}
+        validationSchema={cellStatusValidationSchema}
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        defaultValues={modal.editItem ? {
+          name: modal.editItem.name,
+          color: modal.editItem.color || '',
+          statusType: modal.editItem.statusType || CellRentalStatus.ACTIVE
+        } : {
+          name: '',
+          color: '',
+          statusType: CellRentalStatus.ACTIVE
+        }}
       />
     </div>
   );

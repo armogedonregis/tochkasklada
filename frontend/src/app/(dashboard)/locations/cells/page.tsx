@@ -128,15 +128,8 @@ export default function CellsPage() {
       header: 'Ячейка',
     },
     {
-      accessorKey: 'comment',
-      header: 'Размеры',
-      cell: ({ row }) => {
-        return row.original.comment || '-';
-      }
-    },
-    {
       id: 'size',
-      header: 'Тип размера',
+      header: 'Размер',
       cell: ({ row }) => {
         const sizeId = row.original.size_id;
         const size = sizes.find((s: Size) => s.id === sizeId);
@@ -220,7 +213,7 @@ export default function CellsPage() {
       fieldName: 'size_id' as const,
       label: 'Размер',
       options: sizes.map((size: Size) => ({
-        label: size.name,
+        label: size.name + " (" + size.short_name + ")",
         value: size.id
       }))
     },

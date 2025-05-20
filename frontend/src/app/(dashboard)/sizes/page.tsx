@@ -12,11 +12,9 @@ import { BaseTable } from '@/components/table/BaseTable';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'react-toastify';
-import { Size, CreateSizeDto } from '@/services/sizesService/sizes.types';
+import { Size } from '@/services/sizesService/sizes.types';
 import * as yup from 'yup';
-import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { SortDirection } from '@/services/services.types';
 
 // Схема валидации для размеров
 const sizeValidationSchema = yup.object({
@@ -35,26 +33,12 @@ interface SizeFormFields {
 }
 
 export default function SizesPage() {
-  // Используем хук для управления состоянием таблицы
-  const tableControls = useTableControls<SizeSortField>({
-    defaultPageSize: 10,
-    searchDebounceMs: 300
-  });
   
   // Получение данных о размерах с учетом параметров
-  const { data, error, isLoading, refetch } = useGetSizesQuery({
-    page: tableControls.queryParams.page,
-    limit: tableControls.queryParams.limit,
-    search: tableControls.queryParams.search,
-    sortBy: tableControls.queryParams.sortBy,
-    sortDirection: tableControls.queryParams.sortDirection as SortDirection
-  });
+  const { data, error, isLoading, refetch } = useGetSizesQuery();
   
   // Данные размеров теперь находятся в свойстве data пагинированного ответа
-  const sizes = data?.data || [];
-  // Используем мета-информацию из ответа
-  const totalCount = data?.meta?.totalCount || 0;
-  const pageCount = data?.meta?.totalPages || 1;
+  const sizes = data || [];
   
   // Мутации для операций с размерами
   const [deleteSize] = useDeleteSizeMutation();
@@ -173,18 +157,12 @@ export default function SizesPage() {
           onEdit={modal.openEdit}
           onDelete={handleDelete}
           tableId="sizes-table"
-          totalCount={totalCount}
-          pageCount={pageCount}
-          onPaginationChange={tableControls.handlePaginationChange}
-          onSortingChange={tableControls.handleSortingChange}
-          onSearchChange={tableControls.handleSearchChange}
           isLoading={isLoading}
           error={error}
           onRetry={refetch}
-          sortableFields={SizeSortField}
-          pagination={tableControls.pagination}
-          sorting={tableControls.sorting}
           persistSettings={true}
+          isDisabledPagination={true}
+          isDisabledSorting={true}
         />
       </div>
 

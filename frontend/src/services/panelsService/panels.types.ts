@@ -1,3 +1,5 @@
+import { PaginatedResponse } from "../services.types";
+
 export interface Panel {
   id: string;
   name: string;
@@ -23,4 +25,6 @@ export interface UpdatePanelDto {
   port?: number;
   login?: string;
   password?: string;
-} 
+}
+
+export type PaginatedPanelResponse = PaginatedResponse<Panel>; 

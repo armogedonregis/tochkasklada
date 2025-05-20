@@ -2,17 +2,18 @@ import { api } from '../api';
 import { 
   Panel, 
   CreatePanelDto, 
-  UpdatePanelDto
+  UpdatePanelDto,
+  PaginatedPanelResponse
 } from './panels.types';
 
 export const panelsApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getPanels: builder.query<Panel[], void>({
+    getPanels: builder.query<PaginatedPanelResponse, void>({
       query: () => '/admin/panels',
       providesTags: (result) => 
         result
           ? [
-              ...result.map(({ id }) => ({ type: 'Panels' as const, id })),
+              ...result.data.map(({ id }) => ({ type: 'Panels' as const, id })),
               { type: 'Panels' as const, id: 'LIST' },
             ]
           : [{ type: 'Panels' as const, id: 'LIST' }],

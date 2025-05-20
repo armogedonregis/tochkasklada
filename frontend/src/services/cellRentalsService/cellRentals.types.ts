@@ -1,6 +1,7 @@
-import { FilterParams, DateRangeParams } from '../services.types';
+import { FilterParams, DateRangeParams, PaginatedResponse } from '../services.types';
 import { Cell } from '../cellService/cell.types';
-import { Client } from '../clientsService/client.types';
+import { Client } from '../clientsService/clients.types';
+import { Container } from '../containersService/container.types';
 
 export interface CellRental {
   id: string;
@@ -11,8 +12,22 @@ export interface CellRental {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  cell?: Cell;
+  cell?: Cell & {
+    container?: Container;
+  };
   client?: Client;
+  rentalStatus: CellRentalStatus;
+  container?: Container;
+}
+
+export enum CellRentalStatus {
+  ACTIVE = 'ACTIVE',
+  EXPIRING_SOON = 'EXPIRING_SOON',
+  EXPIRED = 'EXPIRED',
+  CLOSED = 'CLOSED',
+  RESERVATION = 'RESERVATION',
+  EXTENDED = 'EXTENDED',
+  PAYMENT_SOON = 'PAYMENT_SOON'
 }
 
 export interface CreateCellRentalDto {
@@ -37,3 +52,5 @@ export interface CellRentalFilters extends FilterParams, DateRangeParams {
   isActive?: boolean;
   locationId?: string;
 } 
+
+export type PaginatedCellRentalResponse = PaginatedResponse<CellRental>; 
