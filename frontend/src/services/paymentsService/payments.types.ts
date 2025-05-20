@@ -2,12 +2,10 @@ import { FilterParams, DateRangeParams, PaginatedResponse, SortDirection } from 
 
 // Перечисление полей сортировки для платежей
 export enum PaymentSortField {
-  ORDER_ID = 'orderId',
-  AMOUNT = 'amount',
-  DESCRIPTION = 'description',
-  STATUS = 'status',
-  CREATED_AT = 'createdAt',
-  USER_ID = 'userId'
+  CREATED_AT = 'CREATED_AT',
+  AMOUNT = 'AMOUNT',
+  STATUS = 'STATUS',
+  ORDER_ID = 'ORDER_ID'
 }
 
 export interface User {

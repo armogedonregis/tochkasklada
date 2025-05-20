@@ -32,9 +32,9 @@ import { CellSortField } from '@/services/cellService/cell.types';
 const paymentValidationSchema = yup.object({
   userId: yup.string().required('Клиент обязателен'),
   amount: yup.number().required('Сумма обязательна').min(1, 'Сумма должна быть больше 0'),
-  description: yup.string().required('Описание обязательно'),
+  description: yup.string().optional(),
   status: yup.boolean().default(false),
-  cellId: yup.string().required('Ячейка обязательна')
+  cellId: yup.string().optional()
 });
 
 // Тип для полей формы
@@ -233,8 +233,12 @@ const PaymentsPage = () => {
       enableHiding: false,
     },
     {
+      accessorKey: 'id',
+      header: 'ID',
+    },
+    {
       accessorKey: 'orderId',
-      header: 'ID платежа',
+      header: 'orderID платежа',
       cell: ({ getValue }) => (
         <div className="font-mono text-xs truncate max-w-[140px]" title={getValue() as string}>
           {getValue() as string}
@@ -268,7 +272,7 @@ const PaymentsPage = () => {
     },
     {
       accessorKey: 'description',
-      header: 'Описание',
+      header: 'Комментарий',
       cell: ({ getValue }) => {
         return <div>{String(getValue())}</div>;
       }
@@ -305,6 +309,12 @@ const PaymentsPage = () => {
       header: 'Дата создания',
       accessorFn: (row) => row.createdAt,
       cell: ({ row }) => formatDate(row.original.createdAt),
+    },
+    {
+      id: 'updatedAt',
+      header: 'Дата обновления',
+      accessorFn: (row) => row.updatedAt,
+      cell: ({ row }) => formatDate(row.original.updatedAt),
     },
   ];
 
