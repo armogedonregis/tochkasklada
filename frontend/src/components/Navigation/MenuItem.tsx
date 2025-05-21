@@ -14,7 +14,9 @@ export enum Pages {
   tinkoffTest = 'tinkoffTest',
   cellStatuses = 'cellStatuses',
   panels = 'panels',
-  freeCells = 'freeCells'
+  freeCells = 'freeCells',
+  cellRentals = 'cellRentals',
+  apiDocs = 'apiDocs',
   // Добавьте другие необходимые страницы из вашего Flutter-проекта
 }
 

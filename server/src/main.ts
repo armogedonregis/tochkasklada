@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerService } from './swagger/swagger.service';
 
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter({
@@ -17,12 +17,12 @@ async function bootstrap() {
     }
     done();
   });
-
+  
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     fastifyAdapter
   );
-  
+
   // Глобальные настройки
   app.enableCors({
     origin: true,
@@ -42,34 +42,12 @@ async function bootstrap() {
       },
     }),
   );
-  
-  // Настройка Swagger
-  const config = new DocumentBuilder()
-    .setTitle('API системы управления точками самостоятельного хранения')
-    .setDescription(`
-      Полная документация API по следующим разделам:
-      - Локации (склады в Санкт-Петербурге)
-      - Контейнеры и ячейки
-      - Пользователи и клиенты
-      - Бронирования и аренда
-      - Платежи и транзакции
-    `)
-    .setVersion('1.0')
-    .addBearerAuth(
-      { 
-        type: 'http', 
-        scheme: 'bearer', 
-        bearerFormat: 'JWT' 
-      },
-      'JWT'
-    )
-    .build();
-    
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+
+  // Инициализация Swagger с экземпляром приложения
+  const swaggerService = app.get(SwaggerService);
+  swaggerService.initWithApp(app);
   
   await app.listen(process.env.PORT || 5000, '0.0.0.0');
   console.log(`Application is running on: ${await app.getUrl()}`);
-  console.log(`Swagger документация доступна по адресу: ${await app.getUrl()}/api/docs`);
 }
 bootstrap();

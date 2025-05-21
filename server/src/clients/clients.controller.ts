@@ -42,7 +42,7 @@ export class ClientsController {
    */
   @Post(':id/phones')
   @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @HttpCode(HttpStatus.CREATED)
   async addPhone(
     @Param('id', ParseUUIDPipe) id: string,
@@ -60,7 +60,7 @@ export class ClientsController {
    */
   @Delete('phones/:id')
   @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @HttpCode(HttpStatus.OK)
   async removePhone(@Param('id', ParseUUIDPipe) id: string) {
     return await this.clientsService.removePhone(id);
@@ -70,7 +70,7 @@ export class ClientsController {
    * Получение всех клиентов с пагинацией и сортировкой (только для админа)
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @Get()
   async findAll(@Query() query: FindClientsDto) {
     return this.clientsService.findAll(query);
@@ -89,7 +89,7 @@ export class ClientsController {
    * Создание нового клиента (только для админа)
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createClientDto: CreateClientDto) {
@@ -100,7 +100,7 @@ export class ClientsController {
    * Обновление клиента (только для админа)
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @Patch(':id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -113,7 +113,7 @@ export class ClientsController {
    * Удаление клиента (только для админа)
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id', ParseUUIDPipe) id: string) {

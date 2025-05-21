@@ -13,7 +13,7 @@ export class UsersController {
    * Получить список всех пользователей (только для админов)
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @Get()
   async findAll() {
     return this.usersService.findAll();
@@ -41,7 +41,7 @@ export class UsersController {
    * Обновить пользователя (только для админов)
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @Patch(':id')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
@@ -51,7 +51,7 @@ export class UsersController {
    * Удалить пользователя (только для админов)
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPERADMIN')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseUUIDPipe) id: string) {

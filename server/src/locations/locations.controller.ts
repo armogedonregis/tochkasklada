@@ -46,7 +46,7 @@ export class LocationsController {
 // Контроллер для методов, доступных только администраторам
 @Controller('admin/locations')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles('ADMIN', 'SUPERADMIN')
 export class LocationsAdminController {
   constructor(private readonly locationsService: LocationsService) {}
 

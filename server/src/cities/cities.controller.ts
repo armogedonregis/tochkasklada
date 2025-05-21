@@ -45,7 +45,7 @@ export class CitiesController {
 // Контроллер для методов, доступных только администраторам
 @Controller('admin/cities')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles('ADMIN', 'SUPERADMIN')
 export class CitiesAdminController {
   constructor(private readonly citiesService: CitiesService) {}
 

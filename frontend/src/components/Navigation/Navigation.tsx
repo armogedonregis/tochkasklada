@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MenuItem, Pages } from './MenuItem';
 import { useTheme } from '@/lib/theme-provider';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 // Компоненты SVG иконок
 const ChevronLeftIcon = () => (
@@ -114,17 +116,28 @@ const GridIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
+// Добавляем иконку для API документации
+const ApiDocsIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
 interface NavigationProps {
   initialIsOpen?: boolean;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({ 
-  initialIsOpen = true 
+  initialIsOpen = true,
 }) => {
   const [isNavOpened, setIsNavOpened] = useState(initialIsOpen);
   const [currentPage, setCurrentPage] = useState<Pages | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  
+  // Получаем роль пользователя из Redux store
+  const { user } = useSelector((state: RootState) => state.user);
+  const userRole = user?.role || 'ADMIN';
 
   // Имитация сохранения состояния
   useEffect(() => {
@@ -238,6 +251,16 @@ export const Navigation: React.FC<NavigationProps> = ({
         <MenuItem 
           icon={<FreeCellIcon className="text-gray-500" />}
           activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+          pageName="Аренды ячеек"
+          page={Pages.cellRentals}
+          isNavOpened={isNavOpened}
+          currentPage={currentPage}
+          onClick={() => navigateTo(Pages.cellRentals, '/cell-rentals')}
+        />
+
+        <MenuItem 
+          icon={<FreeCellIcon className="text-gray-500" />}
+          activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Свободные ячейки"
           page={Pages.freeCells}
           isNavOpened={isNavOpened}
@@ -285,7 +308,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           currentPage={currentPage}
           onClick={() => navigateTo(Pages.settings, '/settings')}
         />
-        
+
         <MenuItem 
           icon={<RubleIcon className="text-gray-500" />}
           activeIcon={<RubleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
@@ -358,7 +381,20 @@ export const Navigation: React.FC<NavigationProps> = ({
             </button>
           </div>
         )}
-      
+        
+        {/* API Документация (видна только для SUPERADMIN) */}
+        {userRole === 'SUPERADMIN' && (
+          <MenuItem 
+            icon={<ApiDocsIcon className="text-gray-500" />}
+            activeIcon={<ApiDocsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="API Документация"
+            page={Pages.apiDocs}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.apiDocs, '/api-docs')}
+          />
+        )}
+        
         <MenuItem 
           icon={<UserCircleIcon className="text-gray-500" />}
           activeIcon={<UserCircleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}

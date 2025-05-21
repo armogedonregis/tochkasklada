@@ -42,7 +42,7 @@ export class CellsController {
 // Контроллер для методов, доступных только администраторам
 @Controller('admin/cells')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles('ADMIN', 'SUPERADMIN')
 export class CellsAdminController {
   constructor(private readonly cellsService: CellsService) {}
 

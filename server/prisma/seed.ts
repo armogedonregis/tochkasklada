@@ -14,7 +14,7 @@ async function main() {
       data: {
         email: 'admin@admin.com',
         password: await hashPassword('admin123'),
-        role: 'ADMIN',
+        role: 'SUPERADMIN',
       }
     });
     console.log('✅ Администратор создан');

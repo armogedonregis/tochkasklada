@@ -2,7 +2,6 @@
 
 import React, { ReactNode } from 'react';
 import { Navigation } from '../Navigation/Navigation';
-import { UserAvatar } from '../UserAvatar';
 import ProfileButton from '../auth/ProfileButton';
 
 interface MainLayoutProps {

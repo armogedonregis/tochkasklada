@@ -231,10 +231,31 @@ export class CellRentalsService {
 
   // Удаление аренды
   async remove(id: string) {
-    await this.findOne(id); // Проверяем существование
+    // Проверяем существование аренды
+    const rental = await this.findOne(id);
 
-    return this.prisma.cellRental.delete({
-      where: { id },
+    // Получаем связанные с арендой платежи
+    const relatedPayments = await this.prisma.payment.findMany({
+      where: { cellRentalId: id }
+    });
+
+    // Начинаем транзакцию для атомарного удаления связанных данных
+    return this.prisma.$transaction(async (prisma) => {
+      // Отвязываем платежи от аренды
+      if (relatedPayments.length > 0) {
+        await prisma.payment.updateMany({
+          where: { cellRentalId: id },
+          data: { 
+            cellRentalId: null,
+            description: `Платеж за удаленную аренду ячейки ${rental.cell.name || ''}`
+          }
+        });
+      }
+
+      // Удаляем аренду
+      return prisma.cellRental.delete({
+        where: { id },
+      });
     });
   }
 
@@ -759,5 +780,75 @@ export class CellRentalsService {
     } catch (error) {
       throw new InternalServerErrorException(`Ошибка при получении списка аренд: ${error.message}`);
     }
+  }
+
+  // Получение всех свободных ячеек
+  async getFreeCells(params: { 
+    cityId?: string; 
+    locationId?: string;
+    sizeId?: string;
+  }) {
+    // Строим базовый запрос для поиска всех ячеек
+    const where: Prisma.CellsWhereInput = {};
+
+    // Фильтрация по локации (если указана)
+    if (params.locationId) {
+      where.container = {
+        locId: params.locationId
+      };
+    } 
+    // Фильтрация по городу (если указан)
+    else if (params.cityId) {
+      where.container = {
+        location: {
+          cityId: params.cityId
+        }
+      };
+    }
+
+    // Фильтрация по размеру (если указан)
+    if (params.sizeId) {
+      where.size_id = params.sizeId;
+    }
+
+    // Находим все ячейки, у которых нет активных аренд
+    // или с определенным статусом
+    return this.prisma.cells.findMany({
+      where: {
+        ...where,
+        // Исключаем ячейки с активными арендами
+        AND: [
+          {
+            OR: [
+              // Ячейка не имеет аренд
+              { rentals: { none: {} } },
+              // Все аренды ячейки не активны
+              { rentals: { every: { isActive: false } } }
+            ]
+          }
+        ]
+      },
+      include: {
+        container: {
+          include: {
+            location: {
+              include: {
+                city: true
+              }
+            }
+          }
+        },
+        size: true,
+        status: true,
+        rentals: {
+          where: { isActive: true },
+          take: 1
+        }
+      },
+      orderBy: [
+        { container: { name: 'asc' } },
+        { name: 'asc' }
+      ]
+    });
   }
 } 

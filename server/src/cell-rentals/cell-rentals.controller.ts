@@ -11,7 +11,7 @@ import { UserRole } from '@prisma/client';
  */
 @Controller('admin/cell-rentals')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class CellRentalsAdminController {
   constructor(private readonly cellRentalsService: CellRentalsService) {}
 
@@ -64,18 +64,6 @@ export class CellRentalsAdminController {
   }
 
   /**
-   * Привязка существующего платежа к аренде
-   */
-  @Post('attach-payment/:paymentId/to-rental/:rentalId')
-  @HttpCode(HttpStatus.OK)
-  attachPaymentToRental(
-    @Param('paymentId', ParseUUIDPipe) paymentId: string,
-    @Param('rentalId', ParseUUIDPipe) rentalId: string,
-  ) {
-    return this.cellRentalsService.attachPaymentToRental(paymentId, rentalId);
-  }
-
-  /**
    * Обновление статуса аренды
    */
   @Post(':id/update-status')
@@ -121,23 +109,15 @@ export class CellRentalsAdminController {
   }
 
   /**
-   * Установка статуса для ячейки
+   * Получение свободных ячеек
    */
-  @Put('cell/:cellId/set-status/:statusId')
+  @Get('free-cells')
   @HttpCode(HttpStatus.OK)
-  setCellStatus(
-    @Param('cellId', ParseUUIDPipe) cellId: string,
-    @Param('statusId', ParseUUIDPipe) statusId: string,
+  getFreeCells(
+    @Query('cityId') cityId?: string,
+    @Query('locationId') locationId?: string,
+    @Query('sizeId') sizeId?: string
   ) {
-    return this.cellRentalsService.setCellStatus(cellId, statusId);
-  }
-
-  /**
-   * Удаление статуса у ячейки
-   */
-  @Delete('cell/:cellId/remove-status')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  removeCellStatus(@Param('cellId', ParseUUIDPipe) cellId: string) {
-    return this.cellRentalsService.removeCellStatus(cellId);
+    return this.cellRentalsService.getFreeCells({ cityId, locationId, sizeId });
   }
 } 
