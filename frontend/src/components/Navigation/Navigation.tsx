@@ -410,7 +410,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             page={Pages.apiDocs}
             isNavOpened={isNavOpened}
             currentPage={currentPage}
-            onClick={() => navigateTo(Pages.apiDocs, '/api-docs')}
+            onClick={() => navigateTo(Pages.apiDocs, '/docs')}
           />
         )}
         
