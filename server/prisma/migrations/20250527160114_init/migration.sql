@@ -176,8 +176,8 @@ CREATE TABLE "relay_access" (
 -- CreateTable
 CREATE TABLE "cell_rentals" (
     "id" TEXT NOT NULL,
-    "cellId" TEXT NOT NULL,
-    "clientId" TEXT NOT NULL,
+    "cellId" TEXT,
+    "clientId" TEXT,
     "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3) NOT NULL,
     "lastExtendedAt" TIMESTAMP(3),
@@ -235,7 +235,7 @@ ALTER TABLE "client_phones" ADD CONSTRAINT "client_phones_clientId_fkey" FOREIGN
 ALTER TABLE "payments" ADD CONSTRAINT "payments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_cellRentalId_fkey" FOREIGN KEY ("cellRentalId") REFERENCES "cell_rentals"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "payments" ADD CONSTRAINT "payments_cellRentalId_fkey" FOREIGN KEY ("cellRentalId") REFERENCES "cell_rentals"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "locations" ADD CONSTRAINT "locations_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "citys"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -265,10 +265,10 @@ ALTER TABLE "relay_access" ADD CONSTRAINT "relay_access_relayId_fkey" FOREIGN KE
 ALTER TABLE "relay_access" ADD CONSTRAINT "relay_access_cellRentalId_fkey" FOREIGN KEY ("cellRentalId") REFERENCES "cell_rentals"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "cell_rentals" ADD CONSTRAINT "cell_rentals_cellId_fkey" FOREIGN KEY ("cellId") REFERENCES "cells"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "cell_rentals" ADD CONSTRAINT "cell_rentals_cellId_fkey" FOREIGN KEY ("cellId") REFERENCES "cells"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "cell_rentals" ADD CONSTRAINT "cell_rentals_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "clients"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "cell_rentals" ADD CONSTRAINT "cell_rentals_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "clients"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "cell_rentals" ADD CONSTRAINT "cell_rentals_statusId_fkey" FOREIGN KEY ("statusId") REFERENCES "cell_statuses"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -20,7 +20,7 @@ import { UserRole } from '@prisma/client';
 
 @Controller('sizes')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class SizesController {
   constructor(private readonly sizesService: SizesService) {}
 

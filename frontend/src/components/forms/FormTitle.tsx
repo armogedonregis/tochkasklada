@@ -12,7 +12,7 @@ const FormTitle: React.FC<FormTitleProps> = ({
   className = ''
 }) => {
   return (
-    <h4 className={`text-gray-900 dark:text-white py-5 font-bold text-base ${className}`}>
+    <h4 className={`text-gray-900 dark:text-white font-bold text-base ${className}`}>
       {label}
     </h4>
   );

@@ -17,12 +17,12 @@ async function bootstrap() {
     }
     done();
   });
-  
+
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     fastifyAdapter
   );
-
+  
   // Глобальные настройки
   app.enableCors({
     origin: true,

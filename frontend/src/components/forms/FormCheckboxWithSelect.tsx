@@ -19,9 +19,7 @@ const FormCheckboxWithSelect = <T extends FieldValues>({
   form,
   name,
   selectField,
-  label,
   checkboxLabel = '',
-  selectLabel = '',
   options
 }: FormCheckboxWithSelectProps<T>) => {
   // Получаем значение чекбокса из формы

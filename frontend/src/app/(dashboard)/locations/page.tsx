@@ -1,15 +1,18 @@
 'use client';
 
+import { MouseEvent } from 'react';
 import { useGetCitiesQuery, useDeleteCityMutation, useAddCityMutation, useUpdateCityMutation } from '@/services/citiesService/citiesApi';
-import { Button } from '@/components/ui/button';
-import { BaseFormModal } from '@/components/modals/BaseFormModal';
-import { ColumnDef } from '@tanstack/react-table';
-import { toast } from 'react-toastify';
-import * as yup from 'yup';
-import { BaseTable } from '@/components/table/BaseTable';
+import { City, CitySortField, CreateCityDto, UpdateCityDto } from '@/services/citiesService/city.types';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { City, CitySortField, CreateCityDto } from '@/services/citiesService/city.types';
+import { useDeleteModal } from '@/hooks/useDeleteModal';
+import { ColumnDef } from '@tanstack/react-table';
+import * as yup from 'yup';
+import { ToastService } from '@/components/toast/ToastService';
+import { Button } from '@/components/ui/button';
+import { BaseTable } from '@/components/table/BaseTable';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
+import { ConfirmDeleteModal } from '@/components/modals/ConfirmDeleteModal';
 
 // Схема валидации для городов
 const cityValidationSchema = yup.object({
@@ -18,51 +21,72 @@ const cityValidationSchema = yup.object({
 });
 
 export default function CitiesPage() {
-  // Используем наш новый хук для управления состоянием таблицы
+  // ====== ХУКИ ДЛЯ ДАННЫХ И ТАБЛИЦЫ ======
   const tableControls = useTableControls<CitySortField>({
     defaultPageSize: 10
   });
 
-  // Получение данных с учетом пагинации, сортировки и поиска
   const { data, isLoading, error, refetch } = useGetCitiesQuery(
     tableControls.queryParams
   );
 
-  const [deleteCity] = useDeleteCityMutation();
-  const [addCity] = useAddCityMutation();
-  const [updateCity] = useUpdateCityMutation();
+  const [deleteCity, { isLoading: isDeleting }] = useDeleteCityMutation();
+  const [addCity, { isLoading: isAdding }] = useAddCityMutation();
+  const [updateCity, { isLoading: isUpdating }] = useUpdateCityMutation();
 
-  // Хук для управления модальным окном
+  // ====== ХУКИ ДЛЯ МОДАЛЬНЫХ ОКОН ======
+  const deleteModal = useDeleteModal();
+
   const modal = useFormModal<CreateCityDto, City>({
-    onSubmit: async (values) => {
-      if (modal.editItem) {
-        await updateCity({ id: modal.editItem.id, ...values }).unwrap();
-        toast.success('Город успешно обновлен');
-      } else {
-        await addCity(values).unwrap();
-        toast.success('Город успешно добавлен');
+    // Автоматическое преобразование города в формат формы
+    itemToFormData: (city) => ({
+      title: city.title,
+      short_name: city.short_name
+    }),
+    onSubmit: async (values: CreateCityDto) => {
+      try {
+        const sanitizedValues = {
+          title: values.title,
+          short_name: values.short_name
+        };
+        if (modal.editItem) {
+          await updateCity({ id: modal.editItem.id, ...sanitizedValues }).unwrap();
+          ToastService.success('Город успешно обновлен');
+        } else {
+          await addCity(sanitizedValues).unwrap();
+          ToastService.success('Город успешно добавлен');
+        }
+      } catch (error) {
+        ToastService.error('Ошибка при сохранении города');
       }
-    },
-    onError: () => {
-      toast.error('Ошибка при сохранении города');
     }
   });
 
-  const handleDelete = async (city: City) => {
+  // ====== ОБРАБОТЧИКИ СОБЫТИЙ ======
+  const handleDelete = async () => {
+    if (!deleteModal.entityId) return;
+
+    deleteModal.setLoading(true);
     try {
-      await deleteCity(city.id).unwrap();
-      toast.success('Город успешно удален');
+      await deleteCity(deleteModal.entityId).unwrap();
+      ToastService.success('Город успешно удален');
+      deleteModal.resetModal();
     } catch (error) {
-      toast.error('Ошибка при удалении города');
+      ToastService.error('Ошибка при удалении города');
+    } finally {
+      deleteModal.setLoading(false);
     }
   };
 
-  const handleDeleteConfirm = (city: City) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот город?')) {
-      handleDelete(city);
-    }
+  const openDeleteModal = (city: City) => {
+    deleteModal.openDelete(city.id, city.title);
   };
 
+  const handleCreateClick = (e: MouseEvent<HTMLButtonElement>) => {
+    modal.openCreate();
+  };
+
+  // ====== ОПРЕДЕЛЕНИЯ UI КОМПОНЕНТОВ ======
   const modalFields = [
     {
       type: 'input' as const,
@@ -99,17 +123,18 @@ export default function CitiesPage() {
     {
       accessorKey: 'updatedAt',
       header: 'Дата обновления',
-      cell: ({ row }) => row.original.updatedAt 
-        ? new Date(row.original.updatedAt).toLocaleDateString('ru-RU') 
+      cell: ({ row }) => row.original.updatedAt
+        ? new Date(row.original.updatedAt).toLocaleDateString('ru-RU')
         : '-',
     }
   ];
 
+  // ====== РЕНДЕР СТРАНИЦЫ ======
   return (
     <>
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={modal.openCreate}>
+        <Button onClick={handleCreateClick}>
           Добавить город
         </Button>
       </div>
@@ -121,7 +146,7 @@ export default function CitiesPage() {
         searchColumn="title"
         searchPlaceholder="Поиск по названию города..."
         onEdit={modal.openEdit}
-        onDelete={handleDeleteConfirm}
+        onDelete={openDeleteModal}
         tableId="cities-table"
         totalCount={data?.meta.totalCount || 0}
         pageCount={data?.meta.totalPages || 0}
@@ -136,7 +161,7 @@ export default function CitiesPage() {
         sorting={tableControls.sorting}
       />
 
-      {/* Модальное окно */}
+      {/* Модальное окно формы */}
       <BaseFormModal
         isOpen={modal.isOpen}
         onClose={modal.closeModal}
@@ -145,10 +170,18 @@ export default function CitiesPage() {
         validationSchema={cityValidationSchema}
         onSubmit={modal.handleSubmit}
         submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
-        defaultValues={modal.editItem ? {
-          title: modal.editItem.title,
-          short_name: modal.editItem.short_name
-        } : undefined}
+        formData={modal.formData}
+        isLoading={isAdding || isUpdating}
+        defaultValues={modal.editItem ? modal.editItem : undefined}
+      />
+
+      {/* Модальное окно подтверждения удаления */}
+      <ConfirmDeleteModal
+        isOpen={deleteModal.isOpen}
+        onClose={deleteModal.closeModal}
+        onConfirm={handleDelete}
+        entityName={deleteModal.entityName || 'город'}
+        isLoading={isDeleting || deleteModal.isLoading}
       />
     </>
   );

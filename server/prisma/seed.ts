@@ -5,16 +5,31 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Создаем администратора
+  const superAdminExists = await prisma.user.findFirst({ 
+    where: { role: 'SUPERADMIN' } 
+  });
+
   const adminExists = await prisma.user.findFirst({ 
     where: { role: 'ADMIN' } 
   });
 
-  if (!adminExists) {
+  if (!superAdminExists) {
+    await prisma.user.create({
+      data: {
+        email: 'superadmin@admin.com',
+        password: await hashPassword('ZT2NHzji9s'),
+        role: 'SUPERADMIN',
+      }
+    });
+    console.log('✅ Супер Администратор создан');
+  }
+
+  if(!adminExists) {
     await prisma.user.create({
       data: {
         email: 'admin@admin.com',
         password: await hashPassword('admin123'),
-        role: 'SUPERADMIN',
+        role: 'ADMIN',
       }
     });
     console.log('✅ Администратор создан');

@@ -20,7 +20,7 @@ import { UserRole } from '@prisma/client';
 
 @Controller('admin/cell-statuses')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class CellStatusesController {
   constructor(private readonly cellStatusesService: CellStatusesService) {}
 

@@ -6,7 +6,8 @@ import {
   UpdatePaymentDto,
   PaymentFilters,
   SetPaymentStatusDto,
-  PaginatedPaymentResponse
+  PaginatedPaymentResponse,
+  StatisticsPayments
 } from './payments.types';
 
 export const paymentsApi = api.injectEndpoints({
@@ -36,6 +37,13 @@ export const paymentsApi = api.injectEndpoints({
               { type: 'Payments', id: 'LIST' },
             ]
           : [{ type: 'Payments', id: 'LIST' }],
+    }),
+
+    // получение статистики по платежам
+    getStatisticsPayments: builder.query<StatisticsPayments[], void>({
+      query: (params) => ({
+        url: '/payments/statistics',
+      }),
     }),
     
     // Получение платежа по orderId
@@ -114,6 +122,7 @@ export const {
   useGetAllPaymentsQuery,
   useGetUserPaymentsQuery,
   useGetPaymentByOrderIdQuery,
+  useGetStatisticsPaymentsQuery,
   useCreatePaymentMutation,
   useAdminCreatePaymentMutation,
   useUpdatePaymentMutation,

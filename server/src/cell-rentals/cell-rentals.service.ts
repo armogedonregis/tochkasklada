@@ -8,8 +8,210 @@ import { CellRentalStatus, Prisma } from '@prisma/client';
 @Injectable()
 export class CellRentalsService {
   // private readonly logger = new Logger(CellRentalsService.name);
-  
-  constructor(private readonly prisma: PrismaService) {}
+
+  constructor(private readonly prisma: PrismaService) { }
+
+  // Получение аренд с фильтрацией, поиском и пагинацией
+  async findCellRentals(queryParams: FindCellRentalsDto) {
+    try {
+      const {
+        search,
+        page = 1,
+        limit = 10,
+        sortBy = CellRentalSortField.CREATED_AT,
+        sortDirection = SortDirection.DESC,
+        onlyActive,
+        rentalStatus,
+        cellId,
+        clientId,
+        statusId
+      } = queryParams;
+
+      // Базовые условия фильтрации
+      let where: Prisma.CellRentalWhereInput = {};
+
+      // Фильтр по активности
+      if (onlyActive !== undefined) {
+        where.isActive = onlyActive;
+      }
+
+      // Фильтр по статусу аренды
+      if (rentalStatus) {
+        where.rentalStatus = rentalStatus;
+      }
+
+      // Фильтр по ID ячейки
+      if (cellId) {
+        where.cellId = cellId;
+      }
+
+      // Фильтр по ID клиента
+      if (clientId) {
+        where.clientId = clientId;
+      }
+
+      // Фильтр по ID статуса ячейки
+      if (statusId) {
+        where.cell = {
+          statusId
+        };
+      }
+
+      // Поиск по строке
+      if (search) {
+        where.OR = [
+          // Поиск по имени клиента
+          { client: { name: { contains: search, mode: 'insensitive' } } },
+          // Поиск по номеру телефона клиента
+          { client: { phones: { some: { phone: { contains: search, mode: 'insensitive' } } } } },
+          // Поиск по имени ячейки
+          { cell: { name: { contains: search, mode: 'insensitive' } } }
+        ];
+      }
+
+      // Вычисляем параметры пагинации
+      const skip = (page - 1) * limit;
+
+      // Настройка сортировки
+      let orderBy: Prisma.CellRentalOrderByWithRelationInput = {};
+
+      // В зависимости от выбранного поля сортировки
+      switch (sortBy) {
+        case CellRentalSortField.START_DATE:
+          orderBy.startDate = sortDirection;
+          break;
+        case CellRentalSortField.END_DATE:
+          orderBy.endDate = sortDirection;
+          break;
+        case CellRentalSortField.RENTAL_STATUS:
+          orderBy.rentalStatus = sortDirection;
+          break;
+        case CellRentalSortField.CREATED_AT:
+        default:
+          orderBy.createdAt = sortDirection;
+          break;
+      }
+
+      // Запрос на получение общего количества
+      const totalCount = await this.prisma.cellRental.count({ where });
+
+      // Запрос на получение данных с пагинацией
+      const rentals = await this.prisma.cellRental.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          cell: {
+            include: {
+              container: true,
+              size: true,
+              status: true,
+            },
+          },
+          client: {
+            include: {
+              phones: true,
+            }
+          },
+          status: true,
+          payments: {
+            select: {
+              id: true,
+              amount: true,
+              status: true,
+              createdAt: true,
+            },
+          },
+        }
+      });
+
+      // Рассчитываем количество страниц
+      const totalPages = Math.ceil(totalCount / limit);
+
+      // Возвращаем результат с мета-информацией
+      return {
+        data: rentals,
+        meta: {
+          totalCount,
+          page,
+          limit,
+          totalPages,
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(`Ошибка при получении списка аренд: ${error.message}`);
+    }
+  }
+
+  // Получение всех свободных ячеек
+  async getFreeCells(params: {
+    cityId?: string;
+    locationId?: string;
+    sizeId?: string;
+  }) {
+    // Строим базовый запрос для поиска всех ячеек
+    const where: Prisma.CellsWhereInput = {};
+
+    // Фильтрация по локации (если указана)
+    if (params.locationId) {
+      where.container = {
+        locId: params.locationId
+      };
+    }
+    // Фильтрация по городу (если указан)
+    else if (params.cityId) {
+      where.container = {
+        location: {
+          cityId: params.cityId
+        }
+      };
+    }
+
+    // Фильтрация по размеру (если указан)
+    if (params.sizeId) {
+      where.size_id = params.sizeId;
+    }
+
+    // Находим все ячейки, у которых нет активных аренд
+    // или с определенным статусом
+    return this.prisma.cells.findMany({
+      where: {
+        ...where,
+        // Исключаем ячейки с активными арендами
+        AND: [
+          {
+            OR: [
+              // Ячейка не имеет аренд
+              { rentals: { none: {} } },
+              // Все аренды ячейки не активны
+              { rentals: { every: { isActive: false } } }
+            ]
+          }
+        ]
+      },
+      include: {
+        container: {
+          include: {
+            location: {
+              include: {
+                city: true
+              }
+            }
+          }
+        },
+        size: true,
+        status: true,
+        rentals: {
+          where: { isActive: true },
+        }
+      },
+      orderBy: [
+        { container: { name: 'asc' } },
+        { name: 'asc' }
+      ]
+    });
+  }
 
   // Создание новой аренды ячейки
   async create(createCellRentalDto: CreateCellRentalDto) {
@@ -50,8 +252,8 @@ export class CellRentalsService {
           ...createCellRentalDto,
           startDate: new Date(createCellRentalDto.startDate),
           endDate: new Date(createCellRentalDto.endDate),
-          lastExtendedAt: createCellRentalDto.lastExtendedAt 
-            ? new Date(createCellRentalDto.lastExtendedAt) 
+          lastExtendedAt: createCellRentalDto.lastExtendedAt
+            ? new Date(createCellRentalDto.lastExtendedAt)
             : undefined,
         },
         include: {
@@ -70,7 +272,7 @@ export class CellRentalsService {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
-      
+
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new ConflictException('Конфликт данных при создании аренды');
@@ -78,37 +280,9 @@ export class CellRentalsService {
           throw new NotFoundException('Один из связанных объектов не найден');
         }
       }
-      
+
       throw new InternalServerErrorException(`Ошибка при создании аренды: ${error.message}`);
     }
-  }
-
-  // Получение всех аренд
-  async findAll() {
-    return this.prisma.cellRental.findMany({
-      include: {
-        cell: {
-          include: {
-            container: true,
-            size: true,
-            status: true,
-          },
-        },
-        client: true,
-        status: true,
-        payments: {
-          select: {
-            id: true,
-            amount: true,
-            status: true,
-            createdAt: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
   }
 
   // Получение аренды по ID
@@ -216,7 +390,7 @@ export class CellRentalsService {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
-      
+
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new ConflictException('Конфликт данных при обновлении аренды');
@@ -224,7 +398,7 @@ export class CellRentalsService {
           throw new NotFoundException('Один из связанных объектов не найден');
         }
       }
-      
+
       throw new InternalServerErrorException(`Ошибка при обновлении аренды: ${error.message}`);
     }
   }
@@ -242,15 +416,15 @@ export class CellRentalsService {
     // Начинаем транзакцию для атомарного удаления связанных данных
     return this.prisma.$transaction(async (prisma) => {
       // Отвязываем платежи от аренды
-      if (relatedPayments.length > 0) {
-        await prisma.payment.updateMany({
-          where: { cellRentalId: id },
-          data: { 
-            cellRentalId: null,
-            description: `Платеж за удаленную аренду ячейки ${rental.cell.name || ''}`
-          }
-        });
-      }
+      // if (relatedPayments.length > 0) {
+      //   await prisma.payment.updateMany({
+      //     where: { cellRentalId: id },
+      //     data: {
+      //       cellRentalId: null,
+      //       description: `Платеж за удаленную аренду ячейки ${rental?.cell?.name || ''}`
+      //     }
+      //   });
+      // }
 
       // Удаляем аренду
       return prisma.cellRental.delete({
@@ -390,7 +564,7 @@ export class CellRentalsService {
     }
 
     let newStatus: CellRentalStatus;
-    
+
     if (forceStatus) {
       // Если статус задан принудительно, используем его
       newStatus = forceStatus;
@@ -402,18 +576,18 @@ export class CellRentalsService {
       const now = new Date();
       const endDate = new Date(rental.endDate);
       const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       // Проверяем наличие продлений
-      const wasExtended = rental.extensionCount > 0 && 
-                         rental.lastExtendedAt && 
-                         new Date(rental.lastExtendedAt).getTime() > now.getTime() - 1000 * 60 * 60 * 24 * 7; // Продлен в течение последней недели
-      
+      const wasExtended = rental.extensionCount > 0 &&
+        rental.lastExtendedAt &&
+        new Date(rental.lastExtendedAt).getTime() > now.getTime() - 1000 * 60 * 60 * 24 * 7; // Продлен в течение последней недели
+
       // Проверяем скорую оплату (от 7 до 14 дней до окончания)
       const paymentDueSoon = daysLeft > 7 && daysLeft <= 14;
-      
+
       // Проверяем, является ли аренда бронью (начало в будущем)
       const isReservation = new Date(rental.startDate).getTime() > now.getTime();
-      
+
       if (isReservation) {
         newStatus = CellRentalStatus.RESERVATION; // Бронь
       } else if (daysLeft < 0) {
@@ -459,10 +633,10 @@ export class CellRentalsService {
   // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   // async handleAutomaticStatusUpdates() {
   //   this.logger.log('Запуск автоматического обновления статусов аренд...');
-    
+
   //   try {
   //     const result = await this.updateAllRentalStatuses();
-      
+
   //     this.logger.log(
   //       `Обновление статусов завершено: обработано ${result.processed} аренд, обновлено ${result.updated} статусов`
   //     );
@@ -495,20 +669,20 @@ export class CellRentalsService {
   // Продление аренды (с созданием платежа)
   async extendRental(userId: string, extendCellRentalDto: ExtendCellRentalDto) {
     const { cellRentalId, amount, description } = extendCellRentalDto;
-    
+
     // Находим аренду
     const rental = await this.findOne(cellRentalId);
-    
+
     // Проверяем активность аренды
     if (!rental.isActive) {
       throw new BadRequestException(`Аренда с ID ${cellRentalId} не активна и не может быть продлена`);
     }
-    
+
     // Находим пользователя
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
-    
+
     if (!user) {
       throw new NotFoundException(`Пользователь с ID ${userId} не найден`);
     }
@@ -517,17 +691,17 @@ export class CellRentalsService {
     const payment = await this.prisma.payment.create({
       data: {
         amount,
-        description: description || `Продление аренды ячейки #${rental.cell.name}`,
+        description: description || `Продление аренды ячейки #${rental?.cell?.name}`,
         userId,
         cellRentalId,
         status: true, // Предполагаем, что платеж сразу успешный (для админа)
       },
     });
-    
+
     // Рассчитываем новую дату окончания аренды (добавляем 1 месяц)
     const newEndDate = new Date(rental.endDate);
     newEndDate.setMonth(newEndDate.getMonth() + 1);
-    
+
     // Обновляем аренду
     return this.prisma.cellRental.update({
       where: { id: cellRentalId },
@@ -554,13 +728,13 @@ export class CellRentalsService {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
     });
-    
+
     if (!payment) {
       throw new NotFoundException(`Платеж с ID ${paymentId} не найден`);
     }
-    
+
     const rental = await this.findOne(rentalId);
-    
+
     // Обновляем платеж
     await this.prisma.payment.update({
       where: { id: paymentId },
@@ -568,11 +742,11 @@ export class CellRentalsService {
         cellRentalId: rentalId,
       },
     });
-    
+
     // Обновляем дату окончания аренды (добавляем 1 месяц)
     const newEndDate = new Date(rental.endDate);
     newEndDate.setMonth(newEndDate.getMonth() + 1);
-    
+
     // Обновляем аренду
     return this.prisma.cellRental.update({
       where: { id: rentalId },
@@ -596,7 +770,7 @@ export class CellRentalsService {
       const status = await this.prisma.cellStatus.findUnique({
         where: { id: statusId }
       });
-      
+
       if (!status) {
         throw new NotFoundException(`Статус с ID ${statusId} не найден`);
       }
@@ -649,206 +823,4 @@ export class CellRentalsService {
     }
   }
 
-  // Получение аренд с фильтрацией, поиском и пагинацией
-  async findCellRentals(queryParams: FindCellRentalsDto) {
-    try {
-      const {
-        search,
-        page = 1,
-        limit = 10,
-        sortBy = CellRentalSortField.CREATED_AT,
-        sortDirection = SortDirection.DESC,
-        onlyActive,
-        rentalStatus,
-        cellId,
-        clientId,
-        statusId
-      } = queryParams;
-
-      // Базовые условия фильтрации
-      let where: Prisma.CellRentalWhereInput = {};
-
-      // Фильтр по активности
-      if (onlyActive !== undefined) {
-        where.isActive = onlyActive;
-      }
-
-      // Фильтр по статусу аренды
-      if (rentalStatus) {
-        where.rentalStatus = rentalStatus;
-      }
-
-      // Фильтр по ID ячейки
-      if (cellId) {
-        where.cellId = cellId;
-      }
-
-      // Фильтр по ID клиента
-      if (clientId) {
-        where.clientId = clientId;
-      }
-
-      // Фильтр по ID статуса ячейки
-      if (statusId) {
-        where.cell = {
-          statusId
-        };
-      }
-
-      // Поиск по строке
-      if (search) {
-        where.OR = [
-          // Поиск по имени клиента
-          { client: { name: { contains: search, mode: 'insensitive' } } },
-          // Поиск по номеру телефона клиента
-          { client: { phones: { some: { phone: { contains: search, mode: 'insensitive' } } } } },
-          // Поиск по имени ячейки
-          { cell: { name: { contains: search, mode: 'insensitive' } } }
-        ];
-      }
-
-      // Вычисляем параметры пагинации
-      const skip = (page - 1) * limit;
-
-      // Настройка сортировки
-      let orderBy: Prisma.CellRentalOrderByWithRelationInput = {};
-      
-      // В зависимости от выбранного поля сортировки
-      switch (sortBy) {
-        case CellRentalSortField.START_DATE:
-          orderBy.startDate = sortDirection;
-          break;
-        case CellRentalSortField.END_DATE:
-          orderBy.endDate = sortDirection;
-          break;
-        case CellRentalSortField.RENTAL_STATUS:
-          orderBy.rentalStatus = sortDirection;
-          break;
-        case CellRentalSortField.CREATED_AT:
-        default:
-          orderBy.createdAt = sortDirection;
-          break;
-      }
-
-      // Запрос на получение общего количества
-      const totalCount = await this.prisma.cellRental.count({ where });
-
-      // Запрос на получение данных с пагинацией
-      const rentals = await this.prisma.cellRental.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-        include: {
-          cell: {
-            include: {
-              container: true,
-              size: true,
-              status: true,
-            },
-          },
-          client: {
-            include: {
-              phones: true,
-            }
-          },
-          status: true,
-          payments: {
-            select: {
-              id: true,
-              amount: true,
-              status: true,
-              createdAt: true,
-            },
-          },
-        }
-      });
-
-      // Рассчитываем количество страниц
-      const totalPages = Math.ceil(totalCount / limit);
-
-      // Возвращаем результат с мета-информацией
-      return {
-        data: rentals,
-        meta: {
-          totalCount,
-          page,
-          limit,
-          totalPages,
-        },
-      };
-    } catch (error) {
-      throw new InternalServerErrorException(`Ошибка при получении списка аренд: ${error.message}`);
-    }
-  }
-
-  // Получение всех свободных ячеек
-  async getFreeCells(params: { 
-    cityId?: string; 
-    locationId?: string;
-    sizeId?: string;
-  }) {
-    // Строим базовый запрос для поиска всех ячеек
-    const where: Prisma.CellsWhereInput = {};
-
-    // Фильтрация по локации (если указана)
-    if (params.locationId) {
-      where.container = {
-        locId: params.locationId
-      };
-    } 
-    // Фильтрация по городу (если указан)
-    else if (params.cityId) {
-      where.container = {
-        location: {
-          cityId: params.cityId
-        }
-      };
-    }
-
-    // Фильтрация по размеру (если указан)
-    if (params.sizeId) {
-      where.size_id = params.sizeId;
-    }
-
-    // Находим все ячейки, у которых нет активных аренд
-    // или с определенным статусом
-    return this.prisma.cells.findMany({
-      where: {
-        ...where,
-        // Исключаем ячейки с активными арендами
-        AND: [
-          {
-            OR: [
-              // Ячейка не имеет аренд
-              { rentals: { none: {} } },
-              // Все аренды ячейки не активны
-              { rentals: { every: { isActive: false } } }
-            ]
-          }
-        ]
-      },
-      include: {
-        container: {
-          include: {
-            location: {
-              include: {
-                city: true
-              }
-            }
-          }
-        },
-        size: true,
-        status: true,
-        rentals: {
-          where: { isActive: true },
-          take: 1
-        }
-      },
-      orderBy: [
-        { container: { name: 'asc' } },
-        { name: 'asc' }
-      ]
-    });
-  }
 } 

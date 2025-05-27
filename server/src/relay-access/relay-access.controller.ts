@@ -20,7 +20,7 @@ import { CreateRelayAccessDto, CheckRelayAccessDto, FindRelayAccessDto } from '.
 
 @Controller('admin/relay-access')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class RelayAccessController {
   constructor(private readonly relayAccessService: RelayAccessService) {}
 

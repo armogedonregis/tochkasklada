@@ -1,16 +1,21 @@
 'use client';
 
+import { MouseEvent } from 'react';
 import { useGetLocationsQuery, useDeleteLocationMutation, useAddLocationMutation, useUpdateLocationMutation } from '@/services/locationsService/locationsApi';
 import { useGetCitiesQuery } from '@/services/citiesService/citiesApi';
-import { Button } from '@/components/ui/button';
-import { BaseFormModal } from '@/components/modals/BaseFormModal';
-import { ColumnDef } from '@tanstack/react-table';
-import { toast } from 'react-toastify';
-import * as yup from 'yup';
-import { BaseTable } from '@/components/table/BaseTable';
+import { Location, CreateLocationDto, LocationSortField } from '@/services/locationsService/location.types';
+import { City } from '@/services/citiesService/city.types';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { Location, CreateLocationDto, LocationSortField } from '@/services/locationsService/location.types';
+import { useDeleteModal } from '@/hooks/useDeleteModal';
+import { ColumnDef } from '@tanstack/react-table';
+import * as yup from 'yup';
+import { ToastService } from '@/components/toast/ToastService';
+import { Button } from '@/components/ui/button';
+import { BaseTable } from '@/components/table/BaseTable';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
+import { ConfirmDeleteModal } from '@/components/modals/ConfirmDeleteModal';
+
 // Схема валидации для локаций
 const locationValidationSchema = yup.object({
   name: yup.string().required('Название локации обязательно'),
@@ -20,12 +25,11 @@ const locationValidationSchema = yup.object({
 });
 
 export default function LocationsPage() {
-  // Используем хук для управления состоянием таблицы
+  // ====== ХУКИ ДЛЯ ДАННЫХ И ТАБЛИЦЫ ======
   const tableControls = useTableControls<LocationSortField>({
     defaultPageSize: 10
   });
 
-  // Получение данных локаций с учетом пагинации, сортировки и поиска
   const { data, isLoading, error, refetch } = useGetLocationsQuery(
     tableControls.queryParams
   );
@@ -38,40 +42,67 @@ export default function LocationsPage() {
   const { data: citiesData = { data: [] }, isLoading: isCitiesLoading } = useGetCitiesQuery();
   const cities = citiesData.data;
   
-  // Мутации для CRUD операций
-  const [deleteLocation] = useDeleteLocationMutation();
-  const [addLocation] = useAddLocationMutation();
-  const [updateLocation] = useUpdateLocationMutation();
+  const [deleteLocation, { isLoading: isDeleting }] = useDeleteLocationMutation();
+  const [addLocation, { isLoading: isAdding }] = useAddLocationMutation();
+  const [updateLocation, { isLoading: isUpdating }] = useUpdateLocationMutation();
 
-  // Хук для управления модальным окном
+  // ====== ХУКИ ДЛЯ МОДАЛЬНЫХ ОКОН ======
+  const deleteModal = useDeleteModal();
+
   const modal = useFormModal<CreateLocationDto, Location>({
-    onSubmit: async (values) => {
-      if (modal.editItem) {
-        await updateLocation({ id: modal.editItem.id, ...values }).unwrap();
-        toast.success('Локация успешно обновлена');
-      } else {
-        await addLocation(values).unwrap();
-        toast.success('Локация успешно добавлена');
+    // Автоматическое преобразование локации в формат формы
+    itemToFormData: (location) => ({
+      name: location.name,
+      short_name: location.short_name,
+      address: location.address,
+      cityId: location.cityId,
+    }),
+    onSubmit: async (values: CreateLocationDto) => {
+      try {
+        const sanitizedValues = {
+          name: values.name,
+          short_name: values.short_name,
+          address: values.address,
+          cityId: values.cityId,
+        };
+        if (modal.editItem) {
+          await updateLocation({ id: modal.editItem.id, ...sanitizedValues }).unwrap();
+          ToastService.success('Локация успешно обновлена');
+        } else {
+          await addLocation(sanitizedValues).unwrap();
+          ToastService.success('Локация успешно добавлена');
+        }
+      } catch (error) {
+        ToastService.error('Ошибка при сохранении локации');
       }
-    },
-    onError: () => {
-      toast.error('Ошибка при сохранении локации');
     }
   });
 
-  // Обработчик удаления
-  const handleDelete = async (location: Location) => {
-    if (window.confirm('Вы уверены, что хотите удалить эту локацию?')) {
-      try {
-        await deleteLocation(location.id).unwrap();
-        toast.success('Локация успешно удалена');
-      } catch (error) {
-        toast.error('Ошибка при удалении локации');
-      }
+  // ====== ОБРАБОТЧИКИ СОБЫТИЙ ======
+  const handleDelete = async () => {
+    if (!deleteModal.entityId) return;
+    
+    deleteModal.setLoading(true);
+    try {
+      await deleteLocation(deleteModal.entityId).unwrap();
+      ToastService.success('Локация успешно удалена');
+      deleteModal.resetModal();
+    } catch (error) {
+      ToastService.error('Ошибка при удалении локации');
+    } finally {
+      deleteModal.setLoading(false);
     }
   };
 
-  // Поля формы
+  const openDeleteModal = (location: Location) => {
+    deleteModal.openDelete(location.id, location.name);
+  };
+
+  const handleCreateClick = (e: MouseEvent<HTMLButtonElement>) => {
+    modal.openCreate();
+  };
+
+  // ====== ОПРЕДЕЛЕНИЯ UI КОМПОНЕНТОВ ======
   const modalFields = [
     {
       type: 'input' as const,
@@ -95,14 +126,13 @@ export default function LocationsPage() {
       type: 'select' as const,
       fieldName: 'cityId' as const,
       label: 'Город',
-      options: cities.map(city => ({
+      options: cities.map((city: City) => ({
         label: city.title,
         value: city.id
       }))
     }
   ];
 
-  // Определение колонок таблицы
   const columns: ColumnDef<Location>[] = [
     {
       accessorKey: 'id',
@@ -142,11 +172,12 @@ export default function LocationsPage() {
     }
   ];
 
+  // ====== РЕНДЕР СТРАНИЦЫ ======
   return (
     <>
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={modal.openCreate}>
+        <Button onClick={handleCreateClick}>
           Добавить локацию
         </Button>
       </div>
@@ -158,7 +189,7 @@ export default function LocationsPage() {
         searchColumn="name"
         searchPlaceholder="Поиск по названию локации..."
         onEdit={modal.openEdit}
-        onDelete={handleDelete}
+        onDelete={openDeleteModal}
         tableId="locations-table"
         totalCount={totalCount}
         pageCount={pageCount}
@@ -174,7 +205,7 @@ export default function LocationsPage() {
         persistSettings={true}
       />
 
-      {/* Модальное окно */}
+      {/* Модальное окно формы */}
       <BaseFormModal
         isOpen={modal.isOpen}
         onClose={modal.closeModal}
@@ -183,12 +214,18 @@ export default function LocationsPage() {
         validationSchema={locationValidationSchema}
         onSubmit={modal.handleSubmit}
         submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
-        defaultValues={modal.editItem ? {
-          name: modal.editItem.name,
-          short_name: modal.editItem.short_name,
-          address: modal.editItem.address,
-          cityId: modal.editItem.cityId,
-        } : undefined}
+        formData={modal.formData}
+        isLoading={isAdding || isUpdating}
+        defaultValues={modal.editItem ? modal.editItem : undefined}
+      />
+
+      {/* Модальное окно подтверждения удаления */}
+      <ConfirmDeleteModal 
+        isOpen={deleteModal.isOpen}
+        onClose={deleteModal.closeModal}
+        onConfirm={handleDelete}
+        entityName={deleteModal.entityName || 'локацию'}
+        isLoading={isDeleting || deleteModal.isLoading}
       />
     </>
   );

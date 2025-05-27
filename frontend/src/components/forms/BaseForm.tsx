@@ -4,7 +4,7 @@ import React from 'react';
 import { useForm, UseFormReturn, FieldValues, DefaultValues, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { ObjectSchema } from 'yup';
-import { IForm } from '@/types/form';
+import { IForm } from '@/components/forms/types';
 import { Form } from '@/components/ui/form';
 import FormInput from './FormInput';
 import FormSelect from './FormSelect';
@@ -12,6 +12,9 @@ import FormCheckbox from './FormCheckbox';
 import FormTitle from './FormTitle';
 import FormSearchSelect from './FormSearchSelect';
 import FormCheckboxWithSelect from './FormCheckboxWithSelect';
+import FormColorPicker from './FormColorPicker';
+import FormDatePicker from './FormDatePicker';
+import FormPhoneInput from './FormPhoneInput';
 
 interface BaseFormProps<T extends FieldValues> {
   fields: IForm<T>[];
@@ -22,6 +25,7 @@ interface BaseFormProps<T extends FieldValues> {
   formClassName?: string;
   inputClassName?: string;
   defaultValues?: DefaultValues<T>;
+  isCheckBoxWithSelectMulty?: boolean;
 }
 
 const BaseForm = <T extends FieldValues>({
@@ -32,7 +36,8 @@ const BaseForm = <T extends FieldValues>({
   containerClassName = '',
   formClassName = '',
   inputClassName = '',
-  defaultValues
+  defaultValues,
+  isCheckBoxWithSelectMulty = false
 }: BaseFormProps<T>) => {
   // Создаем defaultValues на основе полей, если они не были переданы
   const computedDefaultValues = React.useMemo(() => {
@@ -48,6 +53,17 @@ const BaseForm = <T extends FieldValues>({
         values[field.fieldName] = false;
       } else if (field.type === 'searchSelect') {
         values[field.fieldName] = null;
+      } else if (field.type === 'colorPicker') {
+        values[field.fieldName] = field.defaultValue || '#000000';
+      } else if (field.type === 'datePicker') {
+        values[field.fieldName] = null;
+      } else if (field.type === 'phoneInput') {
+        values[field.fieldName] = field.multiplePhones ? [] : '';
+      } else if (field.type === 'checkboxWithSelect') {
+        values[field.fieldName] = false; 
+        if (field.selectField) {
+          values[field.selectField] = ''; 
+        }  
       }
     });
     
@@ -58,6 +74,21 @@ const BaseForm = <T extends FieldValues>({
     resolver: yupResolver(validationSchema),
     defaultValues: computedDefaultValues
   });
+
+  const { regularFields, checkboxWithSelectFields } = React.useMemo(() => {
+    if (!isCheckBoxWithSelectMulty) {
+      return { regularFields: fields, checkboxWithSelectFields: [] };
+    }
+
+    return fields.reduce((acc, field) => {
+      if (field.type === 'checkboxWithSelect') {
+        acc.checkboxWithSelectFields.push(field);
+      } else {
+        acc.regularFields.push(field);
+      }
+      return acc;
+    }, { regularFields: [] as IForm<T>[], checkboxWithSelectFields: [] as IForm<T>[] });
+  }, [fields, isCheckBoxWithSelectMulty]);
 
   const renderFormField = (item: IForm<T>) => {
     switch (item.type) {
@@ -71,6 +102,7 @@ const BaseForm = <T extends FieldValues>({
             placeholder={item.placeholder}
             icon={item.icon}
             type={item.inputType}
+            className={inputClassName}
           />
         );
       
@@ -83,6 +115,8 @@ const BaseForm = <T extends FieldValues>({
             label={item.label}
             placeholder={item.placeholder}
             options={item.options}
+            className={inputClassName}
+            onValueChange={item.onChange}
           />
         );
       
@@ -97,6 +131,7 @@ const BaseForm = <T extends FieldValues>({
             options={item.options || []}
             isMulti={item.isMulti}
             onSearch={item.onSearch}
+            className={inputClassName}
           />
         );
       
@@ -108,6 +143,7 @@ const BaseForm = <T extends FieldValues>({
             name={item.fieldName}
             label={item.label}
             description={item.description}
+            className={inputClassName}
           />
         );
       
@@ -133,6 +169,49 @@ const BaseForm = <T extends FieldValues>({
           />
         );
       
+      case 'colorPicker':
+        return (
+          <FormColorPicker
+            key={item.fieldName}
+            form={form}
+            name={item.fieldName}
+            label={item.label}
+            placeholder={item.placeholder}
+            description={item.description}
+            defaultValue={item.defaultValue}
+            className={inputClassName}
+          />
+        );
+      
+      case 'datePicker':
+        return (
+          <FormDatePicker
+            key={item.fieldName}
+            form={form}
+            name={item.fieldName}
+            label={item.label}
+            placeholder={item.placeholder}
+            description={item.description}
+            minDate={item.minDate}
+            maxDate={item.maxDate}
+            className={inputClassName}
+          />
+        );
+      
+      case 'phoneInput':
+        return (
+          <FormPhoneInput
+            key={item.fieldName}
+            form={form}
+            name={item.fieldName}
+            label={item.label}
+            placeholder={item.placeholder}
+            description={item.description}
+            multiplePhones={item.multiplePhones}
+            className={inputClassName}
+          />
+        );
+      
       default:
         return null;
     }
@@ -142,8 +221,14 @@ const BaseForm = <T extends FieldValues>({
     <div className={containerClassName}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className={formClassName}>
-          <div className={inputClassName}>
-            {fields.map(renderFormField)}
+          <div className="space-y-4">
+            {regularFields.map(renderFormField)}
+
+            {isCheckBoxWithSelectMulty && checkboxWithSelectFields.length > 0 && (
+              <div className="grid grid-cols-2 gap-4">
+                {checkboxWithSelectFields.map(renderFormField)}
+              </div>
+            )}
           </div>
           {renderButtons(form)}
         </form>

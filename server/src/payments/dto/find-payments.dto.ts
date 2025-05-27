@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, Min, IsString, IsEnum, IsBoolean } from 'class-validator';
+import { IsOptional, IsInt, Min, IsString, IsEnum, IsBoolean, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum PaymentSortField {
@@ -40,6 +40,6 @@ export class FindPaymentsDto {
 
   @IsOptional()
   @IsBoolean()
-  @Type(() => Boolean)
+  @IsIn([true, false])
   onlyPaid?: boolean;
 } 

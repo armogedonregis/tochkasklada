@@ -1,3 +1,4 @@
+import { Client } from '../clientsService/clients.types';
 import { FilterParams, DateRangeParams, PaginatedResponse, SortDirection } from '../services.types';
 
 // Перечисление полей сортировки для платежей
@@ -11,6 +12,7 @@ export enum PaymentSortField {
 export interface User {
   id: string;
   email: string;
+  client: Client;
 }
 
 export interface Payment {
@@ -32,7 +34,7 @@ export interface CreatePaymentDto {
   description: string;
   status?: boolean;
   cellId?: string;
-  rentalMonths?: number;
+  rentalDays?: number;
   statusId?: string;
 }
 
@@ -42,7 +44,7 @@ export interface CreateAdminPaymentDto {
   description?: string;
   status?: boolean;
   cellId?: string;
-  rentalMonths?: number;
+  rentalDays?: number;
   statusId?: string;
 }
 
@@ -52,7 +54,7 @@ export interface UpdatePaymentDto {
   description?: string;
   status?: boolean;
   cellId?: string;
-  rentalMonths?: number;
+  rentalDays?: number;
   statusId?: string;
 }
 
@@ -63,9 +65,24 @@ export interface SetPaymentStatusDto {
 
 export interface PaymentFilters extends FilterParams {
   userId?: string;
-  status?: boolean;
+  onlyPaid?: boolean;
   sortBy?: PaymentSortField;
   sortDirection?: SortDirection;
 }
 
-export type PaginatedPaymentResponse = PaginatedResponse<Payment>; 
+export type PaginatedPaymentResponse = PaginatedResponse<Payment>;
+
+export type StatisticsPayments = {
+  locationId: string;
+  locationName: string;
+  locationShortName: string;
+  cityName: string;
+  cityShortName: string;
+  totalPayments: number;
+  totalAmount: number;
+  activeRentals: number;
+  averagePayment: number;
+  lastPaymentDate: Date;
+  paymentFrequency: number;
+  revenuePerRental: number;
+}

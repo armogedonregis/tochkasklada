@@ -1,21 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  useGetAllPaymentsQuery, 
-  useAdminCreatePaymentMutation, 
-  useUpdatePaymentMutation, 
+import {
+  useGetAllPaymentsQuery,
+  useAdminCreatePaymentMutation,
+  useUpdatePaymentMutation,
   useDeletePaymentMutation,
-  useSetPaymentStatusMutation
+  useSetPaymentStatusMutation,
 } from '@/services/paymentsService/paymentsApi';
-import { useGetClientsQuery } from '@/services/clientsService/clientsApi';
+import { useLazyGetClientsQuery } from '@/services/clientsService/clientsApi';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronDown, ChevronRight, User, Check, X } from 'lucide-react';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
@@ -25,8 +25,7 @@ import * as yup from 'yup';
 import { Payment, PaymentSortField } from '@/services/paymentsService/payments.types';
 import { SortDirection } from '@/services/services.types';
 import { Client } from '@/services/clientsService/clients.types';
-import { useGetAdminCellsQuery } from '@/services/cellService/cellsApi';
-import { CellSortField } from '@/services/cellService/cell.types';
+import { useLazyGetAdminCellsQuery } from '@/services/cellService/cellsApi';
 
 // Схема валидации для платежей
 const paymentValidationSchema = yup.object({
@@ -34,7 +33,8 @@ const paymentValidationSchema = yup.object({
   amount: yup.number().required('Сумма обязательна').min(1, 'Сумма должна быть больше 0'),
   description: yup.string().optional(),
   status: yup.boolean().default(false),
-  cellId: yup.string().optional()
+  cellId: yup.string().optional(),
+  rentalDays: yup.number(),
 });
 
 // Тип для полей формы
@@ -44,6 +44,7 @@ interface PaymentFormFields {
   description: string;
   status: boolean;
   cellId: string;
+  rentalDays: number;
 }
 
 const PaymentsPage = () => {
@@ -52,15 +53,9 @@ const PaymentsPage = () => {
 
   // Используем хук для управления состоянием таблицы
   const tableControls = useTableControls<PaymentSortField>({
-    defaultPageSize: 10,
-    searchDebounceMs: 300
+    defaultPageSize: 10
   });
 
-  const cellsControls = useTableControls<CellSortField>({
-    defaultPageSize: 10,
-    searchDebounceMs: 300
-  });
-  
   // Получение данных о платежах с учетом параметров
   const { data, error, isLoading, refetch } = useGetAllPaymentsQuery({
     page: tableControls.queryParams.page,
@@ -68,23 +63,19 @@ const PaymentsPage = () => {
     search: tableControls.queryParams.search,
     sortBy: tableControls.queryParams.sortBy,
     sortDirection: tableControls.queryParams.sortDirection as SortDirection,
-    status: activeTab === 'paid' ? true : activeTab === 'unpaid' ? false : undefined
+    onlyPaid: activeTab === 'paid' ? true : activeTab === 'unpaid' ? false : undefined
   });
 
-  const { data: cells } = useGetAdminCellsQuery(cellsControls.queryParams);
+  const [getCells, { data: cellsData = { data: [] } }] = useLazyGetAdminCellsQuery();
+  const [getClients, { data: clientsData = { data: [] } }] = useLazyGetClientsQuery()
 
 
-  
   // Данные платежей из пагинированного ответа
   const payments = data?.data || [];
   // Используем мета-информацию из ответа
   const totalCount = data?.meta?.totalCount || 0;
   const pageCount = data?.meta?.totalPages || 1;
-  
-  // Получение клиентов
-  const { data: clientsData } = useGetClientsQuery();
-  const clients = clientsData?.data || [];
-  
+
   // Мутации для операций с платежами
   const [deletePayment] = useDeletePaymentMutation();
   const [adminCreatePayment] = useAdminCreatePaymentMutation();
@@ -96,7 +87,7 @@ const PaymentsPage = () => {
     onSubmit: async (values) => {
       console.log(values);
       if (modal.editItem) {
-        await updatePayment({ 
+        await updatePayment({
           id: modal.editItem.id,
           ...values
         }).unwrap();
@@ -111,9 +102,27 @@ const PaymentsPage = () => {
     }
   });
 
+
+  // Функция для поиска ячеек
+  const handleCellsSearch = (query: string) => {
+    getCells({
+      search: query,
+      limit: 20
+    });
+  };
+
+  // Функция для поиска клиентов
+  const handleClientsSearch = (query: string) => {
+    getClients({
+      search: query,
+      limit: 20
+    });
+  };
+
+
   // Функция для переключения раскрытия информации о клиенте
   const toggleExpandPayment = (paymentId: string) => {
-    setExpandedPayments(prev => 
+    setExpandedPayments(prev =>
       prev.includes(paymentId)
         ? prev.filter(id => id !== paymentId)
         : [...prev, paymentId]
@@ -155,7 +164,7 @@ const PaymentsPage = () => {
   // Форматирование даты
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return `${date.toLocaleDateString('ru-RU')} (${formatDistance(date, new Date(), { 
+    return `${date.toLocaleDateString('ru-RU')} (${formatDistance(date, new Date(), {
       addSuffix: true,
       locale: ru
     })})`;
@@ -163,10 +172,9 @@ const PaymentsPage = () => {
 
   // Компонент для отображения расширенной информации о клиенте
   const ExpandedClientInfo = ({ payment }: { payment: Payment }) => {
-    const client = clients.find((c: Client) => c.userId === payment.userId);
-    const user = client?.user;
+    const user = payment?.user;
 
-    if (!client) {
+    if (!user) {
       return (
         <div className="p-4 pl-12 text-sm text-gray-500">
           Информация о клиенте недоступна
@@ -184,7 +192,7 @@ const PaymentsPage = () => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-500 dark:text-gray-400">ФИО:</p>
-              <p className="font-medium">{client.name}</p>
+              <p className="font-medium">{user.client?.name}</p>
             </div>
             <div>
               <p className="text-gray-500 dark:text-gray-400">Email:</p>
@@ -193,8 +201,8 @@ const PaymentsPage = () => {
             <div className="col-span-2">
               <p className="text-gray-500 dark:text-gray-400 mb-1">Телефоны:</p>
               <div className="font-medium space-y-1">
-                {client.phones && client.phones.length > 0 ? (
-                  client.phones.map((phone: any, index: number) => (
+                {user.client.phones && user.client.phones.length > 0 ? (
+                  user.client.phones.map((phone: any, index: number) => (
                     <div key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded">
                       {typeof phone === 'object' ? phone.phone || phone.number : phone}
                     </div>
@@ -238,7 +246,7 @@ const PaymentsPage = () => {
     },
     {
       accessorKey: 'orderId',
-      header: 'orderID платежа',
+      header: 'id Банка',
       cell: ({ getValue }) => (
         <div className="font-mono text-xs truncate max-w-[140px]" title={getValue() as string}>
           {getValue() as string}
@@ -248,16 +256,10 @@ const PaymentsPage = () => {
     {
       id: 'user',
       header: 'Клиент',
-      accessorFn: (row) => {
-        const client = clients.find((c: Client) => c.userId === row.userId);
-        return client ? `${client.name} (${client.user?.email || 'Нет email'})` : row.user?.email || 'Неизвестный клиент';
-      },
       cell: ({ row }) => {
-        // Отображаем только имя клиента
-        const client = clients.find((c: Client) => c.userId === row.original.userId);
         return (
           <div>
-            {client ? `${client.name} (${client.user?.email || 'Нет email'})` : row.original.user?.email || 'Неизвестный клиент'}
+            {row.original.user ? `${row.original.user?.client?.name} (${row.original.user?.email || 'Нет email'})` : 'Неизвестный клиент'}
           </div>
         );
       }
@@ -282,21 +284,21 @@ const PaymentsPage = () => {
       header: 'Статус',
       cell: ({ row }) => {
         const status = row.original.status;
-        
+
         return (
           <div className="flex items-center space-x-2">
             <Badge variant={status ? "default" : "secondary"}>
               {status ? 'Оплачен' : 'Не оплачен'}
             </Badge>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-6 w-6"
               onClick={() => handleToggleStatus(row.original.id, !status)}
               title={status ? 'Отметить как неоплаченный' : 'Отметить как оплаченный'}
             >
-              {status ? 
-                <X className="h-4 w-4 text-red-500" /> : 
+              {status ?
+                <X className="h-4 w-4 text-red-500" /> :
                 <Check className="h-4 w-4 text-green-500" />
               }
             </Button>
@@ -321,17 +323,19 @@ const PaymentsPage = () => {
   // Поля формы для модального окна
   const modalFields = [
     {
-      type: 'select' as const,
+      type: 'searchSelect' as const,
       fieldName: 'userId' as const,
       label: 'Клиент',
       placeholder: 'Выберите клиента',
-      options: clients.map((client: Client) => ({
+      onSearch: handleClientsSearch,
+      options: clientsData.data.map((client: Client) => ({
         label: `${client.name} (${client.user?.email || 'Нет email'})`,
         value: client.userId
       }))
     },
     {
       type: 'input' as const,
+      inputType: "number",
       fieldName: 'amount' as const,
       label: 'Сумма',
       placeholder: 'Например: 5000'
@@ -352,21 +356,26 @@ const PaymentsPage = () => {
       fieldName: 'cellId' as const,
       label: 'Ячейка',
       placeholder: 'Введите ID ячейки',
-      onSearch: (search: string) => {
-        cellsControls.handleSearchChange(search);
-      },
-      options: cells?.data.map((cell: any) => ({
-        label: cell.container.location.city.short_name + cell.container.name + cell.container.location.short_name + '-' + cell.name,
+      onSearch: handleCellsSearch,
+      options: cellsData?.data.map((cell: any) => ({
+        label: cell.container.location.short_name + '-' + cell.name,
         value: cell.id
-      })) || []
+      }))
+    },
+    {
+      type: 'input' as const,
+      inputType: "number",
+      fieldName: 'rentalDays' as const,
+      label: "Количество дней аренды",
+      placeholder: "Выберите количество дней аренды",
     }
   ];
 
   return (
-    <>
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={modal.openCreate}>
+        <Button onClick={() => modal.openCreate()}>
           Добавить платеж
         </Button>
       </div>
@@ -381,32 +390,30 @@ const PaymentsPage = () => {
       </Tabs>
 
       {/* Таблица */}
-      <div className="rounded-md border">
-        <BaseTable
-          data={payments}
-          columns={columns}
-          searchColumn="orderId"
-          searchPlaceholder="Поиск по ID платежа..."
-          onEdit={modal.openEdit}
-          onDelete={handleDelete}
-          tableId="payments-table"
-          totalCount={totalCount}
-          pageCount={pageCount}
-          onPaginationChange={tableControls.handlePaginationChange}
-          onSortingChange={tableControls.handleSortingChange}
-          onSearchChange={tableControls.handleSearchChange}
-          isLoading={isLoading}
-          error={error}
-          onRetry={refetch}
-          sortableFields={PaymentSortField}
-          pagination={tableControls.pagination}
-          sorting={tableControls.sorting}
-          persistSettings={true}
-          renderRowSubComponent={({ row }) => 
-            expandedPayments.includes(row.original.id) ? <ExpandedClientInfo payment={row.original} /> : null
-          }
-        />
-      </div>
+      <BaseTable
+        data={payments}
+        columns={columns}
+        searchColumn="orderId"
+        searchPlaceholder="Поиск по ID платежа..."
+        onEdit={modal.openEdit}
+        onDelete={handleDelete}
+        tableId="payments-table"
+        totalCount={totalCount}
+        pageCount={pageCount}
+        onPaginationChange={tableControls.handlePaginationChange}
+        onSortingChange={tableControls.handleSortingChange}
+        onSearchChange={tableControls.handleSearchChange}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
+        sortableFields={PaymentSortField}
+        pagination={tableControls.pagination}
+        sorting={tableControls.sorting}
+        persistSettings={true}
+        renderRowSubComponent={({ row }) =>
+          expandedPayments.includes(row.original.id) ? <ExpandedClientInfo payment={row.original} /> : null
+        }
+      />
 
       {/* Модальное окно */}
       <BaseFormModal
@@ -422,16 +429,18 @@ const PaymentsPage = () => {
           amount: modal.editItem.amount,
           description: modal.editItem.description,
           status: modal.editItem.status,
-          cellId: modal.editItem.cellId 
+          cellId: modal.editItem.cellId,
+          rentalDays: 1,
         } : {
           userId: '',
           amount: 0,
           description: '',
           status: false,
-          cellId: ''
+          cellId: '',
+          rentalDays: 1
         }}
       />
-    </>
+    </div>
   );
 };
 

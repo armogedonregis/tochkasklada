@@ -1,46 +1,46 @@
 'use client';
 
-import { useState } from 'react';
-import { useGetContainersQuery, useGetContainerQuery, useDeleteContainerMutation, useAddContainerMutation, useUpdateContainerMutation } from '@/services/containersService/containersApi';
+import { useState, MouseEvent } from 'react';
+import { useGetContainersQuery, useGetContainerQuery, useDeleteContainerMutation, useAddContainerMutation, useUpdateContainerMutation, useLazyGetContainerQuery } from '@/services/containersService/containersApi';
 import { useLazyGetLocationsQuery } from '@/services/locationsService/locationsApi';
 import { useGetSizesQuery } from '@/services/sizesService/sizesApi';
+import { Container, ContainerWithExpanded, Cell, ContainerSortField } from '@/services/containersService/container.types';
+import { useTableControls } from '@/hooks/useTableControls';
+import { useFormModal } from '@/hooks/useFormModal';
+import { useDeleteModal } from '@/hooks/useDeleteModal';
+import { ColumnDef } from '@tanstack/react-table';
+import * as yup from 'yup';
+import { ToastService } from '@/components/toast/ToastService';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ColumnDef } from '@tanstack/react-table';
-import { Container, ContainerWithExpanded, Cell, ContainerSortField } from '@/services/containersService/container.types';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
+import { ConfirmDeleteModal } from '@/components/modals/ConfirmDeleteModal';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { toast } from 'react-toastify';
-import { useTableControls } from '@/hooks/useTableControls';
 
 // Массив букв для ячеек
 const cellLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
+// Схема валидации для контейнеров
+const containerValidationSchema = yup.object({
+  name: yup.string().required('Номер контейнера обязателен'),
+  locId: yup.string().required('Выберите локацию')
+  // Для ячеек валидация не требуется, они опциональны
+});
+
+// Тип для формы контейнера
+interface ContainerFormData {
+  name: string;
+  locId: string;
+  cells?: Array<{ name: string; size_id: string }>;
+  [key: string]: any; // Для динамических полей ячеек
+}
+
 export default function ContainersPage() {
-  // Состояние для развернутых контейнеров
-  const [expandedContainers, setExpandedContainers] = useState<string[]>([]);
-  
-  // Состояние для модального окна
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Container | null>(null);
-  
-  // Состояние формы
-  const [formData, setFormData] = useState({
-    name: '',
-    locId: '',
-    cells: {} as Record<string, { checked: boolean, sizeId: string }>
-  });
-  
-  // Используем хук для управления состоянием таблицы
+  // ====== ХУКИ ДЛЯ ДАННЫХ И ТАБЛИЦЫ ======
   const tableControls = useTableControls<ContainerSortField>({
     defaultPageSize: 10
   });
 
-  // Получение данных контейнеров с учетом параметров
   const { data, error, isLoading, refetch } = useGetContainersQuery(
     tableControls.queryParams
   );
@@ -49,14 +49,17 @@ export default function ContainersPage() {
   const totalCount = data?.meta?.totalCount || 0;
   const pageCount = data?.meta?.totalPages || 0;
 
+  // Состояние для развернутых контейнеров
+  const [expandedContainers, setExpandedContainers] = useState<string[]>([]);
+
+  // Состояние для развернутых контейнеров
+
   // Lazy запрос для поиска локаций
   const [getLocations, { data: locationsData = { data: [] }}] = useLazyGetLocationsQuery();
-  
-  // Мутации для операций с контейнерами
-  const [deleteContainer] = useDeleteContainerMutation();
-  const [addContainer] = useAddContainerMutation();
-  const [updateContainer] = useUpdateContainerMutation();
 
+  // Lazy запрос для редактирования контейнера
+  const [getContainer, { data: containerId }] = useLazyGetContainerQuery();
+  
   // Получаем список размеров для ячеек
   const { data: sizesData } = useGetSizesQuery();
   const sizes = sizesData || [];
@@ -70,13 +73,125 @@ export default function ContainersPage() {
   // Получаем ID первого размера для установки по умолчанию
   const defaultSizeId = sizeOptions.length > 0 ? sizeOptions[0].value.toString() : '';
 
-  // Функция для переключения состояния развернутости контейнера
-  const toggleExpandContainer = (containerId: string) => {
-    setExpandedContainers(prev => 
-      prev.includes(containerId) 
-        ? prev.filter(id => id !== containerId) 
-        : [...prev, containerId]
-    );
+  // Мутации для операций с контейнерами
+  const [deleteContainer, { isLoading: isDeleting }] = useDeleteContainerMutation();
+  const [addContainer, { isLoading: isAdding }] = useAddContainerMutation();
+  const [updateContainer, { isLoading: isUpdating }] = useUpdateContainerMutation();
+
+  // ====== ХУКИ ДЛЯ МОДАЛЬНЫХ ОКОН ======
+  const deleteModal = useDeleteModal();
+
+  const modal = useFormModal<ContainerFormData, Container>({
+    // Функция преобразования контейнера в формат формы
+    itemToFormData: (container) => initFormDataWithCells(container),
+    onSubmit: async (values) => {
+      try {
+        // Получаем массив ячеек из формы
+        const cells = getCellsFromForm(values);
+
+        // Преобразуем номер контейнера из строки в число
+        const containerNumber = parseInt(values.name);
+        
+        if (modal.editItem) {
+          await updateContainer({ 
+            id: modal.editItem.id,
+            name: containerNumber.toString(),
+            locId: values.locId,
+            cells: cells.length > 0 ? cells : undefined
+          }).unwrap();
+          ToastService.success('Контейнер успешно обновлен');
+        } else {
+          await addContainer({
+            name: containerNumber.toString(),
+            locId: values.locId,
+            cells: cells.length > 0 ? cells : undefined
+          }).unwrap();
+          ToastService.success('Контейнер успешно добавлен');
+        }
+      } catch (error) {
+        ToastService.error('Ошибка при сохранении контейнера');
+      }
+    }
+  });
+
+  // Функция для инициализации данных формы с добавлением ячеек
+  const initFormDataWithCells = (container?: Container) => {
+    const formData: Record<string, any> = {};
+    
+    // Данные контейнера
+    if (container) {
+      formData.name = container.name < 10 ? `0${container.name}` : `${container.name}`;
+      formData.locId = container.locId || '';
+    }
+    
+    // Инициализируем поля для ячеек
+    cellLetters.forEach(letter => {
+      const cellKey = `cell_checked_${letter}`;
+      const sizeKey = `cell_size_${letter}`;
+      
+      // Проверяем, есть ли такая ячейка у контейнера
+      if (container?.cells) {
+        const cellNameStr = container.name.toString() + letter;
+        const existingCell = container.cells.find(cell => cell.name.toString() === cellNameStr);
+        
+        // Устанавливаем значение чекбокса
+        formData[cellKey] = !!existingCell;
+        
+        // Устанавливаем размер ячейки если она существует, иначе дефолтный размер
+        formData[sizeKey] = existingCell 
+          ? sizes.find(s => 
+              s.short_name === existingCell.size?.short_name && 
+              s.size === existingCell.size?.size && 
+              s.area === existingCell.size?.area
+            )?.id || defaultSizeId
+          : defaultSizeId;
+      } else {
+        // Устанавливаем дефолтные значения для новой ячейки
+        formData[cellKey] = false;
+        formData[sizeKey] = defaultSizeId;
+      }
+    });
+    
+    return formData;
+  };
+
+  // ====== ОБРАБОТЧИКИ СОБЫТИЙ ======
+  const handleDelete = async () => {
+    if (!deleteModal.entityId) return;
+    
+    deleteModal.setLoading(true);
+    try {
+      await deleteContainer(deleteModal.entityId).unwrap();
+      ToastService.success('Контейнер успешно удален');
+      deleteModal.resetModal();
+    } catch (error) {
+      ToastService.error('Ошибка при удалении контейнера');
+    } finally {
+      deleteModal.setLoading(false);
+    }
+  };
+
+  const openDeleteModal = (container: Container) => {
+    deleteModal.openDelete(container.id, `Контейнер ${container.name < 10 ? `0${container.name}` : container.name}`);
+  };
+
+  const handleCreateClick = (e: MouseEvent<HTMLButtonElement>) => {
+    // Находим максимальный ID для предложения следующего номера
+    const nextId = getNextId();
+    
+    // Открываем форму с инициализированными полями
+    const initialFormData = initFormDataWithCells();
+    initialFormData.name = nextId;
+    
+    modal.openCreate(initialFormData);
+  };
+
+  // Функция для поиска локаций
+  const handleLocationSearch = (query: string) => {
+    getLocations({
+      search: query,
+      limit: 20
+    });
   };
 
   // Находим максимальный ID для предложения следующего номера
@@ -87,161 +202,77 @@ export default function ContainersPage() {
     return nextName < 10 ? `0${nextName}` : `${nextName}`;
   };
 
+  // Функция для переключения состояния развернутости контейнера
+  const toggleExpandContainer = (containerId: string) => {
+    setExpandedContainers(prev => 
+      prev.includes(containerId) 
+        ? prev.filter(id => id !== containerId) 
+        : [...prev, containerId]
+    );
+  };
+
+  // Получаем данные ячеек из формы для отправки на сервер
+  const getCellsFromForm = (formValues: any) => {
+    // Получаем номер контейнера и форматируем его
+    let containerNumber = parseInt(formValues.name);
+    // Форматируем номер с лидирующим нулем если нужно
+    const containerName = containerNumber < 10 ? `0${containerNumber}` : `${containerNumber}`;
+
+    return Object.keys(formValues)
+      .filter(key => key.startsWith('cell_checked_') && formValues[key] === true)
+      .map(key => {
+        const letter = key.replace('cell_checked_', '');
+        const sizeIdKey = `cell_size_${letter}`;
+        return {
+          name: `${containerName}${letter}`,
+          size_id: formValues[sizeIdKey]
+        };
+      });
+  };
+
   // Модифицируем данные для таблицы, чтобы добавить развернутую информацию
   const tableData: ContainerWithExpanded[] = containers.map(container => ({
     ...container,
     expanded: expandedContainers.includes(container.id)
   }));
 
-  // Обработчик изменения ввода
-  const handleInputChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Обработчик изменения чекбокса ячейки
-  const handleCellCheckChange = (letter: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      cells: {
-        ...prev.cells,
-        [letter]: {
-          checked,
-          sizeId: prev.cells[letter]?.sizeId || defaultSizeId
-        }
-      }
-    }));
-  };
-
-  // Обработчик изменения размера ячейки
-  const handleCellSizeChange = (letter: string, sizeId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      cells: {
-        ...prev.cells,
-        [letter]: {
-          ...prev.cells[letter],
-          sizeId
-        }
-      }
-    }));
-  };
-
-  // Обработчик отправки формы
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Проверяем обязательные поля
-    if (!formData.name.trim()) {
-      toast.error('Введите номер контейнера');
-      return;
-    }
-    
-    if (!formData.locId) {
-      toast.error('Выберите локацию');
-      return;
-    }
-    
-    // Подготавливаем массив ячеек
-    const cells = Object.entries(formData.cells)
-      .filter(([_, data]) => data.checked)
-      .map(([letter, data]) => ({
-        name: letter,
-        size_id: data.sizeId
-      }));
-    
-    try {
-      if (editItem) {
-        // При редактировании просто обновляем основные данные контейнера
-        await updateContainer({ 
-          id: editItem.id,
-          name: formData.name,
-          locId: formData.locId,
-          cells: cells.length > 0 ? cells : undefined
-        }).unwrap();
-        toast.success('Контейнер успешно обновлен');
-      } else {
-        // При создании добавляем ячейки, если они указаны
-        await addContainer({
-          name: formData.name,
-          locId: formData.locId,
-          cells: cells.length > 0 ? cells : undefined
-        }).unwrap();
-        toast.success('Контейнер успешно добавлен');
-      }
-      closeModal();
-    } catch (error) {
-      toast.error('Ошибка при сохранении контейнера');
-    }
-  };
-
-  // Функции для управления модальным окном
-  const openCreateModal = () => {
-    // Инициализируем пустую форму с дефолтным номером
-    const initialCells = {} as Record<string, { checked: boolean, sizeId: string }>;
-    cellLetters.forEach(letter => {
-      initialCells[letter] = { checked: false, sizeId: defaultSizeId };
-    });
-    
-    setFormData({
-      name: getNextId(),
-      locId: '',
-      cells: initialCells
-    });
-    
-    setEditItem(null);
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (container: Container) => {
-    // Инициализируем форму данными из контейнера
-    const initialCells = {} as Record<string, { checked: boolean, sizeId: string }>;
-    cellLetters.forEach(letter => {
-      initialCells[letter] = { checked: false, sizeId: defaultSizeId };
-    });
-    
-    setFormData({
-      name: container.name < 10 ? `0${container.name}` : `${container.name}`,
-      locId: container.locId || '',
-      cells: initialCells
-    });
-    
-    setEditItem(container);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditItem(null);
-  };
-
-  // Обработчик удаления
-  const handleDelete = async (container: Container) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот контейнер?')) {
-      try {
-        await deleteContainer(container.id).unwrap();
-        toast.success('Контейнер успешно удален');
-      } catch (error) {
-        toast.error('Ошибка при удалении контейнера');
-      }
-    }
-  };
-
-  // Функция для поиска локаций
-  const handleLocationSearch = () => {
-    getLocations({
-      search: '',
-      limit: 20
-    });
-  };
-
+  // ====== ОПРЕДЕЛЕНИЯ UI КОМПОНЕНТОВ ======
   // Форматируем локации для селектора
   const locationOptions = locationsData.data.map(location => ({
     label: `${location.name} (${location.city?.short_name || 'Нет города'})`,
     value: location.id
   }));
+
+  const modalFields = [
+    {
+      type: 'input' as const,
+      fieldName: 'name' as const,
+      label: 'Номер контейнера',
+      placeholder: 'Например: 01',
+      defaultValue: '01'
+    },
+    {
+      type: 'searchSelect' as const,
+      fieldName: 'locId' as const,
+      label: 'Локация',
+      placeholder: 'Выберите локацию',
+      options: locationOptions,
+      onSearch: handleLocationSearch
+    },
+    {
+      type: 'title' as const,
+      label: 'Ячейки контейнера'
+    },
+    // Добавляем поля для каждой ячейки
+    ...cellLetters.map(letter => ({
+      type: 'checkboxWithSelect' as const,
+      fieldName: `cell_checked_${letter}` as const,
+      label: `Ячейка ${letter}`,
+      checkboxLabel: `Ячейка ${letter}`,
+      selectField: `cell_size_${letter}` as const,
+      options: sizeOptions
+    }))
+  ];
 
   // Определение колонок таблицы
   const columns: ColumnDef<ContainerWithExpanded>[] = [
@@ -321,7 +352,7 @@ export default function ContainersPage() {
     if (containerCells.length === 0) return (
       <div className="p-4 pl-12 text-sm text-gray-500">
         В этом контейнере нет ячеек. 
-        <Button variant="link" className="p-0 h-auto text-sm" onClick={() => openEditModal(containerWithCells)}>
+        <Button variant="link" className="p-0 h-auto text-sm" onClick={() => modal.openEdit(containerWithCells)}>
           Добавить ячейки
         </Button>
       </div>
@@ -350,68 +381,16 @@ export default function ContainersPage() {
             </tbody>
           </table>
         </div>
-        <div className="mt-2 flex justify-end">
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => window.location.href = `/locations/cells?containerId=${containerId}`}
-          >
-            Управление ячейками
-          </Button>
-        </div>
       </div>
     );
   };
 
-  // Компонент для отображения чекбокса с селектором
-  const CellCheckboxWithSelect = ({ letter }: { letter: string }) => {
-    const cellData = formData.cells[letter] || { checked: false, sizeId: defaultSizeId };
-    
-    return (
-      <div className="flex items-center gap-2">
-        <div className="flex flex-row items-center space-x-1">
-          <Checkbox
-            id={`cell-${letter}`}
-            checked={cellData.checked}
-            onCheckedChange={(checked) => handleCellCheckChange(letter, !!checked)}
-            className="w-3.5 h-3.5"
-          />
-          <Label htmlFor={`cell-${letter}`} className="text-xs font-medium cursor-pointer">
-            Ячейка {letter}
-          </Label>
-        </div>
-
-        <div className={`flex-1 transition-opacity ${cellData.checked ? 'opacity-100' : 'opacity-50'}`}>
-          <Select
-            value={cellData.sizeId}
-            onValueChange={(value) => handleCellSizeChange(letter, value)}
-            disabled={!cellData.checked}
-          >
-            <SelectTrigger className="h-7 text-xs min-h-0 py-0">
-              <SelectValue placeholder="Размер" />
-            </SelectTrigger>
-            <SelectContent>
-              {sizeOptions.map(option => (
-                <SelectItem 
-                  key={option.value.toString()} 
-                  value={option.value.toString()}
-                  className="text-xs py-1"
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    );
-  };
-
+  // ====== РЕНДЕР СТРАНИЦЫ ======
   return (
     <>
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={openCreateModal}>
+        <Button onClick={handleCreateClick}>
           Добавить контейнер
         </Button>
       </div>
@@ -426,8 +405,8 @@ export default function ContainersPage() {
           renderRowSubComponent={({ row }) => 
             expandedContainers.includes(row.original.id) ? <ExpandedContainerCells containerId={row.original.id} /> : null
           }
-          onEdit={openEditModal}
-          onDelete={handleDelete}
+          onEdit={modal.openEdit}
+          onDelete={openDeleteModal}
           tableId="containers-table"
           totalCount={totalCount}
           pageCount={pageCount}
@@ -444,93 +423,32 @@ export default function ContainersPage() {
         />
       </div>
 
-      {/* Модальное окно */}
-      <Dialog open={isModalOpen} onOpenChange={(open) => {
-        if (!open) closeModal();
-      }}>
-        <DialogContent 
-          className="p-0 sm:max-w-[600px]"
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <div className="w-full p-6 bg-white dark:bg-gray-800 rounded-lg">
-            <DialogHeader className="mb-4 relative">
-              <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
-                {editItem ? 'Редактировать контейнер' : 'Добавить контейнер с ячейками'}
-              </DialogTitle>
-            </DialogHeader>
+      {/* Модальное окно формы для контейнера и ячеек */}
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title={modal.editItem ? 'Редактировать контейнер' : 'Добавить контейнер'}
+        fields={modalFields}
+        validationSchema={containerValidationSchema}
+        onSubmit={modal.handleSubmit}
+        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+        formData={modal.formData}
+        isLoading={isAdding || isUpdating}
+        className="sm:max-w-[640px]"
+        isCheckBoxWithSelectMulty={true}
+        defaultValues={modal.editItem 
+          ? initFormDataWithCells(modal.editItem)
+          : initFormDataWithCells()}
+      />
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
-                {/* Поле для номера контейнера */}
-                <div className="space-y-2">
-                  <Label htmlFor="name">Номер контейнера</Label>
-                  <Input 
-                    id="name"
-                    placeholder="Например: 01" 
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                  />
-                </div>
-                
-                {/* Поле для локации */}
-                <div className="space-y-2">
-                  <Label htmlFor="location">Локация</Label>
-                  <Select
-                    value={formData.locId}
-                    onValueChange={(value) => handleInputChange('locId', value)}
-                    onOpenChange={() => {
-                      // При открытии загружаем локации если их нет
-                      if (locationOptions.length === 0) {
-                        handleLocationSearch();
-                      }
-                    }}
-                  >
-                    <SelectTrigger id="location">
-                      <SelectValue placeholder="Выберите локацию" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locationOptions.map(option => (
-                        <SelectItem key={option.value.toString()} value={option.value.toString()}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Заголовок для ячеек */}
-                <div>
-                  <h3 className="font-medium text-base mb-2">Ячейки контейнера</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {cellLetters.map(letter => (
-                      <CellCheckboxWithSelect key={letter} letter={letter} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Кнопки */}
-              <div className="flex justify-end space-x-3 pt-4">
-                <Button
-                  type="button"
-                  onClick={closeModal}
-                  className="h-11 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-transparent border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  variant="outline"
-                >
-                  Отмена
-                </Button>
-                <Button
-                  type="submit"
-                  className="h-11 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#F62D40] to-[#F8888F] rounded-md hover:from-[#E11830] hover:to-[#E76A73] disabled:opacity-50 disabled:pointer-events-none transition-all"
-                >
-                  {editItem ? 'Сохранить' : 'Добавить'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Модальное окно подтверждения удаления */}
+      <ConfirmDeleteModal 
+        isOpen={deleteModal.isOpen}
+        onClose={deleteModal.closeModal}
+        onConfirm={handleDelete}
+        entityName={deleteModal.entityName || 'контейнер'}
+        isLoading={isDeleting || deleteModal.isLoading}
+      />
     </>
   );
 } 

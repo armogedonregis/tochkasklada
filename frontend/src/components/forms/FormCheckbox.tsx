@@ -19,7 +19,6 @@ const FormCheckbox = <T extends FieldValues>({
   name,
   label,
   description,
-  className = '',
   onCheckedChange
 }: FormCheckboxProps<T>) => {
   return (
@@ -27,7 +26,7 @@ const FormCheckbox = <T extends FieldValues>({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className={`flex flex-row items-start space-x-3 space-y-0 p-2 ${className}`}>
+        <FormItem className={`flex flex-row items-center space-x-3 space-y-0 p-2`}>
           <FormControl>
             <Checkbox
               checked={field.value ?? false}

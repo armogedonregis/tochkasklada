@@ -4,7 +4,8 @@ import {
   CreateCellRentalDto, 
   UpdateCellRentalDto, 
   CellRentalFilters, 
-  PaginatedCellRentalResponse
+  PaginatedCellRentalResponse,
+  CellFreeRental
 } from './cellRentals.types';
 
 export const cellRentalsApi = api.injectEndpoints({
@@ -19,6 +20,21 @@ export const cellRentalsApi = api.injectEndpoints({
         result
           ? [
               ...result.data.map(({ id }) => ({ type: 'CellRentals' as const, id })),
+              { type: 'CellRentals', id: 'LIST' },
+            ]
+          : [{ type: 'CellRentals', id: 'LIST' }],
+    }),
+
+    // Получение свободных ячеек
+    getFreeCells: builder.query<CellFreeRental[], CellRentalFilters | void>({
+      query: (params) => ({
+        url: '/admin/cell-rentals/free-cells',
+        params: params || undefined
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'CellRentals' as const, id })),
               { type: 'CellRentals', id: 'LIST' },
             ]
           : [{ type: 'CellRentals', id: 'LIST' }],
@@ -95,6 +111,7 @@ export const cellRentalsApi = api.injectEndpoints({
 
 export const {
   useGetCellRentalsQuery,
+  useGetFreeCellsQuery,
   useGetCellRentalQuery,
   useCreateCellRentalMutation,
   useUpdateCellRentalMutation,

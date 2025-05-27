@@ -45,7 +45,6 @@ export default function ClientsPage() {
   // Используем хук для управления состоянием таблицы
   const tableControls = useTableControls<ClientSortField>({
     defaultPageSize: 10,
-    searchDebounceMs: 300
   });
   
   // Получение данных о клиентах с учетом параметров
@@ -176,16 +175,16 @@ export default function ClientsPage() {
   ];
 
   return (
-    <>
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={modal.openCreate}>
+        <Button onClick={() => modal.openCreate()}>
           Добавить клиента
         </Button>
       </div>
 
       {/* Таблица */}
-      <div className="rounded-md border">
+      <div className="">
         <BaseTable
           data={clients}
           columns={columns}
@@ -228,6 +227,6 @@ export default function ClientsPage() {
           phones: ''
         }}
       />
-    </>
+    </div>
   );
 } 

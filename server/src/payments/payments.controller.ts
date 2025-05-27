@@ -1,15 +1,15 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  Get, 
-  Param, 
-  UseGuards, 
-  Req, 
-  Patch, 
-  Delete, 
-  ParseUUIDPipe, 
-  HttpCode, 
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  UseGuards,
+  Req,
+  Patch,
+  Delete,
+  ParseUUIDPipe,
+  HttpCode,
   HttpStatus,
   Query
 } from '@nestjs/common';
@@ -22,7 +22,7 @@ import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, CreatePayment
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(private readonly paymentsService: PaymentsService) { }
 
   /**
    * Создание нового платежа (требуется аутентификация)
@@ -47,7 +47,7 @@ export class PaymentsController {
    */
   @Post('admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @HttpCode(HttpStatus.CREATED)
   createPaymentByAdmin(@Body() createPaymentDto: CreateAdminPaymentDto) {
     return this.paymentsService.createPaymentByAdmin(createPaymentDto);
@@ -67,9 +67,9 @@ export class PaymentsController {
    */
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   updatePayment(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePaymentDto: UpdatePaymentDto
   ) {
     return this.paymentsService.updatePayment(id, updatePaymentDto);
@@ -80,9 +80,9 @@ export class PaymentsController {
    */
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   setPaymentStatus(
-    @Param('id', ParseUUIDPipe) id: string, 
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() data: { status: boolean }
   ) {
     return this.paymentsService.setPaymentStatus(id, data.status);
@@ -110,9 +110,19 @@ export class PaymentsController {
    */
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   getAllPayments(@Query() query: FindPaymentsDto) {
     return this.paymentsService.getAllPayments(query);
+  }
+
+  /**
+ * Получение всех платежей по локациям
+ */
+  @Get('/statistics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  getAllPaymentsByLocation() {
+    return this.paymentsService.getPaymentsByLocations();
   }
 
   /**
@@ -120,7 +130,7 @@ export class PaymentsController {
    */
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   deletePayment(@Param('id', ParseUUIDPipe) id: string) {
     return this.paymentsService.deletePayment(id);

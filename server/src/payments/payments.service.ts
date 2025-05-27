@@ -192,7 +192,7 @@ export class PaymentsService {
         });
         
         // Количество месяцев аренды (по умолчанию 1)
-        const rentalMonths = data.rentalMonths || 1;
+        const rentalDays = data.rentalDays || 1;
         
         let rental;
         
@@ -201,7 +201,7 @@ export class PaymentsService {
           if (existingRental.clientId === user.client.id) {
             // Аренда принадлежит этому же клиенту - продлеваем ее
             const newEndDate = new Date(existingRental.endDate);
-            newEndDate.setMonth(newEndDate.getMonth() + rentalMonths);
+            newEndDate.setDate(newEndDate.getDate() + rentalDays);
             
             // Обновляем аренду
             rental = await this.prisma.cellRental.update({
@@ -218,7 +218,7 @@ export class PaymentsService {
               where: { id: payment.id },
               data: { 
                 cellRentalId: rental.id,
-                description: description || `Продление аренды ячейки #${cell.name} на ${rentalMonths} мес.`
+                description: description || `Продление аренды ячейки #${cell.name} на ${rentalDays} дн.`
               }
             });
           } else {
@@ -229,7 +229,7 @@ export class PaymentsService {
           // Создаем новую аренду
           const startDate = new Date();
           const endDate = new Date(startDate);
-          endDate.setMonth(endDate.getMonth() + rentalMonths);
+          endDate.setDate(endDate.getDate() + rentalDays);
           
           // Проверка cellId перед созданием аренды
           if (!data.cellId) {
@@ -252,7 +252,7 @@ export class PaymentsService {
             where: { id: payment.id },
             data: { 
               cellRentalId: rental.id,
-              description: description || `Аренда ячейки #${cell.name} на ${rentalMonths} мес.`
+              description: description || `Аренда ячейки #${cell.name} на ${rentalDays} дн.`
             }
           });
         }
@@ -768,7 +768,11 @@ export class PaymentsService {
             select: {
               id: true,
               email: true,
-              client: true
+              client: {
+                include: {
+                  phones: true
+                }
+              }
             }
           },
           cellRental: {
@@ -794,6 +798,99 @@ export class PaymentsService {
       };
     } catch (error) {
       throw new InternalServerErrorException(`Ошибка при получении списка платежей: ${error.message}`);
+    }
+  }
+
+   // Получение всех платежей (для администратора)
+   async getPaymentsByLocations() {
+    try {
+      // Получаем все локации с агрегированными данными по платежам
+      const locationsWithStats = await this.prisma.location.findMany({
+        select: {
+          id: true,
+          name: true,
+          short_name: true,
+          city: {
+            select: {
+              title: true,
+              short_name: true
+            }
+          },
+          containers: {
+            select: {
+              cells: {
+                select: {
+                  rentals: {
+                    where: {
+                      isActive: true // Только активные аренды
+                    },
+                    select: {
+                      isActive: true,
+                      payments: {
+                        where: {
+                          status: true // Только успешные платежи
+                        },
+                        select: {
+                          amount: true,
+                          createdAt: true
+                        }
+                      }
+                    }
+                  }
+                },
+              }
+            }
+          }
+        }
+      });
+  
+      // Формируем итоговый результат
+      const result = locationsWithStats.map(location => {
+        let totalPayments = 0;
+        let totalAmount = 0;
+        let lastPaymentDate: Date | null = null;
+        let activeRentals = 0;
+  
+        // Проходим по всем контейнерам и ячейкам локации
+        location.containers.forEach(container => {
+          container.cells.forEach(cell => {
+            cell.rentals.forEach(rental => {
+              activeRentals += rental.isActive ? 1 : 0;
+              rental.payments.forEach(payment => {
+                totalPayments++;
+                totalAmount += payment.amount;
+                if (!lastPaymentDate || payment.createdAt > lastPaymentDate) {
+                  lastPaymentDate = payment.createdAt;
+                }
+              });
+            });
+          });
+        });
+  
+        return {
+          locationId: location.id,
+          locationName: location.name,
+          locationShortName: location.short_name,
+          cityName: location.city.title,
+          cityShortName: location.city.short_name,
+          totalPayments,
+          totalAmount,
+          activeRentals,
+          averagePayment: totalPayments > 0 ? totalAmount / totalPayments : 0,
+          lastPaymentDate,
+          // Дополнительные метрики, которые могут быть полезны:
+          paymentFrequency: totalPayments > 0 ? 
+            (activeRentals / totalPayments) : 0,
+          revenuePerRental: activeRentals > 0 ? 
+            (totalAmount / activeRentals) : 0
+        };
+      });
+  
+      return result;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Ошибка при получении статистики по локациям: ${error.message}`
+      );
     }
   }
 } 

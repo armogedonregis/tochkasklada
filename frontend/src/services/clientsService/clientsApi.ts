@@ -93,6 +93,7 @@ export const clientsApi = api.injectEndpoints({
 
 export const {
   useGetClientsQuery,
+  useLazyGetClientsQuery,
   useGetClientByIdQuery,
   useCreateClientMutation,
   useAddPhoneMutation,

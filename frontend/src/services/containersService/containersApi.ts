@@ -65,8 +65,9 @@ export const containersApi = api.injectEndpoints({
 });
 
 export const { 
-  useGetContainersQuery, 
+  useGetContainersQuery,
   useGetContainerQuery, 
+  useLazyGetContainerQuery,
   useAddContainerMutation, 
   useUpdateContainerMutation, 
   useDeleteContainerMutation 

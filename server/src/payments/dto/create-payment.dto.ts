@@ -24,5 +24,5 @@ export class CreatePaymentDto {
   @IsInt()
   @Type(() => Number)
   @Min(1)
-  rentalMonths?: number; // Количество месяцев аренды
+  rentalDays?: number; // Количество месяцев аренды
 } 

@@ -63,6 +63,7 @@ export const cellsApi = api.injectEndpoints({
 
 export const {
   useGetAdminCellsQuery,
+  useLazyGetAdminCellsQuery,
   useGetCellQuery,
   useAddCellMutation,
   useUpdateCellMutation,

@@ -47,6 +47,7 @@ const FormInput = <T extends FieldValues>({
                 {...field}
                 value={field.value ?? ''}
                 type={type}
+                min={type === "number" ? 0 : undefined}
               />
             </div>
           </FormControl>

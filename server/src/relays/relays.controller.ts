@@ -21,7 +21,7 @@ import { UserRole } from '@prisma/client';
 // Административная часть API для работы с реле
 @Controller('admin/relays')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class RelaysController {
   constructor(private readonly relaysService: RelaysService) {}
 

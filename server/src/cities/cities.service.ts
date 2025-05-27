@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CitySortField, CreateCityDto, FindCitiesDto, SortDirection, UpdateCityDto } from './dto';
-import { City } from '@prisma/client';
+import { City, Location } from '@prisma/client';
 
 @Injectable()
 export class CitiesService {
@@ -92,7 +92,7 @@ export class CitiesService {
   /**
    * Получение города по ID с его локациями
    */
-  async findOne(id: string): Promise<City & { locations: any[] }> {
+  async findOne(id: string): Promise<City & { locations: Location[] }> {
     const city = await this.prisma.city.findUnique({
       where: { id },
       include: {
@@ -110,7 +110,7 @@ export class CitiesService {
   /**
    * Создание нового города
    */
-  async create(createCityDto: CreateCityDto): Promise<City & { locations: any[] }> {
+  async create(createCityDto: CreateCityDto): Promise<City & { locations: Location[] }> {
     return this.prisma.city.create({
       data: createCityDto,
       include: {
@@ -142,12 +142,9 @@ export class CitiesService {
    */
   async remove(id: string): Promise<{ id: string }> {
     try {
-      await this.prisma.city.delete({
+      return await this.prisma.city.delete({
         where: { id },
       });
-      
-      // Возвращаем ID для RTK Query оптимистического обновления
-      return { id };
     } catch (error) {
       throw new NotFoundException(`Город с ID ${id} не найден`);
     }

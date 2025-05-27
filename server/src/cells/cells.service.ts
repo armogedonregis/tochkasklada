@@ -254,12 +254,11 @@ export class CellsService {
    */
   async remove(id: string) {
     try {
-      await this.prisma.cells.delete({
+      const cell = await this.prisma.cells.delete({
         where: { id },
       });
       
-      // Возвращаем ID для оптимистических обновлений на клиенте
-      return { id };
+      return cell;
     } catch (error) {
       throw new NotFoundException(`Ячейка с ID ${id} не найдена`);
     }

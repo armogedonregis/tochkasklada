@@ -1,20 +1,18 @@
 "use client";
 
 import { useState } from 'react';
-import { 
+import {
   useGetCellRentalsQuery,
   useCreateCellRentalMutation,
   useUpdateCellRentalMutation,
-  useDeleteCellRentalMutation 
+  useDeleteCellRentalMutation
 } from '@/services/cellRentalsService/cellRentalsApi';
 import { Button } from '@/components/ui/button';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
-import { CellRental, CellRentalStatus } from '@/services/cellRentalsService/cellRentals.types';
+import { CellRental, CellRentalSortField, CellRentalStatus, CellRentalStatusType } from '@/services/cellRentalsService/cellRentals.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { useFormModal } from '@/hooks/useFormModal';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -24,7 +22,13 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
-import { formatDate } from 'date-fns';
+import { BaseTable } from '@/components/table/BaseTable';
+import { ColumnDef } from '@tanstack/react-table';
+import { formatDistance } from 'date-fns/formatDistance';
+import { ru } from 'date-fns/locale/ru';
+import { PaymentSortField } from '@/services/paymentsService/payments.types';
+import { useTableControls } from '@/hooks/useTableControls';
+import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStatusesApi';
 
 // Схема валидации для аренды ячейки
 const cellRentalValidationSchema = yup.object({
@@ -44,17 +48,6 @@ interface CellRentalFormFields {
   isActive: boolean;
 }
 
-// Цвета для статусов
-const statusColors: Record<CellRentalStatus, string> = {
-  [CellRentalStatus.ACTIVE]: 'bg-green-100 text-green-800 border-green-300',
-  [CellRentalStatus.EXPIRING_SOON]: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  [CellRentalStatus.EXPIRED]: 'bg-red-100 text-red-800 border-red-300',
-  [CellRentalStatus.CLOSED]: 'bg-gray-100 text-gray-800 border-gray-300',
-  [CellRentalStatus.RESERVATION]: 'bg-blue-100 text-blue-800 border-blue-300',
-  [CellRentalStatus.EXTENDED]: 'bg-purple-100 text-purple-800 border-purple-300',
-  [CellRentalStatus.PAYMENT_SOON]: 'bg-orange-100 text-orange-800 border-orange-300'
-};
-
 // Названия статусов
 const statusTitles: Record<CellRentalStatus, string> = {
   [CellRentalStatus.ACTIVE]: 'Активная',
@@ -68,23 +61,50 @@ const statusTitles: Record<CellRentalStatus, string> = {
 
 export default function CellRentalsPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<CellRentalStatus | 'ALL'>('ALL');
-  
+  const [statusFilter, setStatusFilter] = useState<CellRentalStatusType>('ALL');
+
+  const tableControls = useTableControls<CellRentalSortField>({
+    defaultPageSize: 10,
+  });
+
+  const handleSearch = (search: string) => {
+    setSearchTerm(search)
+    tableControls.handleSearchChange(search)
+  };
+
   // Получение данных об арендах
   const { data, error, isLoading, refetch } = useGetCellRentalsQuery({
-
+    page: tableControls.queryParams.page,
+    limit: tableControls.queryParams.limit,
+    search: tableControls.queryParams.search,
+    sortBy: tableControls.queryParams.sortBy,
+    sortDirection: tableControls.queryParams.sortDirection,
+    rentalStatus: statusFilter === 'ALL' ? undefined : statusFilter
   });
   
+
+  const { data: statusList } = useGetCellStatusesQuery();
+
   // Данные аренд
   const cellRentals = data?.data || [];
+  // Используем мета-информацию из ответа
+  const totalCount = data?.meta?.totalCount || 0;
+  const pageCount = data?.meta?.totalPages || 1;
 
   // Фильтрация ячеек
   const filteredRentals = cellRentals.filter(rental => {
-    const matchesSearch = rental.cell?.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         rental.client?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = rental.cell?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rental.client?.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL';
     return matchesSearch && matchesStatus;
   });
+
+
+  // Форматирование даты
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString('ru-RU')}`;
+  };
 
   // Группировка по контейнерам (если нужно)
   // const containers = Array.from(new Set(cellRentals.map(r => r.cell?.container?.name)));
@@ -98,7 +118,7 @@ export default function CellRentalsPage() {
   const modal = useFormModal<CellRentalFormFields, CellRental>({
     onSubmit: async (values) => {
       if (modal.editItem) {
-        await updateCellRental({ 
+        await updateCellRental({
           id: modal.editItem.id,
           ...values
         }).unwrap();
@@ -160,34 +180,103 @@ export default function CellRentalsPage() {
     }
   ];
 
+
+  // Определение колонок таблицы
+  const columns: ColumnDef<CellRental>[] = [
+    {
+      accessorKey: 'id',
+      header: 'ID',
+    },
+    {
+      accessorKey: 'cell',
+      header: 'Номер ячейки',
+      cell: ({ row }) => (
+        <div className="font-mono text-base truncate max-w-[140px]" title={row.original?.cell?.name}>
+          {row.original?.cell?.name}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'rentalStatus',
+      header: 'Статус',
+      cell: ({ row }) => (
+        <div style={{ backgroundColor: statusList?.find(item => item.statusType === row.original.rentalStatus )?.color }} className="max-w-[140px] flex items-center justify-center px-3 py-1 rounded-full" title={row.original?.cell?.name}>
+          <div style={{ filter: 'drop-shadow(2px 4px 6px black)' }} className="font-mono text-base truncate">{statusTitles[row.original.rentalStatus]}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'cell.size',
+      header: 'Размер ячейки',
+      cell: ({ row }) => (
+        <div className="font-mono text-base truncate max-w-[140px]" title={row.original?.cell?.size?.short_name}>
+          {row.original?.cell?.size?.short_name}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'startDate',
+      header: 'Начало аренды',
+      cell: ({ row }) => {
+        return <div>{formatDate(row.original.startDate)}</div>;
+      }
+    },
+    {
+      accessorKey: 'endDate',
+      header: 'Окончание аренды',
+      cell: ({ row }) => {
+        return <div>{formatDate(row.original.endDate)}</div>;
+      }
+    },
+    {
+      accessorKey: 'isActive',
+      header: "Активна",
+      cell: ({ row }) => {
+        return <div className={row.original.isActive ? "bg-green-500 text-base w-7 px-1 h-7 rounded-full text-white" : "bg-red-500 text-base w-7 px-1 h-7 rounded-full text-white"}>{row.original.isActive ? "Да" : "Нет"}</div>
+      }
+    },
+    {
+      id: 'createdAt',
+      header: 'Дата создания',
+      accessorFn: (row) => row.createdAt,
+      cell: ({ row }) => formatDate(row.original.createdAt),
+    },
+    {
+      id: 'updatedAt',
+      header: 'Дата обновления',
+      accessorFn: (row) => row.updatedAt,
+      cell: ({ row }) => formatDate(row.original.updatedAt),
+    },
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
       {/* Заголовок и кнопка добавления */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+      <div className="flex justify-between items-center mb-4 px-4 pt-4">
         <div>
           <h1 className="text-2xl font-bold">Управление ячейками</h1>
           <p className="text-sm text-muted-foreground">
             Просмотр и управление арендами ячеек
           </p>
         </div>
-        <Button onClick={modal.openCreate} className="gap-2">
+        <Button onClick={() => modal.openCreate()} className="gap-2">
           <Plus className="h-4 w-4" />
           Добавить аренду
         </Button>
       </div>
 
       {/* Фильтры */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 px-4">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Поиск по ячейке или клиенту..."
             className="pl-9"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
-        
+
         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as CellRentalStatus | 'ALL')}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Фильтр по статусу" />
@@ -201,90 +290,27 @@ export default function CellRentalsPage() {
             ))}
           </SelectContent>
         </Select>
-
-        <div className="flex items-center justify-end">
-          <Badge variant="outline" className="mr-2">
-            Всего: {cellRentals.length}
-          </Badge>
-          <Badge variant="outline">
-            Найдено: {filteredRentals.length}
-          </Badge>
-        </div>
       </div>
 
-      {/* Список ячеек */}
-      {filteredRentals.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <Search className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">Ячейки не найдены</h3>
-          <p className="text-sm text-muted-foreground">
-            Попробуйте изменить параметры поиска
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredRentals.map((rental) => (
-            <Card key={rental.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-xl">
-                    Ячейка {rental.cell?.name}
-                  </CardTitle>
-                  <Badge className={statusColors[rental.rentalStatus]}>
-                    {statusTitles[rental.rentalStatus]}
-                  </Badge>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Контейнер #{rental.cell?.container?.name}
-                </div>
-              </CardHeader>
-              
-              
-              <CardContent className="space-y-2">
-                <div>
-                  <p className="text-sm text-muted-foreground">Клиент</p>
-                  <p className="font-medium">{rental.client?.name}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Телефон</p>
-                  <p className="font-medium">
-                    {rental.client?.phones?.[0]?.phone || 'Не указан'}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Начало</p>
-                    <p className="font-medium">{formatDate(rental.startDate, 'dd.MM.yyyy')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Окончание</p>
-                    <p className="font-medium">{formatDate(rental.endDate, 'dd.MM.yyyy')}</p>
-                  </div>
-                </div>
-              </CardContent>
-              
-              <CardFooter className="flex justify-between gap-2">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => modal.openEdit(rental)}
-                >
-                  Редактировать
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  className="flex-1"
-                  onClick={() => handleDelete(rental)}
-                >
-                  Удалить
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* Таблица */}
+      <BaseTable
+        data={cellRentals}
+        columns={columns}
+        onEdit={modal.openEdit}
+        onDelete={handleDelete}
+        tableId="payments-table"
+        totalCount={totalCount}
+        pageCount={pageCount}
+        onPaginationChange={tableControls.handlePaginationChange}
+        onSortingChange={tableControls.handleSortingChange}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
+        sortableFields={PaymentSortField}
+        pagination={tableControls.pagination}
+        sorting={tableControls.sorting}
+        persistSettings={true}
+      />
 
       {/* Модальное окно */}
       <BaseFormModal
