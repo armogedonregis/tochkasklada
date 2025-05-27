@@ -214,7 +214,7 @@ export default function ContainersPage() {
   // Получаем данные ячеек из формы для отправки на сервер
   const getCellsFromForm = (formValues: any) => {
     // Получаем номер контейнера и форматируем его
-    let containerNumber = parseInt(formValues.name);
+    const containerNumber = parseInt(formValues.name);
     // Форматируем номер с лидирующим нулем если нужно
     const containerName = containerNumber < 10 ? `0${containerNumber}` : `${containerNumber}`;
 
