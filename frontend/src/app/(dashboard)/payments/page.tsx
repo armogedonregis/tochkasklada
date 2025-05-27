@@ -164,10 +164,7 @@ const PaymentsPage = () => {
   // Форматирование даты
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return `${date.toLocaleDateString('ru-RU')} (${formatDistance(date, new Date(), {
-      addSuffix: true,
-      locale: ru
-    })})`;
+    return `${date.toLocaleDateString('ru-RU')}`;
   };
 
   // Компонент для отображения расширенной информации о клиенте
@@ -241,10 +238,6 @@ const PaymentsPage = () => {
       enableHiding: false,
     },
     {
-      accessorKey: 'id',
-      header: 'ID',
-    },
-    {
       accessorKey: 'orderId',
       header: 'id Банка',
       cell: ({ getValue }) => (
@@ -311,12 +304,6 @@ const PaymentsPage = () => {
       header: 'Дата создания',
       accessorFn: (row) => row.createdAt,
       cell: ({ row }) => formatDate(row.original.createdAt),
-    },
-    {
-      id: 'updatedAt',
-      header: 'Дата обновления',
-      accessorFn: (row) => row.updatedAt,
-      cell: ({ row }) => formatDate(row.original.updatedAt),
     },
   ];
 
