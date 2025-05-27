@@ -640,7 +640,7 @@ export default function PanelsPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={modal.openCreate}>
+          <Button onClick={() => modal.openCreate()}>
             <Plus className="mr-2 h-4 w-4" />
             Добавить панель
           </Button>

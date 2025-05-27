@@ -146,7 +146,7 @@ export default function CellStatuses() {
     <div className="container mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Статусы ячеек</h1>
-        <Button onClick={modal.openCreate} className="flex items-center">
+        <Button onClick={() => modal.openCreate()} className="flex items-center">
           <Plus className="mr-2 h-4 w-4" />
           Добавить статус
         </Button>
@@ -178,7 +178,7 @@ export default function CellStatuses() {
       ) : (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
           <p className="text-lg text-gray-600 dark:text-gray-300">Нет доступных статусов</p>
-          <Button onClick={modal.openCreate} className="mt-4">
+          <Button onClick={() => modal.openCreate()} className="mt-4">
             Добавить первый статус
           </Button>
         </div>
