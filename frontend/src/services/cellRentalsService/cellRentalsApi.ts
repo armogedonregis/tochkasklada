@@ -5,7 +5,8 @@ import {
   UpdateCellRentalDto, 
   CellRentalFilters, 
   PaginatedCellRentalResponse,
-  CellFreeRental
+  CellFreeRental,
+  PaginatedFreeCellRentalResponse
 } from './cellRentals.types';
 
 export const cellRentalsApi = api.injectEndpoints({
@@ -26,7 +27,7 @@ export const cellRentalsApi = api.injectEndpoints({
     }),
 
     // Получение свободных ячеек
-    getFreeCells: builder.query<CellFreeRental[], CellRentalFilters | void>({
+    getFreeCells: builder.query<PaginatedFreeCellRentalResponse, CellRentalFilters | void>({
       query: (params) => ({
         url: '/admin/cell-rentals/free-cells',
         params: params || undefined
@@ -34,7 +35,7 @@ export const cellRentalsApi = api.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: 'CellRentals' as const, id })),
+              ...result.data.map(({ id }) => ({ type: 'CellRentals' as const, id })),
               { type: 'CellRentals', id: 'LIST' },
             ]
           : [{ type: 'CellRentals', id: 'LIST' }],

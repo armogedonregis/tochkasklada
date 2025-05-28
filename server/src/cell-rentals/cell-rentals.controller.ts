@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { FindFreeCellRentalsDto } from './dto/find-free-cells.dto';
 
 /**
  * Административный контроллер для управления арендами ячеек
@@ -113,11 +114,7 @@ export class CellRentalsAdminController {
    */
   @Get('free-cells')
   @HttpCode(HttpStatus.OK)
-  getFreeCells(
-    @Query('cityId') cityId?: string,
-    @Query('locationId') locationId?: string,
-    @Query('sizeId') sizeId?: string
-  ) {
-    return this.cellRentalsService.getFreeCells({ cityId, locationId, sizeId });
+  getFreeCells(@Query() query: FindFreeCellRentalsDto) {
+    return this.cellRentalsService.getFreeCells(query);
   }
 } 

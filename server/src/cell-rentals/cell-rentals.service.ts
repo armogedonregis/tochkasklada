@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, InternalServerError
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCellRentalDto, UpdateCellRentalDto, ExtendCellRentalDto, FindCellRentalsDto, CellRentalSortField, SortDirection } from './dto';
 import { CellRentalStatus, Prisma } from '@prisma/client';
+import { CellFreeSortField, FindFreeCellRentalsDto } from './dto/find-free-cells.dto';
 // import { Cron, CronExpression } from '@nestjs/schedule';
 // import { Logger } from '@nestjs/common';
 
@@ -145,72 +146,162 @@ export class CellRentalsService {
   }
 
   // Получение всех свободных ячеек
-  async getFreeCells(params: {
-    cityId?: string;
-    locationId?: string;
-    sizeId?: string;
-  }) {
-    // Строим базовый запрос для поиска всех ячеек
-    const where: Prisma.CellsWhereInput = {};
+  async getFreeCells(queryParams: FindFreeCellRentalsDto) {
+    try {
+      const {
+        search,
+        page = 1,
+        limit = 10,
+        sortBy = CellRentalSortField.CREATED_AT,
+        sortDirection = SortDirection.DESC,
+      } = queryParams;
 
-    // Фильтрация по локации (если указана)
-    if (params.locationId) {
-      where.container = {
-        locId: params.locationId
-      };
-    }
-    // Фильтрация по городу (если указан)
-    else if (params.cityId) {
-      where.container = {
-        location: {
-          cityId: params.cityId
-        }
-      };
-    }
+      const where: Prisma.CellsWhereInput = {};
 
-    // Фильтрация по размеру (если указан)
-    if (params.sizeId) {
-      where.size_id = params.sizeId;
-    }
-
-    // Находим все ячейки, у которых нет активных аренд
-    // или с определенным статусом
-    return this.prisma.cells.findMany({
-      where: {
-        ...where,
-        // Исключаем ячейки с активными арендами
-        AND: [
+      if (search) {
+        // Проверяем, является ли поисковая строка буквой ячейки
+        where.OR = [
+          // Поиск по имени ячейки
+          { name: { contains: search, mode: 'insensitive' } },
+          // Поиск по комментарию
+          { comment: { contains: search, mode: 'insensitive' } },
+          // Поиск по размеру через связь
           {
-            OR: [
-              // Ячейка не имеет аренд
-              { rentals: { none: {} } },
-              // Все аренды ячейки не активны
-              { rentals: { every: { isActive: false } } }
-            ]
-          }
-        ]
-      },
-      include: {
-        container: {
-          include: {
-            location: {
-              include: {
-                city: true
-              }
+            size: {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { short_name: { contains: search, mode: 'insensitive' } }
+              ]
+            }
+          },
+          // Поиск по контейнеру и локации
+          {
+            container: {
+              OR: [
+                // Поиск по имени контейнера
+                { name: { equals: isNaN(Number(search)) ? undefined : Number(search) } },
+                // Поиск по локации
+                {
+                  location: {
+                    OR: [
+                      { name: { contains: search, mode: 'insensitive' } },
+                      { short_name: { contains: search, mode: 'insensitive' } },
+                      { address: { contains: search, mode: 'insensitive' } },
+                      // Поиск по городу через вложенную связь
+                      {
+                        city: {
+                          OR: [
+                            { title: { contains: search, mode: 'insensitive' } },
+                            { short_name: { contains: search, mode: 'insensitive' } }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
             }
           }
-        },
-        size: true,
-        status: true,
-        rentals: {
-          where: { isActive: true },
+        ];
+      }
+
+
+      // Вычисляем параметры пагинации
+      const skip = (page - 1) * limit;
+
+      // Настройка сортировки
+      let orderBy: any = {};
+
+      // В зависимости от выбранного поля сортировки
+      switch (sortBy) {
+        case CellFreeSortField.NAME:
+          orderBy.name = sortDirection;
+          break;
+        case CellFreeSortField.SIZE:
+          orderBy.size = { name: sortDirection };
+          break;
+        case CellFreeSortField.LOCATION:
+          orderBy.container = { location: { name: sortDirection } };
+          break;
+        case CellFreeSortField.CITY:
+          orderBy.container = { location: { city: { title: sortDirection } } };
+          break;
+        default:
+          orderBy.createdAt = sortDirection;
+          break;
+      }
+
+
+      // Запрос на получение общего количества
+      const totalCount = await this.prisma.cells.count({
+        where: {
+          ...where,
+          // Исключаем ячейки с активными арендами
+          AND: [
+            {
+              OR: [
+                // Ячейка не имеет аренд
+                { rentals: { none: {} } },
+                // Все аренды ячейки не активны
+                { rentals: { every: { isActive: false } } }
+              ]
+            }
+          ]
         }
-      },
-      orderBy: [
-        { container: { name: 'asc' } },
-        { name: 'asc' }
-      ]
-    });
+      });
+
+      // Находим все ячейки, у которых нет активных аренд
+      // или с определенным статусом
+      const cells = await this.prisma.cells.findMany({
+        where: {
+          ...where,
+          // Исключаем ячейки с активными арендами
+          AND: [
+            {
+              OR: [
+                // Ячейка не имеет аренд
+                { rentals: { none: {} } },
+                // Все аренды ячейки не активны
+                { rentals: { every: { isActive: false } } }
+              ]
+            }
+          ]
+        },
+        skip,
+        include: {
+          container: {
+            include: {
+              location: {
+                include: {
+                  city: true
+                }
+              }
+            }
+          },
+          size: true,
+          status: true,
+          rentals: {
+            where: { isActive: true },
+          }
+        },
+        orderBy,
+
+      });
+      // Рассчитываем количество страниц
+      const totalPages = Math.ceil(totalCount / limit);
+
+      return {
+        data: cells,
+        meta: {
+          totalCount,
+          page,
+          limit,
+          totalPages,
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(`Ошибка при получении списка аренд: ${error.message}`);
+    }
   }
 
   // Создание новой аренды ячейки

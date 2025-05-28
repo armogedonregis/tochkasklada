@@ -11,6 +11,13 @@ export enum CellRentalSortField {
   RENTAL_STATUS = 'RENTAL_STATUS'
 }
 
+export enum CellFreeSortField {
+  NAME = 'name',
+  SIZE = 'size',
+  LOCATION = 'location',
+  CITY = 'city',
+}
+
 export interface CellRental {
   id: string;
   cellId: string;
@@ -68,4 +75,5 @@ export interface CellRentalFilters extends FilterParams, DateRangeParams {
   rentalStatus?: CellRentalStatusType;
 } 
 
-export type PaginatedCellRentalResponse = PaginatedResponse<CellRental>; 
+export type PaginatedCellRentalResponse = PaginatedResponse<CellRental>;
+export type PaginatedFreeCellRentalResponse = PaginatedResponse<CellFreeRental>;
