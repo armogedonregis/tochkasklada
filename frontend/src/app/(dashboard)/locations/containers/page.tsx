@@ -322,21 +322,7 @@ export default function ContainersPage() {
         const location = row.original.location;
         return location?.city?.short_name || 'Не указан';
       },
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Дата создания',
-      cell: ({ row }) => row.original.createdAt 
-        ? new Date(row.original.createdAt).toLocaleDateString('ru-RU') 
-        : '-',
-    },
-    {
-      accessorKey: 'updatedAt',
-      header: 'Дата обновления',
-      cell: ({ row }) => row.original.updatedAt 
-        ? new Date(row.original.updatedAt).toLocaleDateString('ru-RU') 
-        : '-',
-    },
+    }
   ];
 
   // Компонент для отображения расширенной информации о ячейках контейнера

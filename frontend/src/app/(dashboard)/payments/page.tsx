@@ -19,8 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronDown, ChevronRight, User, Check, X } from 'lucide-react';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { formatDistance } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { differenceInDays } from 'date-fns';
 import * as yup from 'yup';
 import { Payment, PaymentSortField } from '@/services/paymentsService/payments.types';
 import { SortDirection } from '@/services/services.types';
@@ -260,9 +259,29 @@ const PaymentsPage = () => {
     {
       id: 'amount',
       header: 'Сумма',
-      accessorFn: (row) => row.amount,
       cell: ({ row }) => {
         return <div>{formatAmount(row.original.amount)}</div>;
+      }
+    },
+    {
+      id: 'cellRental',
+      header: "Ячейка",
+      cell: ({ row }) => {
+        return row.original.cellRental?.cell?.name;
+      }
+    },
+    {
+      id: 'cellRental.startDate',
+      header: 'Дней аренды',
+      cell: ({ row }) => {
+        const { startDate, endDate } = row.original.cellRental || {};
+        if (!startDate || !endDate) return '-';
+        
+        try {
+          return differenceInDays(new Date(endDate), new Date(startDate));
+        } catch {
+          return '-';
+        }
       }
     },
     {
@@ -420,11 +439,11 @@ const PaymentsPage = () => {
           rentalDays: 1,
         } : {
           userId: '',
-          amount: 0,
+          amount: undefined,
           description: '',
           status: false,
           cellId: '',
-          rentalDays: 1
+          rentalDays: undefined
         }}
       />
     </div>

@@ -24,19 +24,19 @@ import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
 import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
-import { formatDistance } from 'date-fns/formatDistance';
-import { ru } from 'date-fns/locale/ru';
 import { PaymentSortField } from '@/services/paymentsService/payments.types';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStatusesApi';
+import { useLazyGetClientsQuery } from '@/services/clientsService/clientsApi';
+import { useLazyGetAdminCellsQuery } from '@/services/cellService/cellsApi';
+import { differenceInDays } from 'date-fns/differenceInDays';
 
 // Схема валидации для аренды ячейки
 const cellRentalValidationSchema = yup.object({
   cellId: yup.string().required('ID ячейки обязательно'),
   clientId: yup.string().required('ID клиента обязательно'),
-  startDate: yup.string().required('Дата начала обязательна'),
-  endDate: yup.string().required('Дата окончания обязательна'),
-  isActive: yup.boolean().required('Статус активности обязателен')
+  startDate: yup.date(),
+  endDate: yup.date(),
 });
 
 // Типы для формы
@@ -45,7 +45,6 @@ interface CellRentalFormFields {
   clientId: string;
   startDate: string;
   endDate: string;
-  isActive: boolean;
 }
 
 // Названия статусов
@@ -72,6 +71,28 @@ export default function CellRentalsPage() {
     tableControls.handleSearchChange(search)
   };
 
+
+  const [getCells, { data: cellsData = { data: [] } }] = useLazyGetAdminCellsQuery();
+  const [getClients, { data: clientsData = { data: [] } }] = useLazyGetClientsQuery()
+
+
+  // Функция для поиска ячеек
+  const handleCellsSearch = (query: string) => {
+    getCells({
+      search: query,
+      limit: 20
+    });
+  };
+
+  // Функция для поиска клиентов
+  const handleClientsSearch = (query: string) => {
+    getClients({
+      search: query,
+      limit: 20
+    });
+  };
+
+
   // Получение данных об арендах
   const { data, error, isLoading, refetch } = useGetCellRentalsQuery({
     page: tableControls.queryParams.page,
@@ -81,7 +102,7 @@ export default function CellRentalsPage() {
     sortDirection: tableControls.queryParams.sortDirection,
     rentalStatus: statusFilter === 'ALL' ? undefined : statusFilter
   });
-  
+
 
   const { data: statusList } = useGetCellStatusesQuery();
 
@@ -91,23 +112,11 @@ export default function CellRentalsPage() {
   const totalCount = data?.meta?.totalCount || 0;
   const pageCount = data?.meta?.totalPages || 1;
 
-  // Фильтрация ячеек
-  const filteredRentals = cellRentals.filter(rental => {
-    const matchesSearch = rental.cell?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rental.client?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL';
-    return matchesSearch && matchesStatus;
-  });
-
-
   // Форматирование даты
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return `${date.toLocaleDateString('ru-RU')}`;
   };
-
-  // Группировка по контейнерам (если нужно)
-  // const containers = Array.from(new Set(cellRentals.map(r => r.cell?.container?.name)));
 
   // Мутации для операций с арендами
   const [createCellRental] = useCreateCellRentalMutation();
@@ -148,16 +157,26 @@ export default function CellRentalsPage() {
   // Поля формы для модального окна
   const modalFields = [
     {
-      type: 'input' as const,
+      type: 'searchSelect' as const,
       fieldName: 'cellId' as const,
-      label: 'ID Ячейки',
-      placeholder: 'Введите ID ячейки'
+      label: 'Ячейка',
+      placeholder: 'Введите ID ячейки',
+      onSearch: handleCellsSearch,
+      options: cellsData?.data.map((cell: any) => ({
+        label: cell.container.location.short_name + '-' + cell.name,
+        value: cell.id
+      }))
     },
     {
-      type: 'input' as const,
+      type: 'searchSelect' as const,
       fieldName: 'clientId' as const,
-      label: 'ID Клиента',
-      placeholder: 'Введите ID клиента'
+      label: 'Клиент',
+      placeholder: 'Выберите клиента',
+      onSearch: handleClientsSearch,
+      options: clientsData?.data.map((client) => ({
+        label: `${client.name} (${client.user?.email || 'Нет email'})`,
+        value: client.id
+      }))
     },
     {
       type: 'input' as const,
@@ -172,11 +191,6 @@ export default function CellRentalsPage() {
       fieldName: 'endDate' as const,
       label: 'Дата окончания',
       placeholder: 'Выберите дату окончания'
-    },
-    {
-      type: 'checkbox' as const,
-      fieldName: 'isActive' as const,
-      label: 'Активна'
     }
   ];
 
@@ -200,10 +214,24 @@ export default function CellRentalsPage() {
       accessorKey: 'rentalStatus',
       header: 'Статус',
       cell: ({ row }) => (
-        <div style={{ backgroundColor: statusList?.find(item => item.statusType === row.original.rentalStatus )?.color }} className="max-w-[140px] flex items-center justify-center px-3 py-1 rounded-full" title={row.original?.cell?.name}>
+        <div style={{ backgroundColor: statusList?.find(item => item.statusType === row.original.rentalStatus)?.color }} className="max-w-[140px] flex items-center justify-center px-3 py-1 rounded-full" title={row.original?.cell?.name}>
           <div style={{ filter: 'drop-shadow(2px 4px 6px black)' }} className="font-mono text-base truncate">{statusTitles[row.original.rentalStatus]}</div>
         </div>
       ),
+    },
+    {
+      id: 'allday',
+      header: 'Дней аренды',
+      cell: ({ row }) => {
+        const { startDate, endDate } = row.original || {};
+        if (!startDate || !endDate) return '-';
+        
+        try {
+          return differenceInDays(new Date(endDate), new Date(startDate));
+        } catch {
+          return '-';
+        }
+      }
     },
     {
       accessorKey: 'cell.size',
@@ -228,26 +256,14 @@ export default function CellRentalsPage() {
         return <div>{formatDate(row.original.endDate)}</div>;
       }
     },
-    {
-      accessorKey: 'isActive',
-      header: "Активна",
-      cell: ({ row }) => {
-        return <div className={row.original.isActive ? "bg-green-500 text-base w-7 px-1 h-7 rounded-full text-white" : "bg-red-500 text-base w-7 px-1 h-7 rounded-full text-white"}>{row.original.isActive ? "Да" : "Нет"}</div>
-      }
-    },
-    {
-      id: 'createdAt',
-      header: 'Дата создания',
-      accessorFn: (row) => row.createdAt,
-      cell: ({ row }) => formatDate(row.original.createdAt),
-    },
-    {
-      id: 'updatedAt',
-      header: 'Дата обновления',
-      accessorFn: (row) => row.updatedAt,
-      cell: ({ row }) => formatDate(row.original.updatedAt),
-    },
   ];
+
+
+  const formatDateForInput = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
@@ -324,15 +340,13 @@ export default function CellRentalsPage() {
         defaultValues={modal.editItem ? {
           cellId: modal.editItem.cellId,
           clientId: modal.editItem.clientId,
-          startDate: modal.editItem.startDate,
-          endDate: modal.editItem.endDate,
-          isActive: modal.editItem.isActive
+          startDate: formatDateForInput(modal.editItem.startDate),
+          endDate: formatDateForInput(modal.editItem.endDate),
         } : {
           cellId: '',
           clientId: '',
           startDate: '',
-          endDate: '',
-          isActive: true
+          endDate: ''
         }}
       />
     </div>

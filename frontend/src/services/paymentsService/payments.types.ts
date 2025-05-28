@@ -1,3 +1,4 @@
+import { CellRental } from '../cellRentalsService/cellRentals.types';
 import { Client } from '../clientsService/clients.types';
 import { FilterParams, DateRangeParams, PaginatedResponse, SortDirection } from '../services.types';
 
@@ -26,6 +27,7 @@ export interface Payment {
   updatedAt: string;
   user?: User;
   cellId?: string;
+  cellRental?: CellRental;
 }
 
 export interface CreatePaymentDto {

@@ -47,7 +47,7 @@ export const BaseFormModal = <T extends FieldValues>({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-
+        onClose();
       }
     }}>
       <DialogContent 
