@@ -216,16 +216,11 @@ export default function CellsPage() {
       id: 'container',
       header: 'Контейнер',
       cell: ({ row }) => {
-        // Находим контейнер по ID
-        const container = containersList.find(
-          (c: Container) => c.id === row.original.containerId
-        );
-        if (!container) return 'Не найден';
-        
+        const container = row.original.container?.name;
         // Форматируем номер с лидирующим нулем если нужно
-        const containerName = typeof container.name === 'number'
-          ? (container.name < 10 ? `0${container.name}` : `${container.name}`)
-          : container.name;
+        const containerName = typeof container === 'number'
+          ? (container < 10 ? `0${container}` : `${container}`)
+          : container;
           
         return containerName;
       },
@@ -236,10 +231,8 @@ export default function CellsPage() {
       header: 'Локация',
       cell: ({ row }) => {
         // Находим контейнер по ID
-        const container = containersList.find(
-          (c: Container) => c.id === row.original.containerId
-        );
-        return container?.location?.short_name || 'Не указана';
+        const location = row.original.container?.location?.short_name;
+        return location || 'Не указана';
       },
     },
     {
@@ -248,10 +241,8 @@ export default function CellsPage() {
       header: 'Город',
       cell: ({ row }) => {
         // Находим контейнер по ID
-        const container = containersList.find(
-          (c: Container) => c.id === row.original.containerId
-        );
-        return container?.location?.city?.short_name || 'Не указан';
+        const city = row.original.container?.location?.city?.short_name;
+        return city || 'Не указан';
       },
     },
     {

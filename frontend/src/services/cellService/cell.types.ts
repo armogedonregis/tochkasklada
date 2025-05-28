@@ -1,3 +1,4 @@
+import { Container } from '../containersService/container.types';
 import { FilterParams, PaginatedResponse, SortDirection } from '../services.types';
 import { Size } from '../sizesService/sizes.types';
 
@@ -18,6 +19,7 @@ export interface Cell {
   comment?: string;
   statusId?: string;
   size?: Size;
+  container?: Container;
   createdAt?: string;
   updatedAt?: string;
 }
