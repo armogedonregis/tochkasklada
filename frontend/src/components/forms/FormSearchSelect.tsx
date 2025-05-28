@@ -159,7 +159,7 @@ const FormSearchSelect = <T extends FieldValues>({
                     },
                     borderRadius: '0.375rem',
                     padding: '2px',
-                    backgroundColor: 'rgb(31 41 55 / var(--tw-bg-opacity, 1))',
+                    backgroundColor: 'white',
                     minHeight: '40px',
                   }),
                   placeholder: (base) => ({
