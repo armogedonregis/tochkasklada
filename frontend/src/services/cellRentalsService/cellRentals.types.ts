@@ -2,13 +2,12 @@ import { FilterParams, DateRangeParams, PaginatedResponse } from '../services.ty
 import { Cell } from '../cellService/cell.types';
 import { Client } from '../clientsService/clients.types';
 import { Container } from '../containersService/container.types';
-import { Size } from '../sizesService/sizes.types';
 
 export enum CellRentalSortField {
-  CREATED_AT = 'CREATED_AT',
-  START_DATE = 'START_DATE', 
-  END_DATE = 'END_DATE',
-  RENTAL_STATUS = 'RENTAL_STATUS'
+  CREATED_AT = 'createdAt',
+  START_DATE = 'startDate', 
+  END_DATE = 'endDate',
+  RENTAL_STATUS = 'rentalStatus'
 }
 
 export enum CellFreeSortField {
@@ -57,6 +56,7 @@ export interface CreateCellRentalDto {
   startDate: string;
   endDate: string;
   isActive?: boolean;
+  rentalStatus: CellRentalStatusType;
 }
 
 export interface UpdateCellRentalDto {
@@ -65,6 +65,7 @@ export interface UpdateCellRentalDto {
   startDate?: string;
   endDate?: string;
   isActive?: boolean;
+  rentalStatus: CellRentalStatusType;
 }
 
 export interface CellRentalFilters extends FilterParams, DateRangeParams {

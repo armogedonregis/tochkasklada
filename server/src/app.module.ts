@@ -18,6 +18,7 @@ import { RelaysModule } from './relays/relays.module';
 import { RelayAccessModule } from './relay-access/relay-access.module';
 import { CellRentalsModule } from './cell-rentals/cell-rentals.module';
 import { SwaggerDocModule } from './swagger/swagger.module';
+import { StatisticsModule } from './statistics/statistics.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { SwaggerDocModule } from './swagger/swagger.module';
     RelaysModule,
     RelayAccessModule,
     CellRentalsModule,
+    StatisticsModule,
     SwaggerDocModule.forRoot(),
   ],
   controllers: [AppController],

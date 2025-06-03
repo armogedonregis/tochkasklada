@@ -3,10 +3,10 @@ import { Type } from 'class-transformer';
 import { CellRentalStatus } from '@prisma/client';
 
 export enum CellRentalSortField {
-  CREATED_AT = 'CREATED_AT',
-  START_DATE = 'START_DATE', 
-  END_DATE = 'END_DATE',
-  RENTAL_STATUS = 'RENTAL_STATUS'
+  CREATED_AT = 'createdAt',
+  START_DATE = 'startDate', 
+  END_DATE = 'endDate',
+  RENTAL_STATUS = 'rentalStatus'
 }
 
 export enum SortDirection {

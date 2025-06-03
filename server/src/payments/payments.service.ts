@@ -2,8 +2,6 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException, 
 import { PrismaService } from '../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken, PaymentParams } from './utils/generate-token';
-import { CellRentalsService } from '../cell-rentals/cell-rentals.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, PaymentSortField, SortDirection } from './dto';
 import { Prisma } from '@prisma/client';
 
@@ -11,7 +9,6 @@ import { Prisma } from '@prisma/client';
 export class PaymentsService {
   constructor(
     private prisma: PrismaService,
-    private cellRentalsService: CellRentalsService
   ) {}
 
   // Получение платежа по ID

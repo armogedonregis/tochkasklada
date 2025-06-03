@@ -42,16 +42,15 @@ export const BaseConfirmModal: React.FC<BaseConfirmModalProps> = ({
   return (
     <Dialog 
       open={isOpen} 
-      onOpenChange={(open) => {
-        if (!open && !isLoading) {
-
-        }
-      }}
     >
       <DialogContent 
         className={cn("p-0", className)}
-        onInteractOutside={(e) => isLoading ? e.preventDefault() : null}
-        onEscapeKeyDown={(e) => isLoading ? e.preventDefault() : null}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => {
+          if (isLoading) {
+            e.preventDefault();
+          }
+        }}
       >
         <div className="p-6 bg-white dark:bg-gray-800 rounded-lg">
           <div className={cn("mb-4", icon ? "flex flex-col items-center text-center" : "")}>

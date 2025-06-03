@@ -58,7 +58,7 @@ export const cellRentalsApi = api.injectEndpoints({
     }),
     
     // Обновление аренды
-    updateCellRental: builder.mutation<CellRental, UpdateCellRentalDto & { id: string }>({
+    updateCellRental: builder.mutation<CellRental, CreateCellRentalDto & { id: string }>({
       query: ({ id, ...rental }) => ({
         url: `/admin/cell-rentals/${id}`,
         method: 'PATCH',

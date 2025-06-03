@@ -9,7 +9,7 @@ import {
 } from '@/services/cellRentalsService/cellRentalsApi';
 import { Button } from '@/components/ui/button';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
-import { CellRental, CellRentalSortField, CellRentalStatus, CellRentalStatusType } from '@/services/cellRentalsService/cellRentals.types';
+import { CellRental, CellRentalSortField, CellRentalStatus, CellRentalStatusType, CreateCellRentalDto, UpdateCellRentalDto } from '@/services/cellRentalsService/cellRentals.types';
 import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { useFormModal } from '@/hooks/useFormModal';
@@ -24,7 +24,6 @@ import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
 import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
-import { PaymentSortField } from '@/services/paymentsService/payments.types';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStatusesApi';
 import { useLazyGetClientsQuery } from '@/services/clientsService/clientsApi';
@@ -37,15 +36,8 @@ const cellRentalValidationSchema = yup.object({
   clientId: yup.string().required('ID клиента обязательно'),
   startDate: yup.date(),
   endDate: yup.date(),
+  statusType: yup.string(),
 });
-
-// Типы для формы
-interface CellRentalFormFields {
-  cellId: string;
-  clientId: string;
-  startDate: string;
-  endDate: string;
-}
 
 // Названия статусов
 const statusTitles: Record<CellRentalStatus, string> = {
@@ -124,7 +116,7 @@ export default function CellRentalsPage() {
   const [deleteCellRental] = useDeleteCellRentalMutation();
 
   // Хук для управления модальным окном
-  const modal = useFormModal<CellRentalFormFields, CellRental>({
+  const modal = useFormModal<CreateCellRentalDto, CellRental>({
     onSubmit: async (values) => {
       if (modal.editItem) {
         await updateCellRental({
@@ -162,8 +154,8 @@ export default function CellRentalsPage() {
       label: 'Ячейка',
       placeholder: 'Введите ID ячейки',
       onSearch: handleCellsSearch,
-      options: cellsData?.data.map((cell: any) => ({
-        label: cell.container.location.short_name + '-' + cell.name,
+      options: cellsData?.data.map((cell) => ({
+        label: cell.container?.location?.short_name + '-' + cell.name,
         value: cell.id
       }))
     },
@@ -191,6 +183,19 @@ export default function CellRentalsPage() {
       fieldName: 'endDate' as const,
       label: 'Дата окончания',
       placeholder: 'Выберите дату окончания'
+    },
+    {
+      type: 'select' as const,
+      fieldName: 'rentalStatus' as const,
+      label: 'Статус аренды',
+      placeholder: 'Выберите статус',
+      options: [
+        { value: 'ALL', label: 'Все статусы' },
+        ...Object.entries(statusTitles).map(([value, label]) => ({
+          value,
+          label
+        }))
+      ]
     }
   ];
 
@@ -213,11 +218,40 @@ export default function CellRentalsPage() {
     {
       accessorKey: 'rentalStatus',
       header: 'Статус',
-      cell: ({ row }) => (
-        <div style={{ backgroundColor: statusList?.find(item => item.statusType === row.original.rentalStatus)?.color }} className="max-w-[140px] flex items-center justify-center px-3 py-1 rounded-full" title={row.original?.cell?.name}>
-          <div style={{ filter: 'drop-shadow(2px 4px 6px black)' }} className="font-mono text-base truncate">{statusTitles[row.original.rentalStatus]}</div>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const statusColor = statusList?.find(item => item.statusType === row.original.rentalStatus)?.color;
+        const statusText = statusTitles[row.original.rentalStatus];
+        return (
+          <div
+            style={{
+              backgroundColor: statusColor,
+              padding: '4px 12px',
+              borderRadius: '16px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '100px',
+              maxWidth: '140px'
+            }}
+            title={row.original?.cell?.name}
+          >
+            <span
+              style={{
+                color: 'white',
+                textShadow: '0 0 3px black, 0 0 5px black',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                lineHeight: '1.25rem',
+                textOverflow: 'ellipsis',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {statusText}
+            </span>
+          </div>
+        );
+      },
     },
     {
       id: 'allday',
@@ -225,7 +259,7 @@ export default function CellRentalsPage() {
       cell: ({ row }) => {
         const { startDate, endDate } = row.original || {};
         if (!startDate || !endDate) return '-';
-        
+
         try {
           return differenceInDays(new Date(endDate), new Date(startDate));
         } catch {
@@ -322,7 +356,7 @@ export default function CellRentalsPage() {
         isLoading={isLoading}
         error={error}
         onRetry={refetch}
-        sortableFields={PaymentSortField}
+        sortableFields={CellRentalSortField}
         pagination={tableControls.pagination}
         sorting={tableControls.sorting}
         persistSettings={true}
@@ -342,11 +376,13 @@ export default function CellRentalsPage() {
           clientId: modal.editItem.clientId,
           startDate: formatDateForInput(modal.editItem.startDate),
           endDate: formatDateForInput(modal.editItem.endDate),
+          rentalStatus: modal.editItem.rentalStatus
         } : {
           cellId: '',
           clientId: '',
           startDate: '',
-          endDate: ''
+          endDate: '',
+          rentalStatus: 'ACTIVE'
         }}
       />
     </div>

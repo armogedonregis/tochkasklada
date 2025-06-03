@@ -73,18 +73,3 @@ export interface PaymentFilters extends FilterParams {
 }
 
 export type PaginatedPaymentResponse = PaginatedResponse<Payment>;
-
-export type StatisticsPayments = {
-  locationId: string;
-  locationName: string;
-  locationShortName: string;
-  cityName: string;
-  cityShortName: string;
-  totalPayments: number;
-  totalAmount: number;
-  activeRentals: number;
-  averagePayment: number;
-  lastPaymentDate: Date;
-  paymentFrequency: number;
-  revenuePerRental: number;
-}

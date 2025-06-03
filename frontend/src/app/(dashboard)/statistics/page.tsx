@@ -1,31 +1,173 @@
 'use client';
 
+import { useGetStatisticsPaymentsQuery } from '@/services/statisticsService/statisticsApi';
+import { BaseTable } from '@/components/table/BaseTable';
+import { useTableControls } from '@/hooks/useTableControls';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import { Skeleton } from '@/components/ui/skeleton';
-import { useGetStatisticsPaymentsQuery } from '@/services/paymentsService/paymentsApi';
-import { Button } from '@/components/ui/button';
-import { formatDate } from 'date-fns/format';
+import { ColumnDef } from '@tanstack/react-table';
+import { StatisticsPayments } from '@/services/statisticsService/statistics.types';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export default function PaymentsStatisticsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
 
+  // Используем хук для управления состоянием таблицы
+  const tableControls = useTableControls({
+    defaultPageSize: 10
+  });
   // Получение данных статистики
-  const { data: statsData, isLoading, error, refetch } = useGetStatisticsPaymentsQuery();
+  const { data: statsData, isLoading, error, refetch } = useGetStatisticsPaymentsQuery({
+    page: tableControls.queryParams.page,
+    limit: tableControls.queryParams.limit,
+  });
 
-  // Фильтрация данных по поисковому запросу
-  const filteredData = statsData?.filter(location => 
-    location.locationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    location.cityName.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+
+
+  const [expandedPayments, setExpandedPayments] = useState<string[]>([]);
+
+
+  // Данные платежей из пагинированного ответа
+  const stats = statsData?.data || [];
+  // Используем мета-информацию из ответа
+  const totalCount = statsData?.meta?.totalCount || 0;
+  const pageCount = statsData?.meta?.totalPages || 1;
+
+  // Функция для переключения раскрытия информации о клиенте
+  const toggleExpandPayment = (paymentId: string) => {
+    setExpandedPayments(prev =>
+      prev.includes(paymentId)
+        ? prev.filter(id => id !== paymentId)
+        : [...prev, paymentId]
+    );
+  };
+
+
+  // Форматирование суммы - отображаем только целые рубли
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Компонент для отображения расширенной информации о клиенте
+  // const ExpandedClientInfo = ({ stat }: { stat: StatisticsPayments }) => {
+  //   const user = stat?.user;
+
+  //   const 
+
+  //   if (!user) {
+  //     return (
+  //       <div className="p-4 pl-12 text-sm text-gray-500">
+  //         Информация о клиенте недоступна
+  //       </div>
+  //     );
+  //   }
+
+  //   return (
+  //     <div className="pl-12 pr-4 py-4 border-t border-gray-100">
+  //       <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4">
+  //         <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+  //           {/* <User size={16} /> */}
+  //           Информация о клиенте
+  //         </h4>
+  //         <div className="grid grid-cols-2 gap-4 text-sm">
+  //           <div>
+  //             <p className="text-gray-500 dark:text-gray-400">ФИО:</p>
+  //             <p className="font-medium">{user.client?.name}</p>
+  //           </div>
+  //           <div>
+  //             <p className="text-gray-500 dark:text-gray-400">Email:</p>
+  //             <p className="font-medium">{user?.email || 'Не указан'}</p>
+  //           </div>
+  //           <div className="col-span-2">
+  //             <p className="text-gray-500 dark:text-gray-400 mb-1">Телефоны:</p>
+  //             <div className="font-medium space-y-1">
+  //               {user.client.phones && user.client.phones.length > 0 ? (
+  //                 user.client.phones.map((phone: any, index: number) => (
+  //                   <div key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded">
+  //                     {typeof phone === 'object' ? phone.phone || phone.number : phone}
+  //                   </div>
+  //                 ))
+  //               ) : (
+  //                 <div className="text-gray-400">Телефоны не указаны</div>
+  //               )}
+  //             </div>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // };
+
+  // Определение колонок таблицы
+  const columns: ColumnDef<StatisticsPayments>[] = [
+    // {
+    //   id: 'expander',
+    //   header: '',
+    //   cell: ({ row }) => {
+    //     const isExpanded = expandedPayments.includes(row.original.locationId);
+    //     return (
+    //       <button
+    //         onClick={(e) => {
+    //           e.stopPropagation();
+    //           toggleExpandPayment(row.original.locationId);
+    //         }}
+    //         className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+    //       >
+    //         {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+    //       </button>
+    //     );
+    //   },
+    //   enableSorting: false,
+    //   enableHiding: false,
+    // },
+    {
+      accessorKey: 'cityName',
+      header: "Город"
+    },
+    {
+      accessorKey: 'cityShortName',
+      header: "cityId"
+    },
+    {
+      accessorKey: 'locationName',
+      header: "Локация",
+    },
+    {
+      accessorKey: 'locationShortName',
+      header: "locId",
+    },
+    {
+      accessorKey: 'totalPayments',
+      header: "Платежи",
+    },
+    {
+      accessorKey: 'totalAmount',
+      header: "Общая сумма",
+      cell: ({ row }) => {
+        return <div>{formatAmount(row.original.totalAmount)}</div>;
+      }
+    },
+    {
+      accessorKey: 'averagePayment',
+      header: "Средняя сумма",
+      cell: ({ row }) => {
+        return <div>{formatAmount(row.original.averagePayment)}</div>;
+      }
+    },
+    {
+      accessorKey: 'activeRentals',
+      header: "Активные аренды",
+    }
+  ];
+
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Заголовок */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
+      {/* Панель добавления */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 px-4 pt-4">
         <div>
           <h1 className="text-2xl font-bold">Статистика платежей</h1>
           <p className="text-sm text-muted-foreground">
@@ -34,151 +176,29 @@ export default function PaymentsStatisticsPage() {
         </div>
       </div>
 
-      {/* Фильтры */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по локации или городу..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="flex items-center justify-end">
-          <Badge variant="outline" className="mr-2">
-            Всего локаций: {statsData?.length || 0}
-          </Badge>
-          <Badge variant="outline">
-            Найдено: {filteredData.length}
-          </Badge>
-        </div>
-      </div>
-
-      {/* Состояние загрузки */}
-      {isLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Состояние ошибки */}
-      {error && (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="text-red-500 mb-4">Ошибка загрузки данных</div>
-          <Button variant="outline" onClick={refetch}>
-            Повторить попытку
-          </Button>
-        </div>
-      )}
-
-      {/* Состояние без данных */}
-      {!isLoading && !error && filteredData.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12">
-          <Search className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">Локации не найдены</h3>
-          <p className="text-sm text-muted-foreground">
-            Попробуйте изменить параметры поиска
-          </p>
-        </div>
-      )}
-
-      {/* Отображение данных */}
-      {!isLoading && !error && filteredData.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredData.map((location) => (
-            <Card key={location.locationId} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xl">
-                  {location.locationName}
-                </CardTitle>
-                <div className="text-sm text-muted-foreground">
-                  {location.cityName} ({location.cityShortName})
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Платежи:</span>
-                  <span className="font-medium">{location.totalPayments}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Сумма:</span>
-                  <span className="font-medium">{location.totalAmount} ₽</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Аренды:</span>
-                  <span className="font-medium">{location.activeRentals}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Средний чек:</span>
-                  <span className="font-medium">{location.averagePayment.toFixed(2)} ₽</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Последний платеж:</span>
-                  <span className="font-medium">
-                    {location.lastPaymentDate ? formatDate(location.lastPaymentDate, 'dd.MM.yyyy') : 'Нет данных'}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Дополнительная аналитика */}
-      {!isLoading && !error && filteredData.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Сводная информация</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Общая сумма</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {filteredData.reduce((sum, loc) => sum + loc.totalAmount, 0)} ₽
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Всего платежей</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {filteredData.reduce((sum, loc) => sum + loc.totalPayments, 0)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Средний чек</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {(
-                    filteredData.reduce((sum, loc) => sum + loc.totalAmount, 0) / 
-                    Math.max(filteredData.reduce((sum, loc) => sum + loc.totalPayments, 0), 1)
-                  ).toFixed(2)} ₽
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
+      {/* Таблица */}
+      <BaseTable
+        data={stats}
+        columns={columns}
+        searchColumn="orderId"
+        searchPlaceholder="Поиск по ID платежа..."
+        disableActions
+        tableId="statistics-table"
+        totalCount={totalCount}
+        pageCount={pageCount}
+        isDisabledSorting
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
+        // sortableFields={PaymentSortField}
+        pagination={tableControls.pagination}
+        onPaginationChange={tableControls.handlePaginationChange}
+        // sorting={tableControls.sorting}
+        persistSettings={true}
+        // renderRowSubComponent={({ row }) =>
+        //   expandedPayments.includes(row.original.locationId) ? <ExpandedClientInfo stat={row.original} /> : null
+        // }
+      />
     </div>
   );
 }

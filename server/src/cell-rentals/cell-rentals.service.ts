@@ -268,6 +268,7 @@ export class CellRentalsService {
           ]
         },
         skip,
+        take: limit,
         include: {
           container: {
             include: {

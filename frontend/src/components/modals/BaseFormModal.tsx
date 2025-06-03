@@ -47,20 +47,24 @@ export const BaseFormModal = <T extends FieldValues>({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        onClose();
+        onClose()
       }
     }}>
-      <DialogContent 
+      <DialogContent
         className={`p-0 ${className}`}
-        onInteractOutside={(e) => isLoading ? e.preventDefault() : null}
-        onEscapeKeyDown={(e) => isLoading ? e.preventDefault() : null}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => {
+          if (isLoading) {
+            e.preventDefault();
+          }
+        }}
       >
         <div className="w-full p-6 bg-white dark:bg-gray-800 rounded-lg">
           <DialogHeader className="mb-4 relative">
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
               {title}
             </DialogTitle>
-            
+
             {description && (
               <>
                 <div className="h-[2px] my-3 bg-gray-200 dark:bg-gray-700 w-full" />

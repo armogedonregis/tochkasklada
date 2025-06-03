@@ -134,48 +134,23 @@ const FormSearchSelect = <T extends FieldValues>({
                 loadingMessage={() => "Загрузка..."}
                 noOptionsMessage={() => "Ничего не найдено"}
                 classNamePrefix="select"
-                theme={(theme) => ({
-                  ...theme,
-                  colors: {
-                    ...theme.colors,
-                    primary: '#F62D40',
-                    primary25: '#FFF1F2',
-                    neutral0: '#FFFFFF',
-                    neutral10: '#F1F5F9',
-                    neutral20: '#E2E8F0',
-                    neutral30: '#CBD5E1',
-                    neutral80: '#1E293B',
-                  },
-                  borderRadius: 6,
-                })}
+                classNames={{
+                  control: (state) => (
+                    state.isFocused ? "focus:border-[#F62D40] focus:ring-1 focus:ring-[#F62D40] dark:focus:border-[#F8888F] dark:focus:ring-[#F8888F] focus:outline-none" : "flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 dark:placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  ),
+                  input: () => 'py-2 text-sm text-gray-900 dark:text-white',
+                  singleValue: () => 'py-2 text-sm text-gray-900 dark:text-white',
+                  placeholder: () => 'py-2 text-sm text-gray-900 dark:text-white',
+                }}
                 styles={{
                   control: (base, state) => ({
                     ...base,
                     height: '40px',
-                    borderColor: state.isFocused ? '#F62D40' : '#E2E8F0',
-                    boxShadow: state.isFocused ? '0 0 0 1px #F62D40' : 'none',
-                    '&:hover': {
-                      borderColor: state.isFocused ? '#F62D40' : '#CBD5E1',
-                    },
+                    background: "transparent",
                     borderRadius: '0.375rem',
                     padding: '2px',
-                    backgroundColor: 'white',
+                    backgroundColor: 'white', 
                     minHeight: '40px',
-                  }),
-                  placeholder: (base) => ({
-                    ...base,
-                    color: '#94A3B8',
-                    fontSize: '0.875rem',
-                  }),
-                  input: (base) => ({
-                    ...base,
-                    color: '#1E293B',
-                    fontSize: '0.875rem',
-                  }),
-                  singleValue: (base) => ({
-                    ...base,
-                    color: '#1E293B',
-                    fontSize: '0.875rem',
                   }),
                   option: (base, state) => ({
                     ...base,

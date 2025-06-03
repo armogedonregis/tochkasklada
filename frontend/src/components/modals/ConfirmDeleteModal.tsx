@@ -36,22 +36,21 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   danger = true,
 }) => {
   // Формируем описание, если не передано
-  const finalDescription = description || 
+  const finalDescription = description ||
     `Вы уверены, что хотите удалить ${entityName || 'этот элемент'}? Это действие нельзя отменить.`;
 
   return (
-    <Dialog 
-      open={isOpen} 
-      onOpenChange={(open) => {
-        if (!open && !isLoading) {
-
-        }
-      }}
+    <Dialog
+      open={isOpen}
     >
-      <DialogContent 
+      <DialogContent
         className={cn("p-0", className)}
-        onInteractOutside={(e) => isLoading ? e.preventDefault() : null}
-        onEscapeKeyDown={(e) => isLoading ? e.preventDefault() : null}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => {
+          if (isLoading) {
+            e.preventDefault();
+          }
+        }}
       >
         <div className="p-6 bg-white dark:bg-gray-800 rounded-lg">
           <div className="flex flex-col items-center text-center mb-4">
@@ -84,8 +83,8 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               disabled={isLoading}
               className={cn(
                 "h-11 px-5 py-2.5 text-sm font-semibold text-white rounded-md",
-                danger 
-                  ? "bg-red-600 hover:bg-red-700 focus:ring-2 focus:ring-red-500" 
+                danger
+                  ? "bg-red-600 hover:bg-red-700 focus:ring-2 focus:ring-red-500"
                   : "bg-gradient-to-r from-[#F62D40] to-[#F8888F] hover:from-[#E11830] hover:to-[#E76A73]",
                 "disabled:opacity-50 disabled:pointer-events-none transition-all"
               )}

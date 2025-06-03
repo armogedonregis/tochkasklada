@@ -13,4 +13,5 @@ export const tagTypes = [
     'Panels',
     'Relays',
     'RelayAccess',
+    'Statistics'
 ] as const;
