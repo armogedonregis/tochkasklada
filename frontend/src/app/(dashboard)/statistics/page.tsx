@@ -180,8 +180,6 @@ export default function PaymentsStatisticsPage() {
       <BaseTable
         data={stats}
         columns={columns}
-        searchColumn="orderId"
-        searchPlaceholder="Поиск по ID платежа..."
         disableActions
         tableId="statistics-table"
         totalCount={totalCount}
