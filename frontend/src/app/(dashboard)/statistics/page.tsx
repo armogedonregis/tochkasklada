@@ -6,7 +6,12 @@ import { useTableControls } from '@/hooks/useTableControls';
 import { useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { StatisticsPayments } from '@/services/statisticsService/statistics.types';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function PaymentsStatisticsPage() {
 
@@ -14,10 +19,19 @@ export default function PaymentsStatisticsPage() {
   const tableControls = useTableControls({
     defaultPageSize: 10
   });
+
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({ from: undefined, to: undefined });
+
+
   // Получение данных статистики
   const { data: statsData, isLoading, error, refetch } = useGetStatisticsPaymentsQuery({
     page: tableControls.queryParams.page,
     limit: tableControls.queryParams.limit,
+    startDate: dateRange.from?.toISOString(),
+    endDate: dateRange.to?.toISOString()
   });
 
 
@@ -163,11 +177,15 @@ export default function PaymentsStatisticsPage() {
     }
   ];
 
+  const resetDateFilters = () => {
+    setDateRange({ from: undefined, to: undefined });
+  };
+
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
       {/* Панель добавления */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 px-4 pt-4">
+      <div className="mb-4 px-4 pt-4">
         <div>
           <h1 className="text-2xl font-bold">Статистика платежей</h1>
           <p className="text-sm text-muted-foreground">
@@ -175,6 +193,71 @@ export default function PaymentsStatisticsPage() {
           </p>
         </div>
       </div>
+      {/* Фильтры */}
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6 px-4">
+        <div className="flex flex-col space-y-2">
+          <label className="text-sm font-medium">Период с</label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !dateRange.from && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange.from ? format(dateRange.from, "dd.MM.yyyy") : <span>Выберите дату</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={dateRange.from}
+                onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="flex flex-col space-y-2">
+          <label className="text-sm font-medium">Период по</label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !dateRange.to && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange.to ? format(dateRange.to, "dd.MM.yyyy") : <span>Выберите дату</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={dateRange.to}
+                onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="flex items-end">
+          <Button
+            variant="outline"
+            onClick={resetDateFilters}
+            className="w-full"
+          >
+            Сбросить даты
+          </Button>
+        </div>
+      </div>
+
 
       {/* Таблица */}
       <BaseTable
@@ -193,9 +276,9 @@ export default function PaymentsStatisticsPage() {
         onPaginationChange={tableControls.handlePaginationChange}
         // sorting={tableControls.sorting}
         persistSettings={true}
-        // renderRowSubComponent={({ row }) =>
-        //   expandedPayments.includes(row.original.locationId) ? <ExpandedClientInfo stat={row.original} /> : null
-        // }
+      // renderRowSubComponent={({ row }) =>
+      //   expandedPayments.includes(row.original.locationId) ? <ExpandedClientInfo stat={row.original} /> : null
+      // }
       />
     </div>
   );

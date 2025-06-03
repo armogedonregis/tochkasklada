@@ -12,8 +12,8 @@ export class StatisticsService {
     limit?: number;
     sortBy?: string;
     sortDirection?: 'asc' | 'desc';
-    startDate?: Date;
-    endDate?: Date;
+    startDate?: string;
+    endDate?: string;
   }) {
     try {
       const {
@@ -22,9 +22,10 @@ export class StatisticsService {
         limit = 10,
         sortBy = 'totalAmount',
         sortDirection = 'desc',
-        startDate,
-        endDate,
       } = query;
+
+      const startDate = query.startDate ? new Date(query.startDate) : undefined;
+      const endDate = query.endDate ? new Date(query.endDate) : undefined;
 
       const skip = (page - 1) * limit;
 

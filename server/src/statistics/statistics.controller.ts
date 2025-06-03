@@ -27,8 +27,8 @@ import {
       @Query('limit') limit?: number,
       @Query('sortBy') sortBy?: string,
       @Query('sortDirection') sortDirection?: 'asc' | 'desc',
-      @Query('startDate') startDate?: Date,
-      @Query('endDate') endDate?: Date,
+      @Query('startDate') startDate?: string,
+      @Query('endDate') endDate?: string,
     ) {
       return this.statisticsService.getLocationStatistics({
         locationId,
