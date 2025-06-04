@@ -73,7 +73,7 @@ function DraggableColumnHeader<TData>({
   const canSort = header.column.getCanSort();
 
   return (
-    <TableHead 
+    <TableHead
       ref={isReorderingEnabled ? setNodeRef : undefined}
       key={header.id}
       style={style}
@@ -82,7 +82,7 @@ function DraggableColumnHeader<TData>({
         ${isReorderingEnabled ? 'cursor-move' : ''}
         relative ${canSort && !isReorderingEnabled ? 'cursor-pointer select-none' : ''}
       `}
-      onClick={canSort && !isReorderingEnabled 
+      onClick={canSort && !isReorderingEnabled
         ? header.column.getToggleSortingHandler()
         : undefined}
       {...(isReorderingEnabled ? { ...attributes, ...listeners } : {})}
@@ -96,10 +96,10 @@ function DraggableColumnHeader<TData>({
         {header.isPlaceholder
           ? null
           : flexRender(
-              header.column.columnDef.header,
-              header.getContext()
-            )}
-            
+            header.column.columnDef.header,
+            header.getContext()
+          )}
+
         {/* Визуализация состояния сортировки */}
         {header.column.getIsSorted() ? (
           <span className="ml-1 flex-shrink-0">
@@ -123,9 +123,8 @@ function DraggableColumnHeader<TData>({
         <div
           onMouseDown={header.getResizeHandler()}
           onTouchStart={header.getResizeHandler()}
-          className={`absolute right-0 top-0 h-full w-1 cursor-col-resize touch-none select-none ${
-            header.column.getIsResizing() ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'
-          }`}
+          className={`absolute right-0 top-0 h-full w-1 cursor-col-resize touch-none select-none ${header.column.getIsResizing() ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'
+            }`}
           onClick={(e) => e.stopPropagation()}
         />
       )}
@@ -138,17 +137,17 @@ interface BaseTableProps<TData, TSortField extends string = string> {
   // Данные и колонки
   data: TData[];
   columns: ColumnDef<TData, any>[];
-  
+
   // Поиск
   searchColumn?: string;
   searchPlaceholder?: string;
-  
+
   // Действия
   onRowClick?: (row: TData) => void;
   onEdit?: (row: TData) => void;
   onDelete?: (row: TData) => void;
   disableActions?: boolean;
-  
+
   // Пагинация и сортировка
   isDisabledPagination?: boolean;
   isDisabledSorting?: boolean;
@@ -159,12 +158,12 @@ interface BaseTableProps<TData, TSortField extends string = string> {
   onPaginationChange?: (pagination: PaginationState) => void;
   onSortingChange?: (sorting: SortingState) => void;
   onSearchChange?: (search: string) => void;
-  
+
   // Состояния
   isLoading?: boolean;
   error?: unknown;
   onRetry?: () => void;
-  
+
   // Дополнительные настройки
   sortableFields?: Record<TSortField, string>;
   tableId?: string;
@@ -180,17 +179,17 @@ export function BaseTable<TData, TSortField extends string = string>({
   // Данные и колонки
   data,
   columns,
-  
+
   // Поиск
   searchColumn,
   searchPlaceholder = 'Поиск...',
-  
+
   // Действия
   onRowClick,
   onEdit,
   onDelete,
   disableActions = false,
-  
+
   // Пагинация и сортировка
   isDisabledPagination = false,
   isDisabledSorting = false,
@@ -201,12 +200,12 @@ export function BaseTable<TData, TSortField extends string = string>({
   onPaginationChange,
   onSortingChange,
   onSearchChange,
-  
+
   // Состояния
   isLoading = false,
   error = null,
   onRetry,
-  
+
   // Дополнительные настройки
   sortableFields,
   tableId = 'table',
@@ -221,7 +220,7 @@ export function BaseTable<TData, TSortField extends string = string>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [isReorderingEnabled, setIsReorderingEnabled] = useState(false);
   const [isResizingEnabled, setIsResizingEnabled] = useState(false);
-  
+
   // Получаем сохраненный ранее порядок колонок из localStorage
   const getSavedColumnOrder = (): string[] | undefined => {
     if (typeof window !== 'undefined' && persistSettings) {
@@ -239,7 +238,7 @@ export function BaseTable<TData, TSortField extends string = string>({
     }
     return undefined;
   };
-  
+
   // Получаем сохраненные размеры колонок
   const getSavedColumnSizes = (): Record<string, number> | undefined => {
     if (typeof window !== 'undefined' && persistSettings) {
@@ -248,7 +247,7 @@ export function BaseTable<TData, TSortField extends string = string>({
     }
     return undefined;
   };
-  
+
   // Инициализация порядка колонок
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(() => {
     return getSavedColumnOrder() || defaultColumnOrder || columns.map(col => {
@@ -269,52 +268,52 @@ export function BaseTable<TData, TSortField extends string = string>({
     if (savedVisibility) {
       setColumnVisibility(savedVisibility);
     }
-    
+
     const savedSizes = getSavedColumnSizes();
     if (savedSizes) {
       setColumnSizes(savedSizes);
     }
   }, []);
-  
+
   // Функция для проверки, поддерживает ли поле сортировку
   const isSortable = (key: string): boolean => {
     if (!sortableFields) return true;
     return Object.values(sortableFields).includes(key);
   };
-  
+
   // Настройка сенсоров для DnD
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
-  
+
   // Применяем enableSorting на основе sortableFields
   const columnsWithSorting = React.useMemo(() => {
     if (!sortableFields) return columns;
-    
+
     return columns.map(column => {
-      const accessorKey = 'accessorKey' in column && typeof column.accessorKey === 'string' 
-        ? column.accessorKey 
+      const accessorKey = 'accessorKey' in column && typeof column.accessorKey === 'string'
+        ? column.accessorKey
         : undefined;
       const id = column.id || accessorKey;
-      
+
       if (!id) return column;
-      
+
       return {
         ...column,
         enableSorting: isSortable(id)
       };
     });
   }, [columns, sortableFields]);
-  
+
   // Добавляем колонку с действиями, если они не отключены и есть обработчики
   const columnsWithActions = React.useMemo(() => {
     if (!disableActions && onEdit && onDelete) {
       const hasActionsColumn = columnsWithSorting.some(column => {
-        return (typeof column.id === 'string' && column.id === 'actions') || 
-               ('accessorKey' in column && typeof column.accessorKey === 'string' && column.accessorKey === 'actions');
+        return (typeof column.id === 'string' && column.id === 'actions') ||
+          ('accessorKey' in column && typeof column.accessorKey === 'string' && column.accessorKey === 'actions');
       });
-      
+
       if (!hasActionsColumn) {
         return [
           ...columnsWithSorting,
@@ -322,7 +321,7 @@ export function BaseTable<TData, TSortField extends string = string>({
             id: 'actions',
             header: 'Действия',
             cell: ({ row }) => (
-              <TableActions 
+              <TableActions
                 onEdit={() => onEdit(row.original)}
                 onDelete={() => onDelete(row.original)}
               />
@@ -337,10 +336,10 @@ export function BaseTable<TData, TSortField extends string = string>({
   // Настройка колонок для изменения размера с использованием сохраненных размеров
   const columnsWithResize = React.useMemo(() => {
     return columnsWithActions.map(column => {
-      const columnId = typeof column.id === 'string' 
-        ? column.id 
+      const columnId = typeof column.id === 'string'
+        ? column.id
         : ('accessorKey' in column && typeof column.accessorKey === 'string' ? column.accessorKey : '');
-      
+
       return {
         ...column,
         enableResizing: true,
@@ -352,7 +351,7 @@ export function BaseTable<TData, TSortField extends string = string>({
   // Сохраняем порядок колонок в localStorage при его изменении
   const handleColumnOrderChange = (newOrder: string[]) => {
     setColumnOrder(newOrder);
-    
+
     if (typeof window !== 'undefined' && persistSettings) {
       localStorage.setItem(`${tableId}-column-order`, JSON.stringify(newOrder));
     }
@@ -361,16 +360,16 @@ export function BaseTable<TData, TSortField extends string = string>({
   // Сохраняем видимость колонок в localStorage
   const handleColumnVisibilityChange = (newVisibility: VisibilityState) => {
     setColumnVisibility(newVisibility);
-    
+
     if (typeof window !== 'undefined' && persistSettings) {
       localStorage.setItem(`${tableId}-column-visibility`, JSON.stringify(newVisibility));
     }
   };
-  
+
   // Сохраняем размеры колонок в localStorage
   const handleColumnSizesChange = (newSizes: Record<string, number>) => {
     setColumnSizes(newSizes);
-    
+
     if (typeof window !== 'undefined' && persistSettings) {
       localStorage.setItem(`${tableId}-column-sizes`, JSON.stringify(newSizes));
     }
@@ -468,24 +467,24 @@ export function BaseTable<TData, TSortField extends string = string>({
   // Обработчик события завершения перетаскивания для @dnd-kit
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     if (!over || active.id === over.id) {
       return;
     }
-    
+
     const currentOrder = [...table.getState().columnOrder];
     const activeIndex = currentOrder.indexOf(active.id as string);
     const overIndex = currentOrder.indexOf(over.id as string);
-    
+
     if (activeIndex < 0 || overIndex < 0) {
       return;
     }
-    
+
     // Создаем новый порядок колонок
     const newOrder = [...currentOrder];
     newOrder.splice(activeIndex, 1);
     newOrder.splice(overIndex, 0, active.id as string);
-    
+
     // Обновляем порядок колонок в таблице
     table.setColumnOrder(newOrder);
   };
@@ -498,20 +497,20 @@ export function BaseTable<TData, TSortField extends string = string>({
       if ('accessorKey' in col) return String(col.accessorKey);
       return '';
     }).filter(id => id !== '');
-    
+
     // Сброс видимости колонок (все видимы)
     const defaultVisibility = {};
-    
+
     // Сброс размеров колонок
     const defaultSizes = {};
-    
+
     // Применяем сброс
     table.setColumnOrder(defaultOrder);
     table.setColumnVisibility(defaultVisibility);
     setColumnSizes(defaultSizes);
     setIsReorderingEnabled(false);
     setIsResizingEnabled(false);
-    
+
     // Удаляем из localStorage
     if (typeof window !== 'undefined' && persistSettings) {
       localStorage.removeItem(`${tableId}-column-order`);
@@ -527,8 +526,8 @@ export function BaseTable<TData, TSortField extends string = string>({
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id} className="border-b border-gray-200 dark:border-gray-700">
             {headerGroup.headers.map((header) => (
-              <DraggableColumnHeader 
-                key={header.id} 
+              <DraggableColumnHeader
+                key={header.id}
                 header={header as Header<TData, unknown>}
                 isReorderingEnabled={isReorderingEnabled}
                 isResizingEnabled={isResizingEnabled}
@@ -548,8 +547,8 @@ export function BaseTable<TData, TSortField extends string = string>({
                   ${onRowClick ? 'cursor-pointer' : ''}`}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell 
-                    key={cell.id} 
+                  <TableCell
+                    key={cell.id}
                     className="py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis"
                     style={{ width: cell.column.getSize() }}
                   >
@@ -587,23 +586,23 @@ export function BaseTable<TData, TSortField extends string = string>({
   return (
     <div className={`w-full ${className}`}>
       {/* Панель управления с поиском и настройками */}
-      {searchColumn && (
-        <div className="flex items-center justify-between mb-6 px-4 pt-4">
-          <TableSearch 
-            placeholder={searchPlaceholder} 
+      <div className={`flex items-center ${searchColumn ? "justify-between" : "justify-end"} mb-6 px-4 pt-4`}>
+        {searchColumn && (
+          <TableSearch
+            placeholder={searchPlaceholder}
             onSearch={handleSearch}
             debounceMs={300}
           />
-          <TableColumnSettings 
-            columns={columnSettings} 
-            isReorderingEnabled={isReorderingEnabled}
-            isResizingEnabled={isResizingEnabled}
-            onToggleReordering={setIsReorderingEnabled}
-            onToggleResizing={setIsResizingEnabled}
-            onResetSettings={resetTableSettings}
-          />
-        </div>
-      )}
+        )}
+        <TableColumnSettings
+          columns={columnSettings}
+          isReorderingEnabled={isReorderingEnabled}
+          isResizingEnabled={isResizingEnabled}
+          onToggleReordering={setIsReorderingEnabled}
+          onToggleResizing={setIsResizingEnabled}
+          onResetSettings={resetTableSettings}
+        />
+      </div>
 
       {/* Индикаторы активных режимов */}
       {(isReorderingEnabled || isResizingEnabled) && (
@@ -626,7 +625,7 @@ export function BaseTable<TData, TSortField extends string = string>({
       {/* Таблица с индикатором загрузки */}
       <div className="w-full border border-gray-200 dark:border-gray-700 rounded-lg relative overflow-hidden">
         {isLoading && <TableLoadingOverlay />}
-        
+
         <div className="overflow-x-auto">
           <div className="min-w-full inline-block align-middle">
             {isReorderingEnabled ? (

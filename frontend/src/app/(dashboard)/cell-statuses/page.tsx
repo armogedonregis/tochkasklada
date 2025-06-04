@@ -173,6 +173,7 @@ export default function CellStatuses() {
             isDisabledSorting
             onEdit={modal.openEdit}
             onDelete={handleDeleteAdapter}
+            persistSettings={true}
           />
         </div>
       ) : (

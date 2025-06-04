@@ -214,7 +214,14 @@ export default function PaymentsStatisticsPage() {
               <Calendar
                 mode="single"
                 selected={dateRange.from}
-                onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
+                onSelect={(date) => {
+                  // Если выбрана дата "по" и она раньше новой даты "с" - сбрасываем дату "по"
+                  if (dateRange.to && date && date > dateRange.to) {
+                    setDateRange({ from: date, to: undefined });
+                  } else {
+                    setDateRange(prev => ({ ...prev, from: date }));
+                  }
+                }}
                 initialFocus
               />
             </PopoverContent>
@@ -231,6 +238,7 @@ export default function PaymentsStatisticsPage() {
                   "w-full justify-start text-left font-normal",
                   !dateRange.to && "text-muted-foreground"
                 )}
+                disabled={!dateRange.from}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange.to ? format(dateRange.to, "dd.MM.yyyy") : <span>Выберите дату</span>}
@@ -242,6 +250,10 @@ export default function PaymentsStatisticsPage() {
                 selected={dateRange.to}
                 onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
                 initialFocus
+                disabled={(date) => 
+                  !dateRange.from || 
+                  (dateRange.from ? date < new Date(dateRange.from.setHours(0, 0, 0, 0)) : false)
+                }
               />
             </PopoverContent>
           </Popover>
