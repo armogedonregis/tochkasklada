@@ -37,6 +37,21 @@ export class PaymentsController {
     });
   }
 
+  @Post('tilda')
+  @HttpCode(HttpStatus.OK) // Tilda ожидает 200 OK в ответ
+  handleTildaWebhook(@Body() payload: any, @Req() req: any) {
+    console.log('=== Tilda Payment Webhook ===');
+    console.log('Headers:', req.headers);
+    console.log('Body:', payload);
+
+    // Можно добавить проверку подписи, если Tilda её отправляет
+    // if (req.headers['x-tilda-signature'] !== expectedSignature) {
+    //   throw new UnauthorizedException('Invalid signature');
+    // }
+
+    return { status: 'success', message: 'Webhook received' };
+  }
+
   /**
    * Создание платежа администратором
    * 
