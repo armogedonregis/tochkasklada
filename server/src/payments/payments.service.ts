@@ -188,8 +188,8 @@ export class PaymentsService {
           }
         });
         
-        // Количество месяцев аренды (по умолчанию 1)
-        const rentalDays = data.rentalDays || 1;
+        // Длительность аренды по умолчанию 30 дней (раньше передавалась rentalDays)
+        const rentalDurationDays = 30;
         
         let rental;
         
@@ -198,7 +198,7 @@ export class PaymentsService {
           if (existingRental.clientId === user.client.id) {
             // Аренда принадлежит этому же клиенту - продлеваем ее
             const newEndDate = new Date(existingRental.endDate);
-            newEndDate.setDate(newEndDate.getDate() + rentalDays);
+            newEndDate.setDate(newEndDate.getDate() + rentalDurationDays);
             
             // Обновляем аренду
             rental = await this.prisma.cellRental.update({
@@ -215,7 +215,7 @@ export class PaymentsService {
               where: { id: payment.id },
               data: { 
                 cellRentalId: rental.id,
-                description: description || `Продление аренды ячейки #${cell.name} на ${rentalDays} дн.`
+                description: description || `Продление аренды ячейки #${cell.name} на ${rentalDurationDays} дн.`
               }
             });
           } else {
@@ -226,7 +226,7 @@ export class PaymentsService {
           // Создаем новую аренду
           const startDate = new Date();
           const endDate = new Date(startDate);
-          endDate.setDate(endDate.getDate() + rentalDays);
+          endDate.setDate(endDate.getDate() + rentalDurationDays);
           
           // Проверка cellId перед созданием аренды
           if (!data.cellId) {
@@ -249,7 +249,7 @@ export class PaymentsService {
             where: { id: payment.id },
             data: { 
               cellRentalId: rental.id,
-              description: description || `Аренда ячейки #${cell.name} на ${rentalDays} дн.`
+              description: description || `Аренда ячейки #${cell.name} на ${rentalDurationDays} дн.`
             }
           });
         }
@@ -292,7 +292,7 @@ export class PaymentsService {
     
     // Удаляем поля, которые не являются частью модели платежа
     const { 
-      cellRentalId, cellId, rentalMonths, extendRental, 
+      cellRentalId, cellId, extendRental, 
       detachRental, rentalStartDate, rentalEndDate, 
       ...paymentData 
     } = updateData;
@@ -341,9 +341,8 @@ export class PaymentsService {
         
         // Если нужно продлить аренду
         if (extendRental === true && !rentalEndDate) {
-          const months = rentalMonths || 1;
           const newEndDate = new Date(rental.endDate);
-          newEndDate.setMonth(newEndDate.getMonth() + months);
+          newEndDate.setMonth(newEndDate.getMonth() + 1);
           updateRentalData.endDate = newEndDate;
           updateRentalData.lastExtendedAt = new Date();
           updateRentalData.extensionCount = { increment: 1 };
@@ -410,9 +409,8 @@ export class PaymentsService {
         if (rentalEndDate) {
           endDate = new Date(rentalEndDate);
         } else {
-          const months = rentalMonths || 1;
           endDate = new Date(startDate);
-          endDate.setMonth(endDate.getMonth() + months);
+          endDate.setMonth(endDate.getMonth() + 1);
         }
         
         // Создаем новую аренду
@@ -889,5 +887,178 @@ export class PaymentsService {
         `Ошибка при получении статистики по локациям: ${error.message}`
       );
     }
+  }
+
+  async createTildaPayment(payload: any) {
+    // 1. Поля могут приходить с разным регистром
+    const email = payload.email || payload.Email || payload.EMAIL;
+    const phone = payload.phone || payload.Phone || payload.PHONE;
+    const name = payload.name || payload.Name || 'Клиент из Tilda';
+
+    // Допустимые источники для size/location
+    let sizeform: string | undefined = payload.sizeform;
+
+    // Если sizeform нет, пробуем individualnumber(+2)
+    if (!sizeform && payload.individualnumber2) {
+      sizeform = payload.individualnumber2; // например "XS-1-shu"
+    }
+
+    // 2. Если есть строка payment – в ней JSON, достаем сумму и products
+    let paymentJson: any = null;
+    if (typeof payload.payment === 'string') {
+      try {
+        paymentJson = JSON.parse(payload.payment);
+      } catch (e) {
+        console.error('Не удалось распарсить поле payment:', e.message);
+      }
+    }
+
+    // 3. Сумма
+    let parsedAmount: number | undefined = payload.amount ? Number(payload.amount) : undefined;
+    if (!parsedAmount && paymentJson?.amount) {
+      parsedAmount = Number(paymentJson.amount);
+    }
+    // Гарантируем число (>=0)
+    const amountNum = parsedAmount && !isNaN(parsedAmount) ? parsedAmount : 0;
+
+    // 4. Если sizeform всё ещё пусто, пробуем вытащить из products[0]
+    if (!sizeform && Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
+      // Пример строки: "Кладовка 3,5 м² Шушары (XS-1-shu, Срок аренды: 1 месяц)=3590"
+      const prod = paymentJson.products[0] as string;
+      const match = prod.match(/\(([^,)]+)-[^,]+/); // захватываем часть до первого "-" внутри скобок
+      if (match) {
+        sizeform = match[1]; // "XS"
+      }
+      // А локацию попытаемся взять из той же скобки после "-"
+      const locMatch = prod.match(/-([^)\s]+)\)/);
+      if (locMatch) {
+        sizeform = `${(match ? match[1] : '').toUpperCase()} ${locMatch[1]}`; // "XS shu"
+      }
+    }
+
+    if (!email) {
+      throw new BadRequestException('Email не был получен от Tilda');
+    }
+  
+    // 1. Найти или создать пользователя
+    let user = await this.prisma.user.findUnique({
+      where: { email },
+      include: { client: true },
+    });
+  
+    if (!user) {
+      // Если пользователя нет, создаем его и связанного клиента
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          // Пароль можно генерировать случайный или установить временный
+          password: uuidv4(), 
+          client: {
+            create: {
+              name: name || 'Клиент из Tilda',
+              phones: {
+                create: {
+                  phone: phone || '',
+                },
+              },
+            },
+          },
+        },
+        include: { client: true },
+      });
+    } else if (!user.client) {
+      // Если пользователь есть, а клиента нет - создаем клиента
+      const client = await this.prisma.client.create({
+        data: {
+          userId: user.id,
+          name: name || 'Клиент из Tilda',
+           phones: {
+            create: {
+              phone: phone || '',
+            },
+          },
+        }
+      });
+      // Перезагружаем пользователя с данными клиента
+      user = { ...user, client };
+    }
+
+    if (!user || !user.client) {
+        throw new InternalServerErrorException('Не удалось найти или создать клиента для пользователя');
+    }
+  
+    // 2. Распарсить sizeform и найти ячейку
+    // TODO: Добавить более надежный парсинг, если форматы могут отличаться
+    const [size, location] = (sizeform || '').split(' ');
+    if (!size || !location) {
+      // Если нет данных о ячейке, просто создаем платеж без привязки
+      console.log(`Создание простого платежа для ${email}, т.к. не удалось распознать ячейку из '${sizeform}'`);
+      // Здесь можно просто записать лид в базу или создать платеж с описанием
+      return this.createPaymentByAdmin({
+        userId: user.id,
+        amount: payload.amount || 0, // Убедитесь что Tilda присылает amount
+        description: `Заявка с Tilda: ${payload.description || sizeform || ''}`,
+        status: false, // Статус 'не оплачено'
+      });
+    }
+
+    const cell = await this.prisma.cells.findFirst({
+        where: {
+            size: {
+                name: size
+            },
+            container: {
+                location: {
+                    name: {
+                        contains: location,
+                        mode: 'insensitive'
+                    }
+                }
+            },
+            status: {
+                name: 'Свободна'
+            }
+        }
+    });
+
+    if (!cell) {
+        // Если ячейка не найдена, можно создать просто платеж-заявку
+        console.log(`Свободная ячейка ${size} в ${location} не найдена. Создание заявки.`);
+        return this.createPaymentByAdmin({
+            userId: user.id,
+            amount: payload.amount || 0, // Убедитесь что Tilda присылает amount
+            description: `Заявка с Tilda на ячейку ${size} в ${location} (ячейка не найдена)`,
+            status: false,
+        });
+    }
+  
+    // 3. Создать/заявить платеж через существующий метод
+    if (amountNum <= 0) {
+        // Если суммы нет, можно просто создать заявку без суммы
+        console.log(`Некорректная сумма. Создание заявки для ${email} на ячейку ${size} в ${location}.`);
+        return this.createPaymentByAdmin({
+            userId: user.id,
+            amount: 0,
+            description: `Заявка с Tilda на ячейку ${size} в ${location}`,
+            status: false,
+            cellId: cell.id,
+        });
+    }
+
+    // Обрабатываем только формы с именем 'Cart'
+    if (payload.formname && payload.formname !== 'Cart') {
+      console.log(`Tilda webhook ignored: unsupported formname '${payload.formname}'`);
+      return { success: true, message: `Форма '${payload.formname}' проигнорирована` };
+    }
+
+    return this.createPaymentByAdmin({
+      userId: user.id,
+      cellId: cell.id,
+      amount: amountNum,
+      description: `Аренда ячейки ${size} в ${location} (из Tilda)`,
+      // другие параметры, если они приходят из Tilda
+      // rentalMonths: payload.rentalMonths || 1
+      status: false, // Платеж должен быть создан как неоплаченный
+    });
   }
 } 

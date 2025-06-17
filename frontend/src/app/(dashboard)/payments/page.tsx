@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   useGetAllPaymentsQuery,
   useAdminCreatePaymentMutation,
@@ -26,19 +26,18 @@ import { SortDirection } from '@/services/services.types';
 import { Client } from '@/services/clientsService/clients.types';
 import { useLazyGetAdminCellsQuery } from '@/services/cellService/cellsApi';
 
-// Схема валидации для платежей
-const paymentValidationSchema = yup.object({
-  userId: yup.string().required('Клиент обязателен'),
+// Функция для создания схемы валидации (userId обязателен только при создании)
+const getPaymentValidationSchema = (isEdit: boolean) => yup.object({
+  userId: isEdit ? yup.string().optional() : yup.string().required('Клиент обязателен'),
   amount: yup.number().required('Сумма обязательна').min(1, 'Сумма должна быть больше 0'),
   description: yup.string().optional(),
   status: yup.boolean().default(false),
-  cellId: yup.string().optional(),
-  rentalDays: yup.number(),
+  cellId: yup.string().optional()
 });
 
 // Тип для полей формы
 interface PaymentFormFields {
-  userId: string;
+  userId?: string;
   amount: number;
   description: string;
   status: boolean;
@@ -92,7 +91,7 @@ const PaymentsPage = () => {
         }).unwrap();
         toast.success('Платеж успешно обновлен');
       } else {
-        await adminCreatePayment(values).unwrap();
+        await adminCreatePayment(values as any).unwrap();
         toast.success('Платеж создан успешно');
       }
     },
@@ -101,6 +100,8 @@ const PaymentsPage = () => {
     }
   });
 
+  // Схема валидации зависит от режима (создание/редактирование)
+  const validationSchema = useMemo(() => getPaymentValidationSchema(!!modal.editItem), [modal.editItem]);
 
   // Функция для поиска ячеек
   const handleCellsSearch = (query: string) => {
@@ -328,7 +329,8 @@ const PaymentsPage = () => {
 
   // Поля формы для модального окна
   const modalFields = [
-    {
+    // Показываем выбор клиента только при создании платежа
+    ...(!modal.editItem ? [{
       type: 'searchSelect' as const,
       fieldName: 'userId' as const,
       label: 'Клиент',
@@ -338,7 +340,7 @@ const PaymentsPage = () => {
         label: `${client.name} (${client.user?.email || 'Нет email'})`,
         value: client.userId
       }))
-    },
+    }] : []),
     {
       type: 'input' as const,
       inputType: "number",
@@ -367,13 +369,6 @@ const PaymentsPage = () => {
         label: cell.container.location.short_name + '-' + cell.name,
         value: cell.id
       }))
-    },
-    {
-      type: 'input' as const,
-      inputType: "number",
-      fieldName: 'rentalDays' as const,
-      label: "Количество дней аренды",
-      placeholder: "Выберите количество дней аренды",
     }
   ];
 
@@ -427,23 +422,20 @@ const PaymentsPage = () => {
         onClose={modal.closeModal}
         title={modal.editItem ? 'Редактировать платеж' : 'Добавить платеж'}
         fields={modalFields}
-        validationSchema={paymentValidationSchema}
+        validationSchema={validationSchema}
         onSubmit={modal.handleSubmit}
         submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
         defaultValues={modal.editItem ? {
-          userId: modal.editItem.userId,
           amount: modal.editItem.amount,
           description: modal.editItem.description,
           status: modal.editItem.status,
-          cellId: modal.editItem.cellId,
-          rentalDays: 1,
+          cellId: modal.editItem.cellId
         } : {
           userId: '',
           amount: undefined,
           description: '',
           status: false,
-          cellId: '',
-          rentalDays: undefined
+          cellId: ''
         }}
       />
     </div>

@@ -21,14 +21,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, ChevronDown, ChevronRight, User } from "lucide-react";
 import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStatusesApi';
 import { useLazyGetClientsQuery } from '@/services/clientsService/clientsApi';
 import { useLazyGetAdminCellsQuery } from '@/services/cellService/cellsApi';
-import { differenceInDays } from 'date-fns/differenceInDays';
+import { differenceInDays, addDays } from 'date-fns';
 
 // Схема валидации для аренды ячейки
 const cellRentalValidationSchema = yup.object({
@@ -36,6 +36,7 @@ const cellRentalValidationSchema = yup.object({
   clientId: yup.string().required('ID клиента обязательно'),
   startDate: yup.date(),
   endDate: yup.date(),
+  days: yup.number().min(1, 'Минимум 1 день').optional(),
   statusType: yup.string(),
 });
 
@@ -116,16 +117,32 @@ export default function CellRentalsPage() {
   const [deleteCellRental] = useDeleteCellRentalMutation();
 
   // Хук для управления модальным окном
-  const modal = useFormModal<CreateCellRentalDto, CellRental>({
+  type RentalFormValues = CreateCellRentalDto & { days?: number };
+
+  const modal = useFormModal<RentalFormValues, CellRental>({
     onSubmit: async (values) => {
+      // Вычисляем endDate, если указали количество дней
+      let { days, startDate, endDate, ...dto } = values as any;
+
+      if (days && startDate && !endDate) {
+        const dateEnd = addDays(new Date(startDate), Number(days));
+        endDate = dateEnd.toISOString().split('T')[0];
+      }
+
+      const payload: CreateCellRentalDto | UpdateCellRentalDto = {
+        ...dto,
+        startDate,
+        endDate,
+      } as any;
+
       if (modal.editItem) {
         await updateCellRental({
           id: modal.editItem.id,
-          ...values
-        }).unwrap();
+          ...(payload as any)
+        } as any).unwrap();
         toast.success('Аренда ячейки успешно обновлена');
       } else {
-        await createCellRental(values).unwrap();
+        await createCellRental(payload as any).unwrap();
         toast.success('Аренда ячейки успешно создана');
       }
     },
@@ -185,6 +202,13 @@ export default function CellRentalsPage() {
       placeholder: 'Выберите дату окончания'
     },
     {
+      type: 'input' as const,
+      inputType: 'number',
+      fieldName: 'days' as const,
+      label: 'Дней аренды',
+      placeholder: 'Введите количество дней'
+    },
+    {
       type: 'select' as const,
       fieldName: 'rentalStatus' as const,
       label: 'Статус аренды',
@@ -199,9 +223,83 @@ export default function CellRentalsPage() {
     }
   ];
 
+  const [expandedRentals, setExpandedRentals] = useState<string[]>([]);
+
+  const toggleExpandRental = (rentalId: string) => {
+    setExpandedRentals(prev =>
+      prev.includes(rentalId)
+        ? prev.filter(id => id !== rentalId)
+        : [...prev, rentalId]
+    );
+  };
+
+  const ExpandedRentalInfo = ({ rental }: { rental: CellRental }) => {
+    const client = rental?.client;
+
+    if (!client) {
+      return (
+        <div className="p-4 pl-12 text-sm text-gray-500">Информация о клиенте недоступна</div>
+      );
+    }
+
+    return (
+      <div className="pl-12 pr-4 py-4 border-t border-gray-100">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4">
+          <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+            <User size={16} />
+            Информация о клиенте
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">ФИО:</p>
+              <p className="font-medium">{client?.name}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Email:</p>
+              <p className="font-medium">{client?.user?.email || 'Не указан'}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-gray-500 dark:text-gray-400 mb-1">Телефоны:</p>
+              <div className="font-medium space-y-1">
+                {client.phones && client.phones.length > 0 ? (
+                  client.phones.map((phone: any, index: number) => (
+                    <div key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded">
+                      {typeof phone === 'object' ? phone.phone || phone.number : phone}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-400">Телефоны не указаны</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Определение колонок таблицы
   const columns: ColumnDef<CellRental>[] = [
+    {
+      id: 'expander',
+      header: '',
+      cell: ({ row }) => {
+        const isExpanded = expandedRentals.includes(row.original.id);
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpandRental(row.original.id);
+            }}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </button>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: 'id',
       header: 'ID',
@@ -360,6 +458,9 @@ export default function CellRentalsPage() {
         pagination={tableControls.pagination}
         sorting={tableControls.sorting}
         persistSettings={true}
+        renderRowSubComponent={({ row }) =>
+          expandedRentals.includes(row.original.id) ? <ExpandedRentalInfo rental={row.original} /> : null
+        }
       />
 
       {/* Модальное окно */}
@@ -376,13 +477,15 @@ export default function CellRentalsPage() {
           clientId: modal.editItem.clientId,
           startDate: formatDateForInput(modal.editItem.startDate),
           endDate: formatDateForInput(modal.editItem.endDate),
-          rentalStatus: modal.editItem.rentalStatus
+          rentalStatus: modal.editItem.rentalStatus,
+          days: differenceInDays(new Date(modal.editItem.endDate), new Date(modal.editItem.startDate))
         } : {
           cellId: '',
           clientId: '',
           startDate: '',
           endDate: '',
-          rentalStatus: 'ACTIVE'
+          rentalStatus: 'ACTIVE',
+          days: undefined
         }}
       />
     </div>

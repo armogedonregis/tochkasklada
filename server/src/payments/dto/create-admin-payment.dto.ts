@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsUUID, IsInt, Min, IsBoolean, IsUrl } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional, IsUUID, Min, IsBoolean, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateAdminPaymentDto {
@@ -33,12 +33,6 @@ export class CreateAdminPaymentDto {
   @IsOptional()
   @IsUUID()
   cellId?: string;        // ID ячейки для аренды
-
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  @Min(1)
-  rentalDays?: number;  // Количество месяцев аренды
 
   @IsOptional()
   @IsUUID()

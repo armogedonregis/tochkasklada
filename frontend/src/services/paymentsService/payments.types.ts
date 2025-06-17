@@ -36,7 +36,6 @@ export interface CreatePaymentDto {
   description: string;
   status?: boolean;
   cellId?: string;
-  rentalDays?: number;
   statusId?: string;
 }
 
@@ -46,7 +45,6 @@ export interface CreateAdminPaymentDto {
   description?: string;
   status?: boolean;
   cellId?: string;
-  rentalDays?: number;
   statusId?: string;
 }
 
@@ -56,7 +54,6 @@ export interface UpdatePaymentDto {
   description?: string;
   status?: boolean;
   cellId?: string;
-  rentalDays?: number;
   statusId?: string;
 }
 

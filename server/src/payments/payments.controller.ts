@@ -11,7 +11,8 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  Query
+  Query,
+  UnauthorizedException
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -41,15 +42,17 @@ export class PaymentsController {
   @HttpCode(HttpStatus.OK) // Tilda ожидает 200 OK в ответ
   handleTildaWebhook(@Body() payload: any, @Req() req: any) {
     console.log('=== Tilda Payment Webhook ===');
-    console.log('Headers:', req.headers);
+
+    // Проверка секретного ключа из заголовков
+    const secretKey = req.headers['x-tilda-webhook-secret'];
+    if (!secretKey || secretKey !== process.env.TILDA_WEBHOOK_SECRET) {
+      throw new UnauthorizedException('Invalid or missing webhook secret');
+    }
+
     console.log('Body:', payload);
-
-    // Можно добавить проверку подписи, если Tilda её отправляет
-    // if (req.headers['x-tilda-signature'] !== expectedSignature) {
-    //   throw new UnauthorizedException('Invalid signature');
-    // }
-
-    return { status: 'success', message: 'Webhook received' };
+    
+    // Передаем данные в сервис для обработки
+    return this.paymentsService.createTildaPayment(payload);
   }
 
   /**

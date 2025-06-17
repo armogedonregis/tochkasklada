@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsUUID, IsInt, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreatePaymentDto {
@@ -20,9 +20,5 @@ export class CreatePaymentDto {
   @IsUUID()
   cellId?: string; // ID ячейки для аренды
 
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  @Min(1)
-  rentalDays?: number; // Количество месяцев аренды
+  // rentalDays свойство удалено, продолжительность аренды вычисляется на основе дат
 } 

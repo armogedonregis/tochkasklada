@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, IsString, IsBoolean, IsUUID, IsInt, Min, IsDateString } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsBoolean, IsUUID, Min, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdatePaymentDto {
@@ -24,12 +24,6 @@ export class UpdatePaymentDto {
   @IsOptional()
   @IsUUID()
   cellId?: string;          // ID ячейки (для создания новой аренды)
-
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  @Min(1)
-  rentalDays?: number;    // Количество месяцев аренды
 
   @IsOptional()
   @IsBoolean()
