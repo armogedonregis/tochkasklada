@@ -107,9 +107,11 @@ const PaymentsPage = () => {
   const currentCellOption = useMemo(() => {
     if (!modal.editItem) return null;
     const cell: Cell | undefined = (modal.editItem as any).cellRental?.cell;
+    console.log(modal.editItem)
     if (cell) {
+      const locShort = cell.container?.location?.short_name;
       return {
-        label: `${cell.container?.location?.short_name || ''}-${cell.name}`,
+        label: locShort ? `${locShort}-${cell.name}` : cell.name,
         value: cell.id
       };
     }
@@ -382,9 +384,10 @@ const PaymentsPage = () => {
       placeholder: 'Введите ID ячейки',
       onSearch: handleCellsSearch,
       options: [
-        ...(currentCellOption ? [currentCellOption] : []),
         ...cellsData?.data.map((cell: any) => ({
-          label: cell.container.location.short_name + '-' + cell.name,
+          label: cell.container?.location?.short_name 
+            ? `${cell.container.location.short_name}-${cell.name}`
+            : cell.name,
           value: cell.id
         }))
       ]
@@ -448,7 +451,7 @@ const PaymentsPage = () => {
           amount: modal.editItem.amount,
           description: modal.editItem.description,
           status: modal.editItem.status,
-          cellId: modal.editItem.cellId ?? modal.editItem.cellRental?.cell?.id
+          cellId: modal.editItem.cellRental?.cell?.id || ''
         } : {
           userId: '',
           amount: undefined,

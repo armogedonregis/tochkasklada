@@ -772,7 +772,15 @@ export class PaymentsService {
           },
           cellRental: {
             include: {
-              cell: true
+              cell: {
+                include: {
+                  container: {
+                    include: {
+                      location: true
+                    }
+                  }
+                }
+              }
             }
           }
         }
