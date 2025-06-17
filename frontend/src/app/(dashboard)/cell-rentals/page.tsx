@@ -121,18 +121,18 @@ export default function CellRentalsPage() {
 
   const modal = useFormModal<RentalFormValues, CellRental>({
     onSubmit: async (values) => {
-      // Вычисляем endDate, если указали количество дней
-      let { days, startDate, endDate, ...dto } = values as any;
+      const { days, startDate, endDate: initialEnd, ...dto } = values as any;
 
-      if (days && startDate && !endDate) {
+      let computedEnd = initialEnd;
+      if (days && startDate && !computedEnd) {
         const dateEnd = addDays(new Date(startDate), Number(days));
-        endDate = dateEnd.toISOString().split('T')[0];
+        computedEnd = dateEnd.toISOString().split('T')[0];
       }
 
       const payload: CreateCellRentalDto | UpdateCellRentalDto = {
         ...dto,
         startDate,
-        endDate,
+        endDate: computedEnd,
       } as any;
 
       if (modal.editItem) {
