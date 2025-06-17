@@ -25,6 +25,7 @@ import { Payment, PaymentSortField } from '@/services/paymentsService/payments.t
 import { SortDirection } from '@/services/services.types';
 import { Client } from '@/services/clientsService/clients.types';
 import { useLazyGetAdminCellsQuery } from '@/services/cellService/cellsApi';
+import { Cell } from '@/services/cellService/cell.types';
 
 // Функция для создания схемы валидации (userId обязателен только при создании)
 const getPaymentValidationSchema = (isEdit: boolean) => yup.object({
@@ -67,7 +68,6 @@ const PaymentsPage = () => {
   const [getCells, { data: cellsData = { data: [] } }] = useLazyGetAdminCellsQuery();
   const [getClients, { data: clientsData = { data: [] } }] = useLazyGetClientsQuery()
 
-
   // Данные платежей из пагинированного ответа
   const payments = data?.data || [];
   // Используем мета-информацию из ответа
@@ -102,6 +102,22 @@ const PaymentsPage = () => {
 
   // Схема валидации зависит от режима (создание/редактирование)
   const validationSchema = useMemo(() => getPaymentValidationSchema(!!modal.editItem), [modal.editItem]);
+
+  // Опция текущей ячейки для селекта при редактировании
+  const currentCellOption = useMemo(() => {
+    if (!modal.editItem) return null;
+    const cell: Cell | undefined = (modal.editItem as any).cellRental?.cell;
+    if (cell) {
+      return {
+        label: `${cell.container?.location?.short_name || ''}-${cell.name}`,
+        value: cell.id
+      };
+    }
+    if ((modal.editItem as any).cellId) {
+      return { label: `Ячейка ${(modal.editItem as any).cellId}`, value: (modal.editItem as any).cellId };
+    }
+    return null;
+  }, [modal.editItem]);
 
   // Функция для поиска ячеек
   const handleCellsSearch = (query: string) => {
@@ -365,10 +381,13 @@ const PaymentsPage = () => {
       label: 'Ячейка',
       placeholder: 'Введите ID ячейки',
       onSearch: handleCellsSearch,
-      options: cellsData?.data.map((cell: any) => ({
-        label: cell.container.location.short_name + '-' + cell.name,
-        value: cell.id
-      }))
+      options: [
+        ...(currentCellOption ? [currentCellOption] : []),
+        ...cellsData?.data.map((cell: any) => ({
+          label: cell.container.location.short_name + '-' + cell.name,
+          value: cell.id
+        }))
+      ]
     }
   ];
 
@@ -429,7 +448,7 @@ const PaymentsPage = () => {
           amount: modal.editItem.amount,
           description: modal.editItem.description,
           status: modal.editItem.status,
-          cellId: modal.editItem.cellId
+          cellId: modal.editItem.cellId ?? modal.editItem.cellRental?.cell?.id
         } : {
           userId: '',
           amount: undefined,
