@@ -101,7 +101,7 @@ export interface PhoneInputFormArea<T> extends BaseFormArea {
   type: 'phoneInput';
   fieldName: Path<T>;
   placeholder?: string;
-  multiplePhones?: boolean; // Разрешить добавить несколько номеров
+  multiplePhones?: boolean; // Разрешить добавить несколько номеров (используйте для массива телефонов)
 }
 
 // Объединение всех типов

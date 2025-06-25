@@ -21,24 +21,21 @@ import { useFormModal } from '@/hooks/useFormModal';
 const clientValidationSchema = yup.object({
   name: yup.string().required('ФИО обязательно'),
   email: yup.string().email('Введите корректный email').required('Email обязателен'),
-  phones: yup.string()
-    .required('Введите хотя бы один номер телефона')
-    .test(
-      'has-valid-phones',
-      'Введите номера в формате +7XXXXXXXXXX, разделенные запятыми',
-      (value) => {
-        if (!value) return false;
-        const phones = value.split(',').map((p) => p.trim()).filter((p) => p.length > 0);
-        return phones.length > 0;
-      }
+  phones: yup
+    .array()
+    .of(
+      yup
+        .string()
+        .matches(/^\+7\d{10}$/, 'Телефон должен быть в формате +7XXXXXXXXXX')
     )
+    .min(1, 'Введите хотя бы один номер телефона')
 });
 
 // Типы для формы
 interface ClientFormFields {
   name: string;
   email: string;
-  phones: string; // Телефоны будут храниться как строка с разделителем
+  phones: string[]; // Телефоны теперь массив
 }
 
 export default function ClientsPage() {
@@ -67,36 +64,22 @@ export default function ClientsPage() {
   const [updateClient] = useUpdateClientMutation();
   const [deleteClient] = useDeleteClientMutation();
 
-  // Функция для преобразования строки телефонов в массив
-  const phonesToArray = (phoneStr: string): string[] => {
-    return phoneStr.split(',').map((p) => p.trim()).filter((p) => p.length > 0);
-  };
-
-  // Функция для преобразования массива телефонов в строку
-  const phonesToString = (phones: any[]): string => {
-    return phones
-      ? phones.map((p) => typeof p === 'object' ? p.phone || p.number : p).join(', ')
-      : '';
-  };
-
   // Хук для управления модальным окном
   const modal = useFormModal<ClientFormFields, Client>({
     onSubmit: async (values) => {
-      const phones = phonesToArray(values.phones);
-      
       if (modal.editItem) {
         await updateClient({ 
           id: modal.editItem.id,
           name: values.name,
           email: values.email,
-          phones: phones
+          phones: values.phones
         }).unwrap();
         toast.success('Клиент успешно обновлен');
       } else {
         await createClient({
           name: values.name,
           email: values.email,
-          phones: phones
+          phones: values.phones
         }).unwrap();
         toast.success('Клиент успешно создан');
       }
@@ -140,7 +123,7 @@ export default function ClientsPage() {
       header: 'Телефоны',
       cell: ({ row }) => {
         const phones = row.original.phones;
-        return <div>{phonesToString(phones)}</div>;
+        return <div>{Array.isArray(phones) ? phones.map((p: any) => p.phone).join(', ') : ''}</div>;
       }
     },
     {
@@ -167,10 +150,10 @@ export default function ClientsPage() {
       placeholder: 'email@example.com'
     },
     {
-      type: 'input' as const,
+      type: 'phoneInput' as const,
       fieldName: 'phones' as const,
       label: 'Телефоны',
-      placeholder: '+79001234567, +79001234568'
+      multiplePhones: true
     }
   ];
 
@@ -220,11 +203,11 @@ export default function ClientsPage() {
         defaultValues={modal.editItem ? {
           name: modal.editItem.name,
           email: modal.editItem.user?.email || '',
-          phones: phonesToString(modal.editItem.phones || [])
+          phones: Array.isArray(modal.editItem.phones) ? modal.editItem.phones.map((p: any) => p.phone) : []
         } : {
           name: '',
           email: '',
-          phones: ''
+          phones: []
         }}
       />
     </div>

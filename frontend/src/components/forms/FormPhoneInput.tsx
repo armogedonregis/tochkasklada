@@ -29,45 +29,47 @@ const FormPhoneInput = <T extends FieldValues>({
   multiplePhones = false,
   onChange
 }: FormPhoneInputProps<T>) => {
-  // Для единичного номера или списка номеров
   const [phones, setPhones] = useState<string[]>([]);
+  const initialized = React.useRef(false);
 
-  // Конфигурация маски для номера телефона
-  const maskOptions = {
-    mask: '+{7} (000) 000-00-00',
-    lazy: false,
-    placeholderChar: '_'
-  };
-
-  // При монтировании компонента или обновлении значения из формы
+  // Инициализация только при первом рендере или смене клиента
   useEffect(() => {
-    const value = form.getValues(name);
-    if (value) {
-      if (multiplePhones && Array.isArray(value)) {
-        setPhones(value);
-      } else if (typeof value === 'string') {
-        setPhones([value]);
+    if (!initialized.current) {
+      const value = form.getValues(name);
+      if (value) {
+        if (multiplePhones && Array.isArray(value)) {
+          setPhones(value);
+        } else if (typeof value === 'string') {
+          setPhones([value]);
+        }
+      } else {
+        setPhones(multiplePhones ? [] : ['']);
       }
-    } else {
-      setPhones(multiplePhones ? [] : ['']);
+      initialized.current = true;
     }
+    // eslint-disable-next-line
   }, [form, name, multiplePhones]);
 
-  // Обновляем значение формы при изменении телефонов
+  // Синхронизация с формой только при изменении phones пользователем
   useEffect(() => {
+    if (!initialized.current) return; // Пропускаем первый рендер
     if (phones.length > 0) {
       if (multiplePhones) {
-        // Используем any для обхода проверки типов, так как мы знаем, что структура данных соответствует форме
         form.setValue(name, phones as any, { shouldValidate: true });
       } else {
-        // Если режим одного телефона, берем только первый
         form.setValue(name, phones[0] as any, { shouldValidate: true });
       }
     } else {
-      // Если нет телефонов, устанавливаем пустое значение
       form.setValue(name, (multiplePhones ? [] : '') as any, { shouldValidate: true });
     }
-  }, [phones, form, name, multiplePhones]);
+    // eslint-disable-next-line
+  }, [phones]);
+
+  const maskOptions = {
+    mask: '+{7} (000) 000-00-00',
+    lazy: true,
+    placeholderChar: '_'
+  };
 
   // Обработчик изменения значений телефонных номеров
   const handlePhoneChange = (index: number, value: string) => {
