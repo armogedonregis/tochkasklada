@@ -979,6 +979,12 @@ export class PaymentsService {
     if (isNaN(amountNum) || amountNum < 0) amountNum = 0;
     console.log('Tilda amount parsed:', amountNum);
 
+    // 4.1 Формируем description из products, если есть
+    let tildaDescription = '';
+    if (Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
+      tildaDescription = paymentJson.products.join('; ');
+    }
+
     // 5. Если sizeform нет, пробуем из products[0] (для размера)
     if (!sizeform && Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
       const prod = paymentJson.products[0] as string;
@@ -1075,7 +1081,7 @@ export class PaymentsService {
       return this.createPaymentByAdmin({
         userId: user.id,
         amount: amountNum, // Корректная сумма
-        description: `Заявка с Tilda${cellNumber ? ` на ячейку ${cellNumber}` : ''}${sizeform ? ` (${sizeform})` : ''}`,
+        description: tildaDescription || `Заявка с Tilda${cellNumber ? ` на ячейку ${cellNumber}` : ''}${sizeform ? ` (${sizeform})` : ''}`,
         status: false,
       });
     }
@@ -1088,7 +1094,7 @@ export class PaymentsService {
         return this.createPaymentByAdmin({
           userId: user.id,
           amount: 0,
-          description: `Заявка с Tilda на ячейку ${cell.name}`,
+          description: tildaDescription || `Заявка с Tilda на ячейку ${cell.name}`,
           status: false,
           cellId: cell.id,
         });
@@ -1097,7 +1103,7 @@ export class PaymentsService {
         return this.createPaymentByAdmin({
           userId: user.id,
           amount: 0,
-          description: `Заявка с Tilda (ячейка не определена)`,
+          description: tildaDescription || `Заявка с Tilda (ячейка не определена)`,
           status: false,
         });
       }
@@ -1108,7 +1114,7 @@ export class PaymentsService {
         userId: user.id,
         cellId: cell.id,
         amount: amountNum,
-        description: `Аренда ячейки ${cell.name} (из Tilda)`,
+        description: tildaDescription || `Аренда ячейки ${cell.name} (из Tilda)` ,
         status: false, // Платеж должен быть создан как неоплаченный
       });
     } else {
@@ -1116,7 +1122,7 @@ export class PaymentsService {
       return this.createPaymentByAdmin({
         userId: user.id,
         amount: amountNum,
-        description: `Аренда ячейки (ячейка не определена, из Tilda)`,
+        description: tildaDescription || `Аренда ячейки (ячейка не определена, из Tilda)`,
         status: false,
       });
     }
