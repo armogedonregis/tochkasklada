@@ -564,15 +564,31 @@ export class PaymentsService {
 
     // Если у платежа была привязка к аренде – проверяем, остались ли ещё платежи
     if (cellRentalId) {
-      const remainingPaymentsCount = await this.prisma.payment.count({
-        where: { cellRentalId }
+      const remainingPayments = await this.prisma.payment.findMany({
+        where: { cellRentalId },
+        orderBy: { createdAt: 'desc' }
       });
+      const remainingPaymentsCount = remainingPayments.length;
 
-      // Если платежей не осталось – удаляем аренду
       if (remainingPaymentsCount === 0) {
+        // Если платежей не осталось – удаляем аренду
         await this.prisma.cellRental.delete({
           where: { id: cellRentalId }
         });
+      } else {
+        // Если остались другие платежи – откатываем срок аренды на 30 дней
+        // Получаем текущую аренду
+        const rental = await this.prisma.cellRental.findUnique({
+          where: { id: cellRentalId }
+        });
+        if (rental) {
+          const newEndDate = new Date(rental.endDate);
+          newEndDate.setDate(newEndDate.getDate() - 30);
+          await this.prisma.cellRental.update({
+            where: { id: cellRentalId },
+            data: { endDate: newEndDate }
+          });
+        }
       }
     }
     
