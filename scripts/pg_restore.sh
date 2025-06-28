@@ -31,7 +31,21 @@ cd "$COMPOSE_PROJECT_DIR"
 # ——— ВОССТАНОВЛЕНИЕ ———
 echo "Restoring database $DB_NAME from: $BACKUP_FILE"
 
-# Восстанавливаем базу (контейнеры продолжают работать)
+# Сначала очищаем базу данных (удаляем все таблицы)
+echo "Clearing existing database..."
+docker compose exec -T postgres psql -U "${POSTGRES_USER:-postgres}" "$DB_NAME" -c "
+DO \$\$ 
+DECLARE 
+    r RECORD;
+BEGIN
+    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+    END LOOP;
+END \$\$;
+"
+
+# Восстанавливаем базу из бэкапа
+echo "Restoring from backup..."
 gunzip -c "$BACKUP_FILE" | docker compose exec -T postgres psql -U "${POSTGRES_USER:-postgres}" "$DB_NAME"
 
 echo "Restore completed successfully!" 
