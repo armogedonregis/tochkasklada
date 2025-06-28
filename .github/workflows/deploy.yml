@@ -31,23 +31,24 @@ jobs:
             # Исправляем git ownership проблему
             git config --global --add safe.directory /var/www/html/tochkasklada
             
+            # Исправляем права на файлы
+            chown -R root:root .
+            chmod 644 .env
+            
             # Получаем последние изменения из репозитория
             git pull origin main
             
             # Создаем/обновляем .env файл из секретов
             echo "${{ secrets.ENV_FILE }}" > .env
+            chmod 644 .env
             
-            # Останавливаем контейнеры
-            docker-compose down
-            
-            # Пересобираем и запускаем
-            docker-compose build --no-cache
-            docker-compose up -d
+            # Перезапускаем приложение через Makefile
+            make rebuild
             
             # Ждем запуска контейнеров
             sleep 10
             
-            # Применяем миграции
-            docker-compose exec -T api npx prisma migrate deploy
+            # Применяем миграции через Makefile
+            make migrate
             
             echo "Deployment completed successfully" 

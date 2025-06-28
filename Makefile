@@ -28,17 +28,17 @@ ps:
 
 # Применение миграций Prisma
 migrate:
-	docker-compose exec api pnpm prisma migrate deploy
-	docker-compose exec api pnpm prisma generate
+	docker-compose exec -T api npx prisma migrate deploy
+	docker-compose exec -T api npx prisma generate
 
 # Генерация миграции Prisma
 migrate-dev:
-	docker-compose exec api pnpm prisma migrate dev
+	docker-compose exec -T api npx prisma migrate dev
 
 # Запуск Prisma Studio
 studio:
-	docker-compose exec api pnpm prisma studio
+	docker-compose exec -T api npx prisma studio
 
 # Запуск seed данных
 seed:
-	docker-compose exec api pnpm prisma db seed 
+	docker-compose exec -T api npx prisma db seed 
