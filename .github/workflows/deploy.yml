@@ -34,7 +34,7 @@ jobs:
             if [ ! -d "server/logs" ]; then
               mkdir -p server/logs
               chown -R deploy:deploy server/logs
-              chmod 755 server/logs
+              chmod 777 server/logs
             fi
             
             # Перезапускаем приложение

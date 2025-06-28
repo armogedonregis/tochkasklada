@@ -5,3 +5,4 @@ dist
 coverage
 *.log
 logs
+tsconfig.build.tsbuildinfo

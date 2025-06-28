@@ -1,5 +1,6 @@
 import { Injectable, LoggerService as NestLoggerService } from '@nestjs/common';
 import * as winston from 'winston';
+import 'winston-daily-rotate-file';
 import * as path from 'path';
 
 @Injectable()
@@ -18,18 +19,18 @@ export class LoggerService implements NestLoggerService {
       ),
       defaultMeta: { service: 'api' },
       transports: [
-        new winston.transports.File({
+        new (winston.transports as any).DailyRotateFile({
           filename: path.join(logDir, 'error-%DATE%.log'),
           level: 'error',
-          maxsize: 5242880, // 5MB
-          maxFiles: 5,
-          tailable: true,
+          datePattern: 'YYYY-MM-DD',
+          maxSize: '5m',
+          maxFiles: '14d',
         }),
-        new winston.transports.File({
+        new (winston.transports as any).DailyRotateFile({
           filename: path.join(logDir, 'combined-%DATE%.log'),
-          maxsize: 5242880, // 5MB
-          maxFiles: 5,
-          tailable: true,
+          datePattern: 'YYYY-MM-DD',
+          maxSize: '5m',
+          maxFiles: '14d',
         }),
         ...(process.env.NODE_ENV !== 'production'
           ? [
