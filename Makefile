@@ -31,17 +31,17 @@ migrate:
 	@echo "Waiting for PostgreSQL to be ready..."
 	@timeout 60 bash -c 'until docker-compose exec -T postgres pg_isready -U postgres; do sleep 2; done'
 	@echo "Applying Prisma migrations..."
-	docker-compose exec -T api npx prisma migrate deploy
-	docker-compose exec -T api npx prisma generate
+	docker-compose exec -T api sh -c "cd /app && npx prisma migrate deploy"
+	docker-compose exec -T api sh -c "cd /app && npx prisma generate"
 
 # Генерация миграции Prisma
 migrate-dev:
-	docker-compose exec -T api npx prisma migrate dev
+	docker-compose exec -T api sh -c "cd /app && npx prisma migrate dev"
 
 # Запуск Prisma Studio
 studio:
-	docker-compose exec -T api npx prisma studio
+	docker-compose exec -T api sh -c "cd /app && npx prisma studio"
 
 # Запуск seed данных
 seed:
-	docker-compose exec -T api npx prisma db seed 
+	docker-compose exec -T api sh -c "cd /app && npx prisma db seed" 
