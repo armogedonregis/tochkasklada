@@ -97,23 +97,25 @@ export class ClientsService {
           p => p.phone === data.phone
         );
         
+        const clientId = existingUser.client.id; // Сохраняем ID в переменную
+
         // Транзакция для обновления
         return this.prisma.$transaction(async (tx) => {
           // Если нет такого телефона, добавляем
-          if (!hasPhone && data.phone && existingUser.client) {
-            this.logger.log(`Adding new phone ${data.phone} to client ${existingUser.client.id}`, 'ClientsService');
+          if (!hasPhone && data.phone) {
+            this.logger.log(`Adding new phone ${data.phone} to client ${clientId}`, 'ClientsService');
             await tx.clientPhone.create({
               data: {
                 phone: data.phone,
-                clientId: existingUser.client.id,
+                clientId: clientId,
               }
             });
           }
           
           // Обновляем данные клиента (имя могло измениться)
-          this.logger.log(`Updating client name for ${existingUser.client.id}`, 'ClientsService');
+          this.logger.log(`Updating client name for ${clientId}`, 'ClientsService');
           const updatedClient = await tx.client.update({
-            where: { id: existingUser.client ? existingUser.client.id : '' },
+            where: { id: clientId },
             data: {
               name: data.name,
             },

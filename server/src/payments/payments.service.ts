@@ -12,9 +12,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
   ) {
-    if (this.logger.debug) {
-      this.logger.debug('PaymentsService instantiated', PaymentsService.name);
-    }
+    this.logger.debug?.('PaymentsService instantiated', PaymentsService.name);
   }
 
   // Получение платежа по ID
@@ -1031,7 +1029,7 @@ export class PaymentsService {
       this.logger.warn(`Invalid amount: ${amountNum}, setting to 0`, 'createTildaPayment');
       amountNum = 0;
     }
-    this.logger.debug(`Tilda amount parsed: ${amountNum}`, 'createTildaPayment');
+    this.logger.debug?.(`Tilda amount parsed: ${amountNum}`, 'createTildaPayment');
 
     // 4.1 Формируем description из products, если есть
     let tildaDescription = '';
