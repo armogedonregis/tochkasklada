@@ -31,11 +31,8 @@ jobs:
             make fix-permissions
             
             # Создаем папку для логов и устанавливаем права
-            if [ ! -d "server/logs" ]; then
-              mkdir -p server/logs
-              chown -R deploy:deploy server/logs
-              chmod 777 server/logs
-            fi
+            mkdir -p server/logs
+            chmod -R 777 server/logs
             
             # Перезапускаем приложение
             make rebuild
