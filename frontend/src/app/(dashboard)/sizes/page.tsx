@@ -129,7 +129,7 @@ export default function SizesPage() {
       {/* Панель добавления */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
         <Button onClick={() => modal.openCreate()}>
-          Добавить размер (TEST AUTODEPLOY)
+          Добавить размер
         </Button>
       </div>
 
