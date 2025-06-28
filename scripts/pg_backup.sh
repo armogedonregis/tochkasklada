@@ -17,7 +17,6 @@ FILE="$BACKUP_DIR/${DATE}${DB_NAME}.sql.gz"
 
 cd "$COMPOSE_PROJECT_DIR"
 
-# ——— ДАМП ———
 # Используем pg_dump для конкретной БД, -T (no-TTY) важно для cron
 echo "Creating backup of database: $DB_NAME"
 docker compose exec -T postgres pg_dump -U "${POSTGRES_USER:-postgres}" "$DB_NAME" | gzip > "$FILE"
