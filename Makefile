@@ -26,6 +26,10 @@ logs:
 ps:
 	docker-compose ps
 
+# Установка прав на выполнение скриптов
+fix-permissions:
+	chmod +x scripts/*.sh
+
 # Применение миграций Prisma
 migrate:
 	@echo "Waiting for PostgreSQL to be ready..."

@@ -27,6 +27,9 @@ jobs:
             git clean -fd
             git pull origin main
             
+            # Устанавливаем права на выполнение скриптов
+            make fix-permissions
+            
             # Перезапускаем приложение
             make rebuild
             
