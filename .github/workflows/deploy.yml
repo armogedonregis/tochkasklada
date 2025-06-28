@@ -22,7 +22,11 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.PROJECT_PATH }}
+            cd /var/www/html/tochkasklada
+            
+            # Проверяем что мы в правильной папке
+            pwd
+            ls -la
             
             # Получаем последние изменения из репозитория
             git pull origin main
