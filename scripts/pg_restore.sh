@@ -29,13 +29,7 @@ cd "$COMPOSE_PROJECT_DIR"
 # ——— ВОССТАНОВЛЕНИЕ ———
 echo "Restoring database $DB_NAME from: $BACKUP_FILE"
 
-# Останавливаем приложение
-docker compose down
-
-# Восстанавливаем базу
+# Восстанавливаем базу (контейнеры продолжают работать)
 gunzip -c "$BACKUP_FILE" | docker compose exec -T postgres psql -U "${POSTGRES_USER:-postgres}" "$DB_NAME"
-
-# Запускаем приложение
-docker compose up -d
 
 echo "Restore completed successfully!" 
