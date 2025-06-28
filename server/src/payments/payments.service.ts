@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken, PaymentParams } from './utils/generate-token';
@@ -7,6 +7,8 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     private prisma: PrismaService,
   ) {}
@@ -946,7 +948,7 @@ export class PaymentsService {
   async createTildaPayment(payload: any) {
     // 0. Обрабатываем только формы с именем 'Cart'
     if (payload.formname && payload.formname !== 'Cart') {
-      console.log(`Tilda webhook ignored: unsupported formname '${payload.formname}'`);
+      this.logger.warn(`Tilda webhook ignored: unsupported formname '${payload.formname}'`);
       return { success: true, message: `Форма '${payload.formname}' проигнорирована` };
     }
 
@@ -965,7 +967,7 @@ export class PaymentsService {
       try {
         paymentJson = JSON.parse(payload.payment);
       } catch (e) {
-        console.error('Не удалось распарсить поле payment:', e.message);
+        this.logger.error(`Не удалось распарсить поле payment: ${e.message}`);
       }
     }
 
@@ -977,7 +979,7 @@ export class PaymentsService {
       amountNum = Number(payload.amount);
     }
     if (isNaN(amountNum) || amountNum < 0) amountNum = 0;
-    console.log('Tilda amount parsed:', amountNum);
+    this.logger.debug(`Tilda amount parsed: ${amountNum}`);
 
     // 4.1 Формируем description из products, если есть
     let tildaDescription = '';
@@ -1054,7 +1056,7 @@ export class PaymentsService {
           status: { name: 'Свободна' }
         }
       });
-      console.log('Tilda cell search by number:', cellNumber, !!cell);
+      this.logger.debug(`Tilda cell search by number: ${cellNumber}, found: ${!!cell}`);
     }
     // Если не нашли по номеру, пробуем по размеру и локации
     if (!cell && sizeform) {
@@ -1071,13 +1073,13 @@ export class PaymentsService {
             status: { name: 'Свободна' }
           }
         });
-        console.log('Tilda cell search by size/location:', size, location, !!cell);
+        this.logger.debug(`Tilda cell search by size/location: size=${size}, location=${location}, found=${!!cell}`);
       }
     }
 
     if (!cell) {
       // Если ячейка не найдена, можно создать просто платеж-заявку
-      console.log(`Свободная ячейка не найдена. Создание заявки.`);
+      this.logger.log('Свободная ячейка не найдена. Создание заявки.');
       return this.createPaymentByAdmin({
         userId: user.id,
         amount: amountNum, // Корректная сумма
@@ -1090,7 +1092,7 @@ export class PaymentsService {
     if (amountNum <= 0) {
       // Если суммы нет, можно просто создать заявку без суммы
       if (cell && cell.name && cell.id) {
-        console.log(`Некорректная сумма. Создание заявки для ${email} на ячейку ${cell.name}.`);
+        this.logger.log(`Некорректная сумма. Создание заявки для ${email} на ячейку ${cell.name}.`);
         return this.createPaymentByAdmin({
           userId: user.id,
           amount: 0,

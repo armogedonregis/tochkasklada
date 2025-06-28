@@ -1,0 +1,15 @@
+node_modules
+coverage
+dist
+test
+.prisma
+.DS_Store
+*.log
+npm-debug.log*
+.git
+.gitignore
+.github
+.vscode
+.idea
+.env
+.env.* 

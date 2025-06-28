@@ -1,34 +1,31 @@
-FROM node:18-alpine AS builder
-
+FROM node:20-slim AS deps
+RUN npm install -g pnpm
 WORKDIR /app
 
-# Копирование файлов для установки зависимостей
-COPY package.json package-lock.json ./
+# копируем только файлы зависимостей для кеширования
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
-# Установка зависимостей
-RUN npm ci
-
-# Копирование исходного кода
+FROM deps AS builder
+# копируем исходники
 COPY . .
+RUN pnpm build
 
-# Сборка приложения
-RUN npm run build
+# убираем dev-зависимости для рантайма
+RUN pnpm prune --prod
 
-FROM node:18-alpine AS runner
-
+FROM node:20-slim AS runner
 WORKDIR /app
 
-# Установка окружения
-ENV NODE_ENV production
-
-# Копирование необходимых файлов из предыдущего этапа
-COPY --from=builder /app/public ./public
+# копируем только нужное для рантайма
 COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
-# Экспорт порта
+ENV NODE_ENV=production
+ENV PORT=3000
+
 EXPOSE 3000
 
-# Запуск приложения
-CMD ["npm", "start"] 
+CMD ["npm", "run", "start"] 

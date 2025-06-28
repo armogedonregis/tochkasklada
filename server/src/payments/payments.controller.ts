@@ -12,7 +12,8 @@ import {
   HttpCode,
   HttpStatus,
   Query,
-  UnauthorizedException
+  UnauthorizedException,
+  Logger
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -23,6 +24,8 @@ import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, CreatePayment
 
 @Controller('payments')
 export class PaymentsController {
+  private readonly logger = new Logger(PaymentsController.name);
+
   constructor(private readonly paymentsService: PaymentsService) { }
 
   /**
@@ -41,7 +44,7 @@ export class PaymentsController {
   @Post('tilda')
   @HttpCode(HttpStatus.OK) // Tilda ожидает 200 OK в ответ
   handleTildaWebhook(@Body() payload: any, @Req() req: any) {
-    console.log('=== Tilda Payment Webhook ===');
+    this.logger.log('=== Tilda Payment Webhook ===');
 
     // Проверка секретного ключа из заголовков
     const secretKey = req.headers['x-tilda-webhook-secret'];
@@ -49,7 +52,7 @@ export class PaymentsController {
       throw new UnauthorizedException('Invalid or missing webhook secret');
     }
 
-    console.log('Body:', payload);
+    this.logger.debug(`Body: ${JSON.stringify(payload)}`);
     
     // Передаем данные в сервис для обработки
     return this.paymentsService.createTildaPayment(payload);
