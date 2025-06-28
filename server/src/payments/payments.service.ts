@@ -1004,37 +1004,51 @@ export class PaymentsService {
     // 3. Если есть строка payment – в ней JSON, достаем сумму и products
     let paymentJson: any = null;
     if (typeof payload.payment === 'string') {
+      this.logger.log(`Parsing payment JSON: ${payload.payment}`);
       try {
         paymentJson = JSON.parse(payload.payment);
+        this.logger.log(`Payment JSON parsed successfully: ${JSON.stringify(paymentJson)}`);
       } catch (e) {
         this.logger.error(`Не удалось распарсить поле payment: ${e.message}`);
       }
+    } else {
+      this.logger.log('Payment field is not a string, skipping JSON parsing');
     }
 
     // 4. Сумма
     let amountNum = 0;
     if (paymentJson?.amount) {
       amountNum = Number(paymentJson.amount);
+      this.logger.log(`Amount from payment JSON: ${amountNum}`);
     } else if (payload.amount) {
       amountNum = Number(payload.amount);
+      this.logger.log(`Amount from payload: ${amountNum}`);
     }
-    if (isNaN(amountNum) || amountNum < 0) amountNum = 0;
+    if (isNaN(amountNum) || amountNum < 0) {
+      this.logger.warn(`Invalid amount: ${amountNum}, setting to 0`);
+      amountNum = 0;
+    }
     this.logger.debug(`Tilda amount parsed: ${amountNum}`);
 
     // 4.1 Формируем description из products, если есть
     let tildaDescription = '';
     if (Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
       tildaDescription = paymentJson.products.join('; ');
+      this.logger.log(`Description from products: ${tildaDescription}`);
     }
 
     // 5. Если sizeform нет, пробуем из products[0] (для размера)
     if (!sizeform && Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
       const prod = paymentJson.products[0] as string;
+      this.logger.log(`Extracting sizeform from product: ${prod}`);
       // Извлекаем строку внутри скобок
       const bracketMatch = prod.match(/\(([^)]+)\)/);
       if (bracketMatch) {
         // Берём только первую часть до запятой (если есть)
         sizeform = bracketMatch[1].split(',')[0].trim(); // "XS-1-shu"
+        this.logger.log(`Sizeform extracted: ${sizeform}`);
+      } else {
+        this.logger.warn(`No brackets found in product: ${prod}`);
       }
     }
 
@@ -1090,16 +1104,26 @@ export class PaymentsService {
     // 7. Поиск ячейки: сначала по номеру, потом по размеру/локации
     let cell: any = null;
     if (cellNumber) {
+      this.logger.log(`Searching for cell by number: ${cellNumber}`);
       cell = await this.prisma.cells.findFirst({
         where: {
-          name: cellNumber,
+          name: {
+            equals: cellNumber,
+            mode: 'insensitive' // Регистронезависимый поиск
+          },
           status: { name: 'Свободна' }
         }
       });
       this.logger.debug(`Tilda cell search by number: ${cellNumber}, found: ${!!cell}`);
+      if (cell) {
+        this.logger.log(`Cell found by number: ${cell.name} (ID: ${cell.id})`);
+      } else {
+        this.logger.warn(`Cell not found by number: ${cellNumber}`);
+      }
     }
     // Если не нашли по номеру, пробуем по размеру и локации
     if (!cell && sizeform) {
+      this.logger.log(`Searching for cell by size/location: ${sizeform}`);
       const [size, location] = sizeform.split(' ');
       if (size && location) {
         cell = await this.prisma.cells.findFirst({
@@ -1114,6 +1138,11 @@ export class PaymentsService {
           }
         });
         this.logger.debug(`Tilda cell search by size/location: size=${size}, location=${location}, found=${!!cell}`);
+        if (cell) {
+          this.logger.log(`Cell found by size/location: ${cell.name} (ID: ${cell.id})`);
+        } else {
+          this.logger.warn(`Cell not found by size/location: size=${size}, location=${location}`);
+        }
       }
     }
 
