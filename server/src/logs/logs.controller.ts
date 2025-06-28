@@ -21,8 +21,8 @@ export class LogsController {
       throw new BadRequestException('Query param "lines" должен быть положительным числом');
     }
 
-    // Ищем логи в папке logs в корне проекта
-    const logsDir = process.env.LOGS_DIR || path.join(process.cwd(), 'logs');
+    // Ищем логи в папке logs внутри директории сервера
+    const logsDir = process.env.LOGS_DIR || path.join(__dirname, '..', '..', 'logs');
     const latestLogFile = this.getLatestLogFile(logsDir);
     if (!latestLogFile) {
       return [];

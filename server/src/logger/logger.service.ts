@@ -7,7 +7,7 @@ export class LoggerService implements NestLoggerService {
   private readonly logger: winston.Logger;
 
   constructor() {
-    const logDir = process.env.LOGS_DIR || path.join(process.cwd(), 'logs');
+    const logDir = process.env.LOGS_DIR || path.join(__dirname, '..', '..', 'logs');
     
     this.logger = winston.createLogger({
       level: 'info',
