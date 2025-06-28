@@ -21,9 +21,12 @@ export class LogsController {
       throw new BadRequestException('Query param "lines" должен быть положительным числом');
     }
 
+    // Ищем логи в папке logs в корне проекта
     const logsDir = process.env.LOGS_DIR || path.join(process.cwd(), 'logs');
     const latestLogFile = this.getLatestLogFile(logsDir);
-    if (!latestLogFile) return [];
+    if (!latestLogFile) {
+      return [];
+    }
 
     const data = fs.readFileSync(latestLogFile, 'utf-8');
     const allLines = data.trimEnd().split(/\r?\n/);
@@ -31,11 +34,15 @@ export class LogsController {
   }
 
   private getLatestLogFile(dir: string): string | null {
-    if (!fs.existsSync(dir)) return null;
+    if (!fs.existsSync(dir)) {
+      return null;
+    }
+    
     const files = fs.readdirSync(dir)
       .filter(f => f.endsWith('.log') || f.endsWith('.log.gz'))
       .map(f => ({ name: f, time: fs.statSync(path.join(dir, f)).mtime.getTime() }))
       .sort((a, b) => b.time - a.time);
+    
     return files.length > 0 ? path.join(dir, files[0].name) : null;
   }
 } 
