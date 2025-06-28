@@ -3,7 +3,7 @@ name: Deploy to VPS
 on:
   push:
     branches:
-      - main  # или master, в зависимости от основной ветки
+      - main
 
 jobs:
   deploy:
@@ -11,8 +11,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
       - name: Deploy to server
         uses: appleboy/ssh-action@master
@@ -22,66 +20,16 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "=== STARTING DEPLOYMENT ==="
             cd /var/www/html/tochkasklada
             
-            # Проверяем что мы в правильной папке
-            echo "=== CURRENT DIRECTORY ==="
-            pwd
-            ls -la
-            
-            # Исправляем права доступа к папке .git и файлам проекта
-            echo "=== FIXING PERMISSIONS ==="
-            chown -R root:root /var/www/html/tochkasklada
-            chmod -R 755 /var/www/html/tochkasklada
-            chmod -R 777 /var/www/html/tochkasklada/.git
-            
-            # Исправляем git ownership проблему
-            echo "=== FIXING GIT OWNERSHIP ==="
-            git config --global --add safe.directory /var/www/html/tochkasklada
-            
-            # Сбрасываем локальные изменения перед pull
-            echo "=== RESETTING LOCAL CHANGES ==="
+            # Обновляем код
             git reset --hard HEAD
             git clean -fd
+            git pull origin main
             
-            # Проверяем статус после сброса
-            echo "=== GIT STATUS AFTER RESET ==="
-            git status
-            
-            # Принудительно обновляем из репозитория
-            echo "=== FETCHING FROM REPOSITORY ==="
-            git fetch origin
-            echo "=== RESETTING TO ORIGIN/MAIN ==="
-            git reset --hard origin/main
-            
-            # Проверяем что обновилось
-            echo "=== GIT LOG AFTER RESET ==="
-            git log --oneline -3
-            
-            # Создаем/обновляем .env файл из секретов
-            echo "=== UPDATING ENV FILE ==="
-            echo "${{ secrets.ENV_FILE }}" > .env
-            chmod 644 .env
-            
-            # Перезапускаем приложение через Makefile
-            echo "=== REBUILDING APPLICATION ==="
+            # Перезапускаем приложение
             make rebuild
             
-            # Ждем запуска контейнеров и проверяем их статус
-            echo "=== WAITING FOR CONTAINERS ==="
-            sleep 15
-            
-            # Проверяем статус контейнеров
-            echo "=== CHECKING CONTAINER STATUS ==="
-            docker-compose ps
-            
-            # Ждем пока postgres будет готов
-            echo "=== WAITING FOR POSTGRES ==="
-            timeout 60 bash -c 'until docker-compose exec -T postgres pg_isready -U postgres; do sleep 2; done'
-            
-            # Применяем миграции через Makefile
-            echo "=== APPLYING MIGRATIONS ==="
-            make migrate
-            
-            echo "=== DEPLOYMENT COMPLETED SUCCESSFULLY ===" 
+            # Ждем запуска и применяем миграции
+            sleep 10
+            make migrate 
