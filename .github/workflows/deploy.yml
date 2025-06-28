@@ -31,16 +31,20 @@ jobs:
             # Исправляем git ownership проблему
             git config --global --add safe.directory /var/www/html/tochkasklada
             
-            # Исправляем права на файлы
-            chown -R root:root .
-            chmod 644 .env
-            
             # Сбрасываем локальные изменения перед pull
             git reset --hard HEAD
             git clean -fd
             
+            # Проверяем статус после сброса
+            echo "Git status after reset:"
+            git status
+            
             # Получаем последние изменения из репозитория
             git pull origin main
+            
+            # Проверяем что обновилось
+            echo "Git log after pull:"
+            git log --oneline -3
             
             # Создаем/обновляем .env файл из секретов
             echo "${{ secrets.ENV_FILE }}" > .env
