@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/prisma ./prisma
 
 # устанавливаем bcrypt в рантайме (как в рабочем примере)
 RUN npm install bcrypt --force
