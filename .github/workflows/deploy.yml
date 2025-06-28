@@ -35,6 +35,10 @@ jobs:
             chown -R root:root .
             chmod 644 .env
             
+            # Сбрасываем локальные изменения перед pull
+            git reset --hard HEAD
+            git clean -fd
+            
             # Получаем последние изменения из репозитория
             git pull origin main
             
