@@ -35,27 +35,40 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   createPayment(@Body() createPaymentDto: CreatePaymentDto, @Req() req: any) {
-    return this.paymentsService.createPayment({
+    this.logger.log(`=== Creating payment via API ===`);
+    this.logger.log(`User: ${req.user.email} (${req.user.id})`);
+    this.logger.log(`Amount: ${createPaymentDto.amount}, Description: ${createPaymentDto.description}`);
+    
+    const result = this.paymentsService.createPayment({
       ...createPaymentDto,
       userId: req.user.id,
     });
+    
+    this.logger.log('=== Payment creation API call completed ===');
+    return result;
   }
 
   @Post('tilda')
   @HttpCode(HttpStatus.OK) // Tilda ожидает 200 OK в ответ
   handleTildaWebhook(@Body() payload: any, @Req() req: any) {
     this.logger.log('=== Tilda Payment Webhook ===');
+    this.logger.log(`Headers: ${JSON.stringify(req.headers)}`);
+    this.logger.log(`Payload: ${JSON.stringify(payload)}`);
 
     // Проверка секретного ключа из заголовков
     const secretKey = req.headers['x-tilda-webhook-secret'];
     if (!secretKey || secretKey !== process.env.TILDA_WEBHOOK_SECRET) {
+      this.logger.error('Invalid or missing webhook secret');
       throw new UnauthorizedException('Invalid or missing webhook secret');
     }
+    this.logger.log('Webhook secret validated successfully');
 
     this.logger.debug(`Body: ${JSON.stringify(payload)}`);
     
     // Передаем данные в сервис для обработки
-    return this.paymentsService.createTildaPayment(payload);
+    const result = this.paymentsService.createTildaPayment(payload);
+    this.logger.log('=== Tilda webhook processing completed ===');
+    return result;
   }
 
   /**

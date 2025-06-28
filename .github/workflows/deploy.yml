@@ -30,10 +30,12 @@ jobs:
             # Устанавливаем права на выполнение скриптов
             make fix-permissions
             
-            # Создаем папку для логов и устанавливаем права
-            mkdir -p logs
-            chown -R deploy:deploy logs
-            chmod 755 logs
+            # Создаем папку для логов и устанавливаем права (только если нужно)
+            if [ ! -d "logs" ]; then
+              mkdir -p logs
+              chown -R deploy:deploy logs
+              chmod 755 logs
+            fi
             
             # Перезапускаем приложение
             make rebuild
