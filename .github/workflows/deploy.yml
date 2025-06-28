@@ -30,6 +30,12 @@ jobs:
             pwd
             ls -la
             
+            # Исправляем права доступа к папке .git и файлам проекта
+            echo "=== FIXING PERMISSIONS ==="
+            chown -R root:root /var/www/html/tochkasklada
+            chmod -R 755 /var/www/html/tochkasklada
+            chmod -R 777 /var/www/html/tochkasklada/.git
+            
             # Исправляем git ownership проблему
             echo "=== FIXING GIT OWNERSHIP ==="
             git config --global --add safe.directory /var/www/html/tochkasklada
@@ -62,9 +68,17 @@ jobs:
             echo "=== REBUILDING APPLICATION ==="
             make rebuild
             
-            # Ждем запуска контейнеров
+            # Ждем запуска контейнеров и проверяем их статус
             echo "=== WAITING FOR CONTAINERS ==="
-            sleep 10
+            sleep 15
+            
+            # Проверяем статус контейнеров
+            echo "=== CHECKING CONTAINER STATUS ==="
+            docker-compose ps
+            
+            # Ждем пока postgres будет готов
+            echo "=== WAITING FOR POSTGRES ==="
+            timeout 60 bash -c 'until docker-compose exec -T postgres pg_isready -U postgres; do sleep 2; done'
             
             # Применяем миграции через Makefile
             echo "=== APPLYING MIGRATIONS ==="
