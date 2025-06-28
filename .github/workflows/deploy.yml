@@ -22,41 +22,52 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            echo "=== STARTING DEPLOYMENT ==="
             cd /var/www/html/tochkasklada
             
             # Проверяем что мы в правильной папке
+            echo "=== CURRENT DIRECTORY ==="
             pwd
             ls -la
             
             # Исправляем git ownership проблему
+            echo "=== FIXING GIT OWNERSHIP ==="
             git config --global --add safe.directory /var/www/html/tochkasklada
             
             # Сбрасываем локальные изменения перед pull
+            echo "=== RESETTING LOCAL CHANGES ==="
             git reset --hard HEAD
             git clean -fd
             
             # Проверяем статус после сброса
-            echo "Git status after reset:"
+            echo "=== GIT STATUS AFTER RESET ==="
             git status
             
-            # Получаем последние изменения из репозитория
-            git pull origin main
+            # Принудительно обновляем из репозитория
+            echo "=== FETCHING FROM REPOSITORY ==="
+            git fetch origin
+            echo "=== RESETTING TO ORIGIN/MAIN ==="
+            git reset --hard origin/main
             
             # Проверяем что обновилось
-            echo "Git log after pull:"
+            echo "=== GIT LOG AFTER RESET ==="
             git log --oneline -3
             
             # Создаем/обновляем .env файл из секретов
+            echo "=== UPDATING ENV FILE ==="
             echo "${{ secrets.ENV_FILE }}" > .env
             chmod 644 .env
             
             # Перезапускаем приложение через Makefile
+            echo "=== REBUILDING APPLICATION ==="
             make rebuild
             
             # Ждем запуска контейнеров
+            echo "=== WAITING FOR CONTAINERS ==="
             sleep 10
             
             # Применяем миграции через Makefile
+            echo "=== APPLYING MIGRATIONS ==="
             make migrate
             
-            echo "Deployment completed successfully" 
+            echo "=== DEPLOYMENT COMPLETED SUCCESSFULLY ===" 
