@@ -22,6 +22,9 @@ WORKDIR /app
 # устанавливаем OpenSSL для Prisma в рантайме
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
+# создаем пользователя для приложения
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 # копируем только нужное для рантайма
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
@@ -30,6 +33,12 @@ COPY --from=builder /app/prisma ./prisma
 
 # устанавливаем bcrypt в рантайме (как в рабочем примере)
 RUN npm install bcrypt --force
+
+# меняем владельца файлов на appuser
+RUN chown -R appuser:appuser /app
+
+# переключаемся на пользователя appuser
+USER appuser
 
 ENV NODE_ENV=production
 ENV PORT=5000
