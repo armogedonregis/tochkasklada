@@ -4,43 +4,18 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateToken, PaymentParams } from './utils/generate-token';
 import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, PaymentSortField, SortDirection } from './dto';
 import { Prisma } from '@prisma/client';
-import * as winston from 'winston';
+import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
 export class PaymentsService {
-  private readonly logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.errors({ stack: true }),
-      winston.format.json()
-    ),
-    defaultMeta: { service: 'PaymentsService' },
-    transports: [
-      new winston.transports.File({ 
-        filename: 'logs/error-%DATE%.log',
-        level: 'error',
-        maxsize: 5242880,
-        maxFiles: 5,
-        tailable: true
-      }),
-      new winston.transports.File({ 
-        filename: 'logs/combined-%DATE%.log',
-        maxsize: 5242880,
-        maxFiles: 5,
-        tailable: true
-      }),
-      ...(process.env.NODE_ENV !== 'production' ? [
-        new winston.transports.Console({
-          format: winston.format.simple()
-        })
-      ] : [])
-    ],
-  });
-
   constructor(
-    private prisma: PrismaService,
-  ) {}
+    private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
+  ) {
+    if (this.logger.debug) {
+      this.logger.debug('PaymentsService instantiated', PaymentsService.name);
+    }
+  }
 
   // Получение платежа по ID
   async getPaymentById(id: string) {
@@ -126,14 +101,14 @@ export class PaymentsService {
     description?: string; 
     userId: string;
   }) {
-    this.logger.info(`=== Creating payment for user ${data.userId} ===`);
-    this.logger.info(`Amount: ${data.amount}, Description: ${data.description}`);
+    this.logger.log(`=== Creating payment for user ${data.userId} ===`, PaymentsService.name);
+    this.logger.log(`Amount: ${data.amount}, Description: ${data.description}`, PaymentsService.name);
     
     const orderId = uuidv4();
-    this.logger.info(`Generated orderId: ${orderId}`);
+    this.logger.log(`Generated orderId: ${orderId}`, PaymentsService.name);
 
     // Создаем запись о платеже в базе данных
-    this.logger.info('Creating payment record in database...');
+    this.logger.log('Creating payment record in database...', PaymentsService.name);
     const payment = await this.prisma.payment.create({
       data: {
         amount: data.amount,
@@ -143,37 +118,37 @@ export class PaymentsService {
         status: false
       }
     });
-    this.logger.info(`Payment created with ID: ${payment.id}`);
+    this.logger.log(`Payment created with ID: ${payment.id}`, PaymentsService.name);
 
     // Генерируем ссылку на оплату Tinkoff
-    this.logger.info('Generating Tinkoff payment link...');
+    this.logger.log('Generating Tinkoff payment link...', PaymentsService.name);
     const paymentResult = await this.createTinkoffPayment(orderId);
     
     if (paymentResult.success) {
-      this.logger.info(`Tinkoff payment URL generated: ${paymentResult.url}`);
+      this.logger.log(`Tinkoff payment URL generated: ${paymentResult.url}`, PaymentsService.name);
       // Обновляем запись платежа, добавляя URL для оплаты
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: { paymentUrl: paymentResult.url }
       });
       
-      this.logger.info('Payment record updated with payment URL');
+      this.logger.log('Payment record updated with payment URL', PaymentsService.name);
       return { ...payment, paymentUrl: paymentResult.url };
     } else {
-      this.logger.error(`Failed to generate Tinkoff payment: ${paymentResult.message}`);
+      this.logger.error(`Failed to generate Tinkoff payment: ${paymentResult.message}`, '', PaymentsService.name);
     }
     
-    this.logger.info('=== Payment creation completed ===');
+    this.logger.log('=== Payment creation completed ===', PaymentsService.name);
     return payment;
   }
 
   // Создание платежа администратором
   async createPaymentByAdmin(data: CreateAdminPaymentDto) {
-    this.logger.info(`=== Creating admin payment ===`);
-    this.logger.info(`User ID: ${data.userId}, Amount: ${data.amount}, Cell ID: ${data.cellId}`);
+    this.logger.log(`=== Creating admin payment ===`, PaymentsService.name);
+    this.logger.log(`User ID: ${data.userId}, Amount: ${data.amount}, Cell ID: ${data.cellId}`, PaymentsService.name);
     
     // Проверяем, существует ли пользователь
-    this.logger.info('Checking if user exists...');
+    this.logger.log('Checking if user exists...', PaymentsService.name);
     const user = await this.prisma.user.findUnique({
       where: { id: data.userId },
       include: {
@@ -182,24 +157,24 @@ export class PaymentsService {
     });
 
     if (!user) {
-      this.logger.error(`User with ID ${data.userId} not found`);
+      this.logger.error(`User with ID ${data.userId} not found`, '', PaymentsService.name);
       throw new BadRequestException(`Пользователь с ID ${data.userId} не найден`);
     }
-    this.logger.info(`User found: ${user.email}, Client: ${user.client ? 'exists' : 'not exists'}`);
+    this.logger.log(`User found: ${user.email}, Client: ${user.client ? 'exists' : 'not exists'}`, PaymentsService.name);
 
     // Создаем orderId
     const orderId = uuidv4();
-    this.logger.info(`Generated orderId: ${orderId}`);
+    this.logger.log(`Generated orderId: ${orderId}`, PaymentsService.name);
     
     // Проверяем, является ли платеж оплатой за аренду ячейки
     const isCellRental = data.cellId && user.client !== null;
-    this.logger.info(`Is cell rental payment: ${isCellRental}`);
+    this.logger.log(`Is cell rental payment: ${isCellRental}`, PaymentsService.name);
     
     // Определяем описание платежа
     let description = data.description;
     
     // Создаем платеж с предоставленными данными
-    this.logger.info('Creating payment record...');
+    this.logger.log('Creating payment record...', PaymentsService.name);
     const payment = await this.prisma.payment.create({
       data: {
         amount: data.amount,
@@ -219,26 +194,26 @@ export class PaymentsService {
         }
       }
     });
-    this.logger.info(`Payment created with ID: ${payment.id}`);
+    this.logger.log(`Payment created with ID: ${payment.id}`, PaymentsService.name);
     
     // Если это платеж за аренду ячейки, то обрабатываем аренду
     if (isCellRental && user.client) {
-      this.logger.info('Processing cell rental...');
+      this.logger.log('Processing cell rental...', PaymentsService.name);
       try {
         // Проверяем, существует ли ячейка
-        this.logger.info(`Checking if cell ${data.cellId} exists...`);
+        this.logger.log(`Checking if cell ${data.cellId} exists...`, PaymentsService.name);
         const cell = await this.prisma.cells.findUnique({
           where: { id: data.cellId }
         });
 
         if (!cell) {
-          this.logger.error(`Cell with ID ${data.cellId} not found`);
+          this.logger.error(`Cell with ID ${data.cellId} not found`, '', PaymentsService.name);
           throw new BadRequestException(`Ячейка с ID ${data.cellId} не найдена`);
         }
-        this.logger.info(`Cell found: ${cell.name}`);
+        this.logger.log(`Cell found: ${cell.name}`, PaymentsService.name);
         
         // Проверяем, есть ли уже активная аренда для этой ячейки
-        this.logger.info('Checking for existing active rental...');
+        this.logger.log('Checking for existing active rental...', PaymentsService.name);
         const existingRental = await this.prisma.cellRental.findFirst({
           where: {
             cellId: data.cellId,
@@ -248,15 +223,15 @@ export class PaymentsService {
         
         // Длительность аренды по умолчанию 30 дней (раньше передавалась rentalDays)
         const rentalDurationDays = 30;
-        this.logger.info(`Rental duration: ${rentalDurationDays} days`);
+        this.logger.log(`Rental duration: ${rentalDurationDays} days`, PaymentsService.name);
         
         let rental;
         
         if (existingRental) {
-          this.logger.info(`Existing rental found: ${existingRental.id}`);
+          this.logger.log(`Existing rental found: ${existingRental.id}`, PaymentsService.name);
           // Ячейка уже арендована
           if (existingRental.clientId === user.client.id) {
-            this.logger.info('Extending existing rental for same client...');
+            this.logger.log('Extending existing rental for same client...', PaymentsService.name);
             // Аренда принадлежит этому же клиенту - продлеваем ее
             const newEndDate = new Date(existingRental.endDate);
             newEndDate.setDate(newEndDate.getDate() + rentalDurationDays);
@@ -270,7 +245,7 @@ export class PaymentsService {
                 extensionCount: { increment: 1 }
               }
             });
-            this.logger.info(`Rental extended, new end date: ${newEndDate}`);
+            this.logger.log(`Rental extended, new end date: ${newEndDate}`, PaymentsService.name);
             
             // Связываем платеж с арендой
             await this.prisma.payment.update({
@@ -280,14 +255,14 @@ export class PaymentsService {
                 description: description || `Продление аренды ячейки #${cell.name} на ${rentalDurationDays} дн.`
               }
             });
-            this.logger.info('Payment linked to extended rental');
+            this.logger.log('Payment linked to extended rental', PaymentsService.name);
           } else {
-            this.logger.error(`Cell ${cell.name} already rented by another client`);
+            this.logger.error(`Cell ${cell.name} already rented by another client`, '', PaymentsService.name);
             // Ячейка арендована другим клиентом
             throw new BadRequestException(`Ячейка ${cell.name} уже арендована другим клиентом`);
           }
         } else {
-          this.logger.info('Creating new rental...');
+          this.logger.log('Creating new rental...', PaymentsService.name);
           // Создаем новую аренду
           const startDate = new Date();
           const endDate = new Date(startDate);
@@ -295,7 +270,7 @@ export class PaymentsService {
           
           // Проверка cellId перед созданием аренды
           if (!data.cellId) {
-            this.logger.error('Cell ID is required for creating rental');
+            this.logger.error('Cell ID is required for creating rental', '', PaymentsService.name);
             throw new BadRequestException('ID ячейки (cellId) обязателен для создания аренды');
           }
           
@@ -309,7 +284,7 @@ export class PaymentsService {
               statusId: data.statusId
             }
           });
-          this.logger.info(`New rental created: ${rental.id}, start: ${startDate}, end: ${endDate}`);
+          this.logger.log(`New rental created: ${rental.id}, start: ${startDate}, end: ${endDate}`, PaymentsService.name);
           
           // Связываем платеж с арендой и обновляем описание
           await this.prisma.payment.update({
@@ -319,7 +294,7 @@ export class PaymentsService {
               description: description || `Аренда ячейки #${cell.name} на ${rentalDurationDays} дн.`
             }
           });
-          this.logger.info('Payment linked to new rental');
+          this.logger.log('Payment linked to new rental', PaymentsService.name);
         }
         
         // Получаем обновленный платеж с информацией об аренде
@@ -336,16 +311,16 @@ export class PaymentsService {
           }
         });
         
-        this.logger.info('=== Admin payment with rental completed ===');
+        this.logger.log('=== Admin payment with rental completed ===', PaymentsService.name);
         return updatedPayment;
       } catch (error) {
         // Если произошла ошибка при создании аренды, все равно возвращаем созданный платеж
-        this.logger.error(`Error processing rental: ${error.message}`);
+        this.logger.error(`Error processing rental: ${error.message}`, error.stack, PaymentsService.name);
         return payment;
       }
     }
     
-    this.logger.info('=== Admin payment completed ===');
+    this.logger.log('=== Admin payment completed ===', PaymentsService.name);
     return payment;
   }
 
@@ -377,7 +352,7 @@ export class PaymentsService {
             where: { id },
             data: { cellRentalId: null }
           });
-          this.logger.info(`Платеж ${id} отвязан от аренды ${existingPayment.cellRentalId}`);
+          this.logger.log(`Платеж ${id} отвязан от аренды ${existingPayment.cellRentalId}`, PaymentsService.name);
         }
       }
       
@@ -425,7 +400,7 @@ export class PaymentsService {
             data: updateRentalData
           });
           
-          this.logger.info(`Аренда ${cellRentalId} обновлена`);
+          this.logger.log(`Аренда ${cellRentalId} обновлена`, PaymentsService.name);
         }
       }
       
@@ -503,7 +478,7 @@ export class PaymentsService {
           }
         });
         
-        this.logger.info(`Создана новая аренда ${rental.id} для ячейки ${cellId}`);
+        this.logger.log(`Создана новая аренда ${rental.id} для ячейки ${cellId}`, PaymentsService.name);
       }
       
       // Обновление дат существующей аренды, связанной с платежом
@@ -524,11 +499,11 @@ export class PaymentsService {
             data: updateRentalData
           });
           
-          this.logger.info(`Аренда ${existingPayment.cellRentalId} обновлена`);
+          this.logger.log(`Аренда ${existingPayment.cellRentalId} обновлена`, PaymentsService.name);
         }
       }
     } catch (error) {
-      this.logger.error(`Error processing rental: ${error.message}`);
+      this.logger.error(`Ошибка при обработке аренды: ${error.message}`, error.stack, PaymentsService.name);
       // Продолжаем обновление платежа даже при ошибке с арендой
     }
     
@@ -822,7 +797,7 @@ export class PaymentsService {
       } = queryParams;
 
       // Базовые условия фильтрации
-      let where: Prisma.PaymentWhereInput = {};
+      let where: any = {};
 
       // Дополнительный фильтр по статусу оплаты, если указан
       if (onlyPaid !== undefined) {
@@ -846,7 +821,7 @@ export class PaymentsService {
       const skip = (page - 1) * limit;
 
       // Настройка сортировки
-      let orderBy: Prisma.PaymentOrderByWithRelationInput = {};
+      let orderBy: any = {};
       
       // В зависимости от выбранного поля сортировки
       switch (sortBy) {
@@ -1016,8 +991,8 @@ export class PaymentsService {
   async createTildaPayment(payload: any) {
     // 0. Обрабатываем только формы с именем 'Cart'
     if (payload.formname && payload.formname !== 'Cart') {
-      this.logger.warn(`Tilda webhook ignored: unsupported formname '${payload.formname}'`);
-      return { success: true, message: `Форма '${payload.formname}' проигнорирована` };
+      this.logger.warn(`Tilda webhook ignored: unsupported formname '${payload.formname}'`, 'createTildaPayment');
+      return { success: false, message: 'Форма не поддерживается' };
     }
 
     // 1. Поля могут приходить с разным регистром
@@ -1032,53 +1007,54 @@ export class PaymentsService {
     // 3. Если есть строка payment – в ней JSON, достаем сумму и products
     let paymentJson: any = null;
     if (typeof payload.payment === 'string') {
-      this.logger.info(`Parsing payment JSON: ${payload.payment}`);
+      this.logger.log(`Parsing payment JSON: ${payload.payment}`, 'createTildaPayment');
       try {
         paymentJson = JSON.parse(payload.payment);
-        this.logger.info(`Payment JSON parsed successfully: ${JSON.stringify(paymentJson)}`);
+        this.logger.log(`Payment JSON parsed successfully: ${JSON.stringify(paymentJson)}`, 'createTildaPayment');
       } catch (e) {
-        this.logger.error(`Не удалось распарсить поле payment: ${e.message}`);
+        this.logger.error(`Не удалось распарсить поле payment: ${e.message}`, e.stack, 'createTildaPayment');
       }
     } else {
-      this.logger.info('Payment field is not a string, skipping JSON parsing');
+      this.logger.log('Payment field is not a string, skipping JSON parsing', 'createTildaPayment');
     }
 
     // 4. Сумма
     let amountNum = 0;
     if (paymentJson?.amount) {
       amountNum = Number(paymentJson.amount);
-      this.logger.info(`Amount from payment JSON: ${amountNum}`);
+      this.logger.log(`Amount from payment JSON: ${amountNum}`, 'createTildaPayment');
     } else if (payload.amount) {
       amountNum = Number(payload.amount);
-      this.logger.info(`Amount from payload: ${amountNum}`);
+      this.logger.log(`Amount from payload: ${amountNum}`, 'createTildaPayment');
     }
     if (isNaN(amountNum) || amountNum < 0) {
-      this.logger.warn(`Invalid amount: ${amountNum}, setting to 0`);
+      this.logger.warn(`Invalid amount: ${amountNum}, setting to 0`, 'createTildaPayment');
       amountNum = 0;
     }
-    this.logger.debug(`Tilda amount parsed: ${amountNum}`);
+    this.logger.debug(`Tilda amount parsed: ${amountNum}`, 'createTildaPayment');
 
     // 4.1 Формируем description из products, если есть
     let tildaDescription = '';
     if (Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
       tildaDescription = paymentJson.products.join('; ');
-      this.logger.info(`Description from products: ${tildaDescription}`);
+      this.logger.log(`Description from products: ${tildaDescription}`, 'createTildaPayment');
     }
 
     // 5. Если sizeform нет, пробуем из products[0] (для размера)
     if (!sizeform && Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
       const prod = paymentJson.products[0] as string;
-      this.logger.info(`Extracting sizeform from product: ${prod}`);
+      this.logger.log(`Extracting sizeform from product: ${prod}`, 'createTildaPayment');
       // Извлекаем строку внутри скобок
       const bracketMatch = prod.match(/\(([^)]+)\)/);
       if (bracketMatch) {
         // Берём только первую часть до запятой (если есть)
         sizeform = bracketMatch[1].split(',')[0].trim(); // "XS-1-shu"
-        this.logger.info(`Sizeform extracted: ${sizeform}`);
+        this.logger.log(`Sizeform extracted: ${sizeform}`, 'createTildaPayment');
       } else {
-        this.logger.warn(`No brackets found in product: ${prod}`);
+        this.logger.warn(`No brackets found in product: ${prod}`, 'createTildaPayment');
       }
     }
+    this.logger.debug?.(`Tilda sizeform parsed: ${sizeform}`, 'createTildaPayment');
 
     if (!email) {
       throw new BadRequestException('Email не был получен от Tilda');
@@ -1109,6 +1085,7 @@ export class PaymentsService {
         },
         include: { client: true },
       });
+      this.logger.log(`User created: ${user.email}`, 'createTildaPayment');
     } else if (!user.client) {
       // Если пользователь есть, а клиента нет - создаем клиента
       const client = await this.prisma.client.create({
@@ -1132,26 +1109,31 @@ export class PaymentsService {
     // 7. Поиск ячейки: сначала по номеру, потом по размеру/локации
     let cell: any = null;
     if (cellNumber) {
-      this.logger.info(`Searching for cell by number: ${cellNumber}`);
+      this.logger.log(`Searching for cell by number: ${cellNumber}`, 'createTildaPayment');
       cell = await this.prisma.cells.findFirst({
         where: {
           name: {
             equals: cellNumber,
             mode: 'insensitive' // Регистронезависимый поиск
           },
-          status: { name: 'Свободна' }
+          status: { name: 'Свободна' },
+          rentals: {
+            none: {
+              isActive: true,
+            },
+          },
         }
       });
-      this.logger.debug(`Tilda cell search by number: ${cellNumber}, found: ${!!cell}`);
+      this.logger.debug?.(`Tilda cell search by number: ${cellNumber}, found: ${!!cell}`, 'createTildaPayment');
       if (cell) {
-        this.logger.info(`Cell found by number: ${cell.name} (ID: ${cell.id})`);
+        this.logger.log(`Cell found by number: ${cell.name} (ID: ${cell.id})`, 'createTildaPayment');
       } else {
-        this.logger.warn(`Cell not found by number: ${cellNumber}`);
+        this.logger.warn(`Cell not found by number: ${cellNumber}`, 'createTildaPayment');
       }
     }
     // Если не нашли по номеру, пробуем по размеру и локации
     if (!cell && sizeform) {
-      this.logger.info(`Searching for cell by size/location: ${sizeform}`);
+      this.logger.log(`Searching for cell by size/location: ${sizeform}`, 'createTildaPayment');
       const [size, location] = sizeform.split(' ');
       if (size && location) {
         cell = await this.prisma.cells.findFirst({
@@ -1162,21 +1144,26 @@ export class PaymentsService {
                 name: { contains: location, mode: 'insensitive' }
               }
             },
-            status: { name: 'Свободна' }
+            status: { name: 'Свободна' },
+            rentals: {
+              none: {
+                isActive: true
+              }
+            }
           }
         });
-        this.logger.debug(`Tilda cell search by size/location: size=${size}, location=${location}, found=${!!cell}`);
+        this.logger.debug?.(`Tilda cell search by size/location: size=${size}, location=${location}, found=${!!cell}`, 'createTildaPayment');
         if (cell) {
-          this.logger.info(`Cell found by size/location: ${cell.name} (ID: ${cell.id})`);
+          this.logger.log(`Cell found by size/location: ${cell.name} (ID: ${cell.id})`, 'createTildaPayment');
         } else {
-          this.logger.warn(`Cell not found by size/location: size=${size}, location=${location}`);
+          this.logger.warn(`Cell not found by size/location: size=${size}, location=${location}`, 'createTildaPayment');
         }
       }
     }
 
     if (!cell) {
       // Если ячейка не найдена, можно создать просто платеж-заявку
-      this.logger.info('Свободная ячейка не найдена. Создание заявки.');
+      this.logger.log('Свободная ячейка не найдена. Создание заявки.', 'createTildaPayment');
       return this.createPaymentByAdmin({
         userId: user.id,
         amount: amountNum, // Корректная сумма
@@ -1189,13 +1176,12 @@ export class PaymentsService {
     if (amountNum <= 0) {
       // Если суммы нет, можно просто создать заявку без суммы
       if (cell && cell.name && cell.id) {
-        this.logger.info(`Некорректная сумма. Создание заявки для ${email} на ячейку ${cell.name}.`);
+        this.logger.log(`Некорректная сумма. Создание заявки для ${email} на ячейку ${cell.name}.`, 'createTildaPayment');
         return this.createPaymentByAdmin({
           userId: user.id,
           amount: 0,
           description: tildaDescription || `Заявка с Tilda на ячейку ${cell.name}`,
           status: false,
-          cellId: cell.id,
         });
       } else {
         // fallback, если вдруг cell невалиден

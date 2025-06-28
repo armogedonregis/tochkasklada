@@ -2,19 +2,27 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { hashPassword, generateRandomPassword } from '../common/utils/password.utils';
 import { ClientSortField, FindClientsDto, SortDirection, UpdateClientDto, CreateClientDto } from './dto';
+import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
 export class ClientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.log('ClientsService instantiated', 'ClientsService');
+  }
 
   // Метод для создания клиента администратором
   async createByAdmin(data: CreateClientDto) {
+    this.logger.log(`Admin creating client with email: ${data.email}`, 'ClientsService');
     // Проверяем, существует ли пользователь с таким email
     const existingUser = await this.prisma.user.findUnique({
       where: { email: data.email },
     });
 
     if (existingUser) {
+      this.logger.warn(`User with email ${data.email} already exists`, 'ClientsService');
       throw new BadRequestException(`Пользователь с email ${data.email} уже существует`);
     }
 
@@ -22,6 +30,7 @@ export class ClientsService {
     const password = data.password || generateRandomPassword();
     const hashedPassword = await hashPassword(password);
 
+    this.logger.log(`Creating user and client in transaction for email: ${data.email}`, 'ClientsService');
     // Транзакция для создания пользователя и клиента
     const result = await this.prisma.$transaction(async (tx) => {
       // Создаем пользователя
@@ -60,11 +69,13 @@ export class ClientsService {
       };
     });
 
+    this.logger.log(`Client created successfully for email: ${data.email}`, 'ClientsService');
     return result;
   }
 
   // Метод для создания клиента из формы лендинга
   async createFromLanding(data: { name: string, email: string, phone: string }) {
+    this.logger.log(`Creating client from landing page for email: ${data.email}`, 'ClientsService');
     // Проверяем, существует ли пользователь с таким email
     const existingUser = await this.prisma.user.findUnique({
       where: { email: data.email },
@@ -79,6 +90,7 @@ export class ClientsService {
 
     // Если пользователь уже существует, возвращаем его клиента (если он есть)
     if (existingUser) {
+      this.logger.log(`User ${data.email} already exists. Updating client info.`, 'ClientsService');
       if (existingUser.client) {
         // Проверяем, есть ли такой телефон у клиента
         const hasPhone = existingUser.client.phones.some(
@@ -89,6 +101,7 @@ export class ClientsService {
         return this.prisma.$transaction(async (tx) => {
           // Если нет такого телефона, добавляем
           if (!hasPhone && data.phone && existingUser.client) {
+            this.logger.log(`Adding new phone ${data.phone} to client ${existingUser.client.id}`, 'ClientsService');
             await tx.clientPhone.create({
               data: {
                 phone: data.phone,
@@ -98,6 +111,7 @@ export class ClientsService {
           }
           
           // Обновляем данные клиента (имя могло измениться)
+          this.logger.log(`Updating client name for ${existingUser.client.id}`, 'ClientsService');
           const updatedClient = await tx.client.update({
             where: { id: existingUser.client ? existingUser.client.id : '' },
             data: {
@@ -119,6 +133,7 @@ export class ClientsService {
         });
       } else {
         // Если есть пользователь, но нет клиента, создаем клиента
+        this.logger.log(`User ${data.email} exists, but has no client profile. Creating one.`, 'ClientsService');
         return this.prisma.client.create({
           data: {
             name: data.name,
@@ -147,6 +162,7 @@ export class ClientsService {
     const tempPassword = generateRandomPassword();
     const hashedPassword = await hashPassword(tempPassword);
 
+    this.logger.log(`Creating new user and client from landing for email: ${data.email}`, 'ClientsService');
     // Создаем нового пользователя и клиента в транзакции
     return this.prisma.$transaction(async (tx) => {
       // Создаем пользователя
@@ -191,7 +207,8 @@ export class ClientsService {
   }
 
   async findOne(id: string) {
-    return this.prisma.client.findUnique({
+    this.logger.log(`Fetching client with id: ${id}`, 'ClientsService');
+    const client = this.prisma.client.findUnique({
       where: { id },
       include: {
         user: {
@@ -204,10 +221,13 @@ export class ClientsService {
         phones: true,
       },
     });
+    if (!client) this.logger.warn(`Client with id ${id} not found`, 'ClientsService');
+    return client;
   }
 
   async findByUserId(userId: string) {
-    return this.prisma.client.findUnique({
+    this.logger.log(`Fetching client with user id: ${userId}`, 'ClientsService');
+    const client = this.prisma.client.findUnique({
       where: { userId },
       include: {
         user: {
@@ -220,12 +240,15 @@ export class ClientsService {
         phones: true,
       },
     });
+    if (!client) this.logger.warn(`Client with user id ${userId} not found`, 'ClientsService');
+    return client;
   }
 
   /**
    * Поиск клиентов с пагинацией и фильтрацией
    */
   async findAll(queryParams: FindClientsDto) {
+    this.logger.log(`Fetching all clients with query: ${JSON.stringify(queryParams)}`, 'ClientsService');
     const { 
       search, 
       page = 1, 
@@ -325,7 +348,13 @@ export class ClientsService {
     };
   }
 
+  /**
+   * Обновление данных клиента, включая пользователя и телефоны.
+   * @param id - ID клиента
+   * @param data - DTO с данными для обновления
+   */
   async update(id: string, data: UpdateClientDto) {
+    this.logger.log(`Updating client with id: ${id}`, 'ClientsService');
     try {
       const { phones, email, ...clientData } = data;
       
@@ -343,6 +372,7 @@ export class ClientsService {
       return await this.prisma.$transaction(async (tx) => {
         // Если передан email, обновляем его в модели User
         if (email) {
+          this.logger.log(`Updating user email for client id: ${id}`, 'ClientsService');
           await tx.user.update({
             where: { id: client.userId },
             data: { email }
@@ -368,7 +398,8 @@ export class ClientsService {
         }
         
         // Обновляем остальные данные клиента
-        return tx.client.update({
+        this.logger.log(`Updating client name for id: ${id}`, 'ClientsService');
+        const updatedClient = await tx.client.update({
           where: { id },
           data: clientData,
           include: {
@@ -382,6 +413,9 @@ export class ClientsService {
             phones: true,
           },
         });
+
+        this.logger.log(`Client with id: ${id} updated successfully. Fetching updated data.`, 'ClientsService');
+        return updatedClient;
       });
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -393,28 +427,50 @@ export class ClientsService {
   }
 
   async addPhone(clientId: string, phone: string) {
-    // Добавляем новый телефон
+    this.logger.log(`Adding phone to client id: ${clientId}`, 'ClientsService');
     return this.prisma.clientPhone.create({
       data: {
+        clientId,
         phone,
-        clientId
-      }
+      },
     });
   }
   
   async removePhone(phoneId: string): Promise<{ id: string }> {
-    // Удаляем телефон
+    this.logger.log(`Removing phone with id: ${phoneId}`, 'ClientsService');
     await this.prisma.clientPhone.delete({
-      where: { id: phoneId }
+      where: { id: phoneId },
     });
-    
-    // Возвращаем ID для RTK Query оптимистического обновления
     return { id: phoneId };
   }
 
   async remove(id: string) {
-    return this.prisma.client.delete({
-      where: { id },
+    this.logger.log(`Removing client with id: ${id}`, 'ClientsService');
+    // Начинаем транзакцию
+    return this.prisma.$transaction(async (tx) => {
+      // Находим клиента, чтобы получить userId
+      const client = await tx.client.findUnique({ where: { id } });
+      if (!client) {
+        this.logger.warn(`Client with id ${id} not found for removal`, 'ClientsService');
+        throw new NotFoundException(`Клиент с ID ${id} не найден`);
+      }
+      const userId = client.userId;
+
+      // 1. Удаляем связанные записи (телефоны, аренды и т.д.)
+      // Prisma позаботится об этом через каскадное удаление, если настроено
+      // Но телефоны удалим вручную для надежности
+      await tx.clientPhone.deleteMany({ where: { clientId: id } });
+
+      // 2. Удаляем самого клиента
+      await tx.client.delete({ where: { id } });
+
+      // 3. Удаляем связанного пользователя
+      if (userId) {
+        await tx.user.delete({ where: { id: userId } });
+      }
+
+      this.logger.log(`Client with id ${id} and associated user removed successfully`, 'ClientsService');
+      return { id };
     });
   }
 } 

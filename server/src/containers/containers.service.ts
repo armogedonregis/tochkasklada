@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Containers } from '@prisma/client';
 import { 
@@ -8,6 +8,7 @@ import {
   SortDirection, 
   UpdateContainerDto 
 } from './dto';
+import { LoggerService } from '../logger/logger.service';
 
 /**
  * Сервис для управления контейнерами
@@ -15,113 +16,125 @@ import {
  */
 @Injectable()
 export class ContainersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.log('ContainersService instantiated', 'ContainersService');
+  }
 
   /**
    * Поиск контейнеров с пагинацией и фильтрацией
    */
   async findContainers(queryParams: FindContainersDto) {
-    const { 
-      search, 
-      page = 1, 
-      limit = 10, 
-      sortBy = ContainerSortField.NAME, 
-      sortDirection = SortDirection.ASC 
-    } = queryParams;
+    this.logger.log(`Finding containers with query: ${JSON.stringify(queryParams)}`, 'ContainersService');
+    try {
+      const { 
+        search, 
+        page = 1, 
+        limit = 10, 
+        sortBy = ContainerSortField.NAME, 
+        sortDirection = SortDirection.ASC 
+      } = queryParams;
 
-    // Базовые условия фильтрации
-    let where: any = {};
+      // Базовые условия фильтрации
+      let where: any = {};
 
-    // Если указана поисковая строка, строим сложное условие для поиска
-    if (search) {
-      // Проверяем, является ли поисковая строка числом
-      const numberSearch = !isNaN(Number(search)) ? Number(search) : null;
-      
-      where = {
-        OR: [
-          // Поиск по номеру контейнера, если search - число
-          ...(numberSearch !== null ? [{ name: numberSearch }] : []),
-          
-          // Поиск по локации (через связь)
-          {
-            location: {
-              OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { short_name: { contains: search, mode: 'insensitive' } },
-                { address: { contains: search, mode: 'insensitive' } },
-                // Поиск по городу через вложенную связь
-                {
-                  city: {
-                    OR: [
-                      { title: { contains: search, mode: 'insensitive' } },
-                      { short_name: { contains: search, mode: 'insensitive' } }
-                    ]
+      // Если указана поисковая строка, строим сложное условие для поиска
+      if (search) {
+        // Проверяем, является ли поисковая строка числом
+        const numberSearch = !isNaN(Number(search)) ? Number(search) : null;
+        
+        where = {
+          OR: [
+            // Поиск по номеру контейнера, если search - число
+            ...(numberSearch !== null ? [{ name: numberSearch }] : []),
+            
+            // Поиск по локации (через связь)
+            {
+              location: {
+                OR: [
+                  { name: { contains: search, mode: 'insensitive' } },
+                  { short_name: { contains: search, mode: 'insensitive' } },
+                  { address: { contains: search, mode: 'insensitive' } },
+                  // Поиск по городу через вложенную связь
+                  {
+                    city: {
+                      OR: [
+                        { title: { contains: search, mode: 'insensitive' } },
+                        { short_name: { contains: search, mode: 'insensitive' } }
+                      ]
+                    }
                   }
-                }
-              ]
+                ]
+              }
             }
-          }
-        ]
-      };
-    }
+          ]
+        };
+      }
 
-    // Вычисляем параметры пагинации
-    const skip = (page - 1) * limit;
+      // Вычисляем параметры пагинации
+      const skip = (page - 1) * limit;
 
-    // Настройка сортировки
-    let orderBy: any = {};
-    
-    // В зависимости от выбранного поля сортировки
-    switch (sortBy) {
-      case ContainerSortField.NAME:
-        orderBy.name = sortDirection;
-        break;
-      case ContainerSortField.LOCATION:
-        orderBy.location = { name: sortDirection };
-        break;
-      case ContainerSortField.CREATED_AT:
-      default:
-        orderBy.createdAt = sortDirection;
-        break;
-    }
+      // Настройка сортировки
+      let orderBy: any = {};
+      
+      // В зависимости от выбранного поля сортировки
+      switch (sortBy) {
+        case ContainerSortField.NAME:
+          orderBy.name = sortDirection;
+          break;
+        case ContainerSortField.LOCATION:
+          orderBy.location = { name: sortDirection };
+          break;
+        case ContainerSortField.CREATED_AT:
+        default:
+          orderBy.createdAt = sortDirection;
+          break;
+      }
 
-    // Запрос на получение общего количества
-    const totalCount = await this.prisma.containers.count({ where });
+      // Запрос на получение общего количества
+      const totalCount = await this.prisma.containers.count({ where });
 
-    // Запрос на получение данных с пагинацией
-    const containers = await this.prisma.containers.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy,
-      include: {
-        location: {
-          include: {
-            city: true
-          }
+      // Запрос на получение данных с пагинацией
+      const containers = await this.prisma.containers.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          location: {
+            include: {
+              city: true
+            }
+          },
         },
-      },
-    });
+      });
 
-    // Рассчитываем количество страниц
-    const totalPages = Math.ceil(totalCount / limit);
+      // Рассчитываем количество страниц
+      const totalPages = Math.ceil(totalCount / limit);
 
-    // Возвращаем результат с мета-информацией
-    return {
-      data: containers,
-      meta: {
-        totalCount,
-        page,
-        limit,
-        totalPages,
-      },
-    };
+      // Возвращаем результат с мета-информацией
+      return {
+        data: containers,
+        meta: {
+          totalCount,
+          page,
+          limit,
+          totalPages,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to find containers: ${error.message}`, error.stack, 'ContainersService');
+      throw new InternalServerErrorException('Ошибка при поиске контейнеров');
+    }
   }
 
   /**
    * Получение контейнера по ID с его ячейками
    */
   async findOne(id: string): Promise<Containers> {
+    this.logger.log(`Fetching container with id: ${id}`, 'ContainersService');
     const container = await this.prisma.containers.findUnique({
       where: { id },
       include: {
@@ -135,6 +148,7 @@ export class ContainersService {
     });
 
     if (!container) {
+      this.logger.warn(`Container with id ${id} not found`, 'ContainersService');
       throw new NotFoundException(`Контейнер с ID ${id} не найден`);
     }
 
@@ -145,12 +159,13 @@ export class ContainersService {
    * Создание нового контейнера
    */
   async create(createContainerDto: CreateContainerDto): Promise<any> {
+    this.logger.log(`Creating new container with name: ${createContainerDto.name}`, 'ContainersService');
     try {
       // Извлекаем массив ячеек из запроса
       const { cells, ...containerData } = createContainerDto;
       
       // Используем транзакцию для атомарного создания контейнера и ячеек
-      return await this.prisma.$transaction(async (tx) => {
+      const newContainer = await this.prisma.$transaction(async (tx) => {
         // Создаем новый контейнер
         const container = await tx.containers.create({
           data: containerData,
@@ -165,6 +180,7 @@ export class ContainersService {
         
         // Если есть ячейки для создания
         if (cells && cells.length > 0) {
+          this.logger.log(`Creating ${cells.length} cells for container ${container.id}`, 'ContainersService');
           // Создаем каждую ячейку и связываем с контейнером
           for (const cell of cells) {
             await tx.cells.create({
@@ -195,6 +211,7 @@ export class ContainersService {
           });
           
           if (!containerWithCells) {
+            this.logger.error(`Could not find the newly created container with id ${container.id} after cell creation`, '', 'ContainersService');
             throw new Error(`Не удалось найти созданный контейнер с ID ${container.id}`);
           }
           
@@ -204,12 +221,16 @@ export class ContainersService {
         // Если ячеек нет, возвращаем просто контейнер
         return container;
       });
+
+      this.logger.log(`Container created successfully with id: ${newContainer.id}`, 'ContainersService');
+      return newContainer;
     } catch (error) {
+      this.logger.error(`Failed to create container: ${error.message}`, error.stack, 'ContainersService');
       // Проверяем ошибку дублирования номера
       if (error.code === 'P2002') {
         throw new ConflictException(`Контейнер с номером ${createContainerDto.name} уже существует`);
       }
-      throw error;
+      throw new InternalServerErrorException('Ошибка при создании контейнера');
     }
   }
 
@@ -217,11 +238,12 @@ export class ContainersService {
    * Обновление контейнера
    */
   async update(id: string, updateContainerDto: UpdateContainerDto): Promise<any> {
+    this.logger.log(`Updating container with id: ${id}`, 'ContainersService');
     try {
       // Извлекаем параметры для ячеек
       const { cells, ...containerData } = updateContainerDto;
       
-      return await this.prisma.$transaction(async (tx) => {
+      const updatedContainer = await this.prisma.$transaction(async (tx) => {
         // Обновляем данные контейнера
         const container = await tx.containers.update({
           where: { id },
@@ -238,6 +260,7 @@ export class ContainersService {
         
         // Если переданы данные о ячейках
         if (cells !== undefined) {
+          this.logger.log(`Updating cells for container id: ${id}`, 'ContainersService');
           // Получаем текущие ячейки
           const existingCells = container.cells || [];
           
@@ -248,41 +271,49 @@ export class ContainersService {
           });
           
           // Создаем карту имён новых ячеек
-          const newCellsByName = new Map();
+          const newCellsData = new Map();
           cells.forEach(cell => {
-            newCellsByName.set(cell.name, cell);
+            newCellsData.set(cell.name, cell);
           });
           
-          // Определяем ячейки для удаления (есть в существующих, но нет в новых)
-          const cellsToDelete = existingCells.filter(
-            existingCell => !newCellsByName.has(existingCell.name)
-          );
+          // Определяем ячейки для удаления, обновления и создания
+          const cellsToDelete = existingCells.filter(cell => !newCellsData.has(cell.name));
+          const cellsToUpdate = cells.filter(cell => existingCellsByName.has(cell.name));
+          const cellsToCreate = cells.filter(cell => !existingCellsByName.has(cell.name));
           
-          // Удаляем неиспользуемые ячейки
-          for (const cellToDelete of cellsToDelete) {
-            await tx.cells.delete({
-              where: { id: cellToDelete.id }
+          // Удаляем ячейки
+          if (cellsToDelete.length > 0) {
+            this.logger.log(`Deleting ${cellsToDelete.length} cells from container ${id}`, 'ContainersService');
+            await tx.cells.deleteMany({
+              where: {
+                id: { in: cellsToDelete.map(c => c.id) }
+              }
             });
           }
           
-          // Обрабатываем новые и обновляемые ячейки
-          for (const newCell of cells) {
-            const existingCell = existingCellsByName.get(newCell.name);
-            
-            if (existingCell) {
-              // Обновляем существующую ячейку, если изменился размер
-              if (existingCell.size_id !== newCell.size_id) {
-                await tx.cells.update({
-                  where: { id: existingCell.id },
-                  data: { size_id: newCell.size_id }
-                });
-              }
-            } else {
-              // Создаем новую ячейку
+          // Обновляем ячейки
+          if (cellsToUpdate.length > 0) {
+            this.logger.log(`Updating ${cellsToUpdate.length} cells in container ${id}`, 'ContainersService');
+            for (const cellData of cellsToUpdate) {
+              const existingCell = existingCellsByName.get(cellData.name);
+              await tx.cells.update({
+                where: { id: existingCell.id },
+                data: {
+                  name: cellData.name,
+                  size_id: cellData.size_id
+                }
+              });
+            }
+          }
+          
+          // Создаем новые ячейки
+          if (cellsToCreate.length > 0) {
+            this.logger.log(`Creating ${cellsToCreate.length} new cells in container ${id}`, 'ContainersService');
+            for (const cellData of cellsToCreate) {
               await tx.cells.create({
                 data: {
-                  name: newCell.name,
-                  size_id: newCell.size_id,
+                  name: cellData.name,
+                  size_id: cellData.size_id,
                   containerId: id
                 }
               });
@@ -290,8 +321,8 @@ export class ContainersService {
           }
         }
         
-        // Возвращаем обновленный контейнер со всеми ячейками
-        const updatedContainer = await tx.containers.findUnique({
+        // Возвращаем обновленный контейнер с актуальным списком ячеек
+        return tx.containers.findUnique({
           where: { id },
           include: {
             location: {
@@ -307,18 +338,17 @@ export class ContainersService {
             }
           }
         });
-        
-        if (!updatedContainer) {
-          throw new Error(`Не удалось найти обновленный контейнер с ID ${id}`);
-        }
-        
-        return updatedContainer;
       });
+
+      this.logger.log(`Container with id ${id} updated successfully`, 'ContainersService');
+      return updatedContainer;
     } catch (error) {
+      this.logger.error(`Failed to update container with id ${id}: ${error.message}`, error.stack, 'ContainersService');
+      // Проверяем ошибку дублирования номера
       if (error.code === 'P2002') {
-        throw new ConflictException(`Контейнер с номером ${updateContainerDto.name} уже существует`);
+        throw new ConflictException(`Контейнер с таким номером уже существует`);
       }
-      throw new NotFoundException(`Контейнер с ID ${id} не найден или произошла ошибка при обновлении`);
+      throw new InternalServerErrorException('Ошибка при обновлении контейнера');
     }
   }
 
@@ -327,15 +357,31 @@ export class ContainersService {
    * @returns Объект с ID удаленного контейнера для оптимистического обновления в RTK Query
    */
   async remove(id: string): Promise<{ id: string }> {
+    this.logger.log(`Removing container with id: ${id}`, 'ContainersService');
     try {
-      await this.prisma.containers.delete({
-        where: { id },
-      });
+      await this.findOne(id); // Проверка существования
       
-      // Возвращаем ID для RTK Query оптимистического обновления
+      // Используем транзакцию для удаления контейнера и его ячеек
+      await this.prisma.$transaction(async (tx) => {
+        // Сначала удаляем все ячейки в контейнере
+        await tx.cells.deleteMany({
+          where: { containerId: id },
+        });
+        
+        // Затем удаляем сам контейнер
+        await tx.containers.delete({
+          where: { id },
+        });
+      });
+
+      this.logger.log(`Container with id ${id} removed successfully`, 'ContainersService');
       return { id };
     } catch (error) {
-      throw new NotFoundException(`Контейнер с ID ${id} не найден`);
+      this.logger.error(`Failed to remove container with id ${id}: ${error.message}`, error.stack, 'ContainersService');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Ошибка при удалении контейнера`);
     }
   }
 } 

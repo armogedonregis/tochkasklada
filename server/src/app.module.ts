@@ -20,12 +20,14 @@ import { CellRentalsModule } from './cell-rentals/cell-rentals.module';
 import { SwaggerDocModule } from './swagger/swagger.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { LogsModule } from './logs/logs.module';
+import { LoggerModule } from './logger/logger.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    LoggerModule,
     PrismaModule,
     AuthModule,
     UsersModule,
