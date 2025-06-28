@@ -15,6 +15,8 @@ git pull
 echo "Перезапуск приложения..."
 make rebuild
 
+#Test
+
 # Применяем миграции
 echo "Применение миграций..."
 make migrate

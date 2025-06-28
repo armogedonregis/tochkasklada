@@ -26,6 +26,8 @@ fi
 
 cd "$COMPOSE_PROJECT_DIR"
 
+# test
+
 # ——— ВОССТАНОВЛЕНИЕ ———
 echo "Restoring database $DB_NAME from: $BACKUP_FILE"
 
