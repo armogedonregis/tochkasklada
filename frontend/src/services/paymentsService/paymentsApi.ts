@@ -7,6 +7,7 @@ import {
   PaymentFilters,
   PaginatedPaymentResponse,
 } from './payments.types';
+import { TagDescription } from '@reduxjs/toolkit/query';
 
 export const paymentsApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -60,7 +61,16 @@ export const paymentsApi = api.injectEndpoints({
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: [{ type: 'Payments', id: 'LIST' }],
+      invalidatesTags: (result) => {
+        const tags: TagDescription<"Payments" | "CellRentals">[] = [
+          { type: 'Payments', id: 'LIST' },
+          { type: 'CellRentals', id: 'LIST' }
+        ];
+        if (result?.cellRental?.id) {
+          tags.push({ type: 'CellRentals', id: result.cellRental.id });
+        }
+        return tags;
+      },
     }),
     
     // Обновление платежа администратором
@@ -70,10 +80,17 @@ export const paymentsApi = api.injectEndpoints({
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [
-        { type: 'Payments', id },
-        { type: 'Payments', id: 'LIST' },
-      ],
+      invalidatesTags: (result, error, { id }) => {
+        const tags: TagDescription<"Payments" | "CellRentals">[] = [
+          { type: 'Payments', id },
+          { type: 'Payments', id: 'LIST' },
+          { type: 'CellRentals', id: 'LIST' },
+        ];
+        if (result?.cellRental?.id) {
+          tags.push({ type: 'CellRentals', id: result.cellRental.id });
+        }
+        return tags;
+      },
     }),
     
     // Установка статуса платежа
@@ -97,7 +114,8 @@ export const paymentsApi = api.injectEndpoints({
       }),
       invalidatesTags: (result, error, id) => [
         { type: 'Payments', id },
-        { type: 'Payments', id: 'LIST' }
+        { type: 'Payments', id: 'LIST' },
+        { type: 'CellRentals', id: 'LIST' },
       ],
     }),
     

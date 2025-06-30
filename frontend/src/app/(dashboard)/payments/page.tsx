@@ -33,7 +33,8 @@ const getPaymentValidationSchema = (isEdit: boolean) => yup.object({
   amount: yup.number().required('Сумма обязательна').min(1, 'Сумма должна быть больше 0'),
   description: yup.string().optional(),
   status: yup.boolean().default(false),
-  cellId: yup.string().optional()
+  cellId: yup.string().optional(),
+  rentalDuration: yup.number().optional().min(1, 'Срок аренды должен быть > 0').nullable(),
 });
 
 // Тип для полей формы
@@ -43,7 +44,7 @@ interface PaymentFormFields {
   description: string;
   status: boolean;
   cellId: string;
-  rentalDays: number;
+  rentalDuration?: number;
 }
 
 const PaymentsPage = () => {
@@ -258,9 +259,9 @@ const PaymentsPage = () => {
     {
       accessorKey: 'orderId',
       header: 'id Банка',
-      cell: ({ getValue }) => (
-        <div className="font-mono text-xs truncate max-w-[140px]" title={getValue() as string}>
-          {getValue() as string}
+      cell: ({ row }) => (
+        <div className="font-mono text-xs truncate max-w-[140px]" title={row.original.tinkoffPaymentId}>
+          {row.original.tinkoffPaymentId ? row.original.tinkoffPaymentId : "не указан"}
         </div>
       ),
     },
@@ -290,18 +291,9 @@ const PaymentsPage = () => {
       }
     },
     {
-      id: 'cellRental.startDate',
+      accessorKey: 'rentalDuration',
       header: 'Дней аренды',
-      cell: ({ row }) => {
-        const { startDate, endDate } = row.original.cellRental || {};
-        if (!startDate || !endDate) return '-';
-        
-        try {
-          return differenceInDays(new Date(endDate), new Date(startDate));
-        } catch {
-          return '-';
-        }
-      }
+      cell: ({ getValue }) => getValue() || '-',
     },
     {
       accessorKey: 'description',
@@ -365,6 +357,13 @@ const PaymentsPage = () => {
       fieldName: 'amount' as const,
       label: 'Сумма',
       placeholder: 'Например: 5000'
+    },
+    {
+      type: 'input' as const,
+      inputType: 'number',
+      fieldName: 'rentalDuration' as const,
+      label: 'Срок аренды (дней)',
+      placeholder: 'Например: 30'
     },
     {
       type: 'input' as const,
@@ -451,13 +450,15 @@ const PaymentsPage = () => {
           amount: modal.editItem.amount,
           description: modal.editItem.description,
           status: modal.editItem.status,
-          cellId: modal.editItem.cellRental?.cell?.id || ''
+          cellId: modal.editItem.cellRental?.cell?.id || '',
+          rentalDuration: modal.editItem.rentalDuration
         } : {
           userId: '',
           amount: undefined,
           description: '',
           status: false,
-          cellId: ''
+          cellId: '',
+          rentalDuration: undefined
         }}
       />
     </div>

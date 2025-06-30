@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, ChevronDown, ChevronRight, User } from "lucide-react";
+import { Search, Plus, ChevronDown, ChevronRight, User, Eye } from "lucide-react";
 import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { useTableControls } from '@/hooks/useTableControls';
@@ -29,6 +29,7 @@ import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStat
 import { useLazyGetClientsQuery } from '@/services/clientsService/clientsApi';
 import { useLazyGetAdminCellsQuery } from '@/services/cellService/cellsApi';
 import { differenceInDays, addDays } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 // Схема валидации для аренды ячейки
 const cellRentalValidationSchema = yup.object({
@@ -110,6 +111,8 @@ export default function CellRentalsPage() {
     const date = new Date(dateString);
     return `${date.toLocaleDateString('ru-RU')}`;
   };
+
+  const router = useRouter();
 
   // Мутации для операций с арендами
   const [createCellRental] = useCreateCellRentalMutation();
@@ -388,6 +391,21 @@ export default function CellRentalsPage() {
         return <div>{formatDate(row.original.endDate)}</div>;
       }
     },
+    {
+      id: 'details-link',
+      header: 'Детали',
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="icon"
+          title="Подробнее об аренде"
+          onClick={() => router.push(`/cell-rentals/${row.original.id}`)}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: false,
+    }
   ];
 
 

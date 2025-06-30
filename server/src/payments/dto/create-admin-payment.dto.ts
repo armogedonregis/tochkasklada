@@ -37,4 +37,9 @@ export class CreateAdminPaymentDto {
   @IsOptional()
   @IsUUID()
   statusId?: string;      // ID статуса ячейки
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  rentalDuration?: number; // Срок аренды в днях
 } 

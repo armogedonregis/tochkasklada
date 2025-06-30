@@ -9,8 +9,6 @@ import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
 export class CellRentalsService {
-  // private readonly logger = new Logger(CellRentalsService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
@@ -400,17 +398,36 @@ export class CellRentalsService {
       include: {
         cell: {
           include: {
-            container: true,
+            container: {
+              include: {
+                location: {
+                  include: {
+                    city: true,
+                  }
+                }
+              }
+            },
             size: true,
             status: true,
           },
         },
-        client: true,
+        client: {
+          include: {
+            phones: true,
+            user: {
+              select: {
+                email: true,
+              }
+            }
+          }
+        },
         status: true,
         payments: {
           select: {
             id: true,
             amount: true,
+            description: true,
+            rentalDuration: true,
             status: true,
             createdAt: true,
           },
@@ -643,9 +660,9 @@ export class CellRentalsService {
     this.logger.log(`Closing rental with id: ${id}`, 'CellRentalsService');
     const rental = await this.findOne(id);
 
-    if (!rental.isActive) {
-      throw new BadRequestException(`Аренда с ID ${id} уже закрыта`);
-    }
+    // if (!rental.isActive) {
+    //   throw new BadRequestException(`Аренда с ID ${id} уже закрыта`);
+    // }
 
     // Обновляем статусы
     await this.updateRentalStatus(id, CellRentalStatus.CLOSED);
@@ -794,26 +811,17 @@ export class CellRentalsService {
   }
 
   // Продление аренды (с созданием платежа)
-  async extendRental(userId: string, extendCellRentalDto: ExtendCellRentalDto) {
-    const { cellRentalId, amount, description } = extendCellRentalDto;
-    this.logger.log(`Extending rental ${cellRentalId} by user ${userId}`, 'CellRentalsService');
+  async extendRental(extendCellRentalDto: ExtendCellRentalDto) {
+    const { cellRentalId, amount, description, rentalDuration } = extendCellRentalDto;
+    this.logger.log(`Extending rental ${cellRentalId}`, 'CellRentalsService');
 
     // Находим аренду
     const rental = await this.findOne(cellRentalId);
 
-    // Проверяем активность аренды
-    if (!rental.isActive) {
-      this.logger.warn(`Attempted to extend an inactive rental: ${cellRentalId}`, 'CellRentalsService');
-      throw new BadRequestException(`Аренда с ID ${cellRentalId} не активна и не может быть продлена`);
-    }
-
-    // Находим пользователя
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException(`Пользователь с ID ${userId} не найден`);
+    // Проверяем, что у клиента есть userId
+    if (!rental.client?.userId) {
+      this.logger.error(`Rental ${cellRentalId} has no linked client with a user account.`, 'CellRentalsService');
+      throw new BadRequestException(`Аренда не привязана к аккаунту пользователя и не может быть продлена автоматически.`);
     }
 
     // Создаем платеж
@@ -822,25 +830,45 @@ export class CellRentalsService {
       data: {
         amount,
         description: description || `Продление аренды ячейки #${rental?.cell?.name}`,
-        userId,
+        userId: rental.client.userId, // Используем ID пользователя из связанного клиента
         cellRentalId,
         status: true, // Предполагаем, что платеж сразу успешный (для админа)
+        rentalDuration: rentalDuration || 30, // Сохраняем срок в платеже
       },
     });
 
-    // Рассчитываем новую дату окончания аренды (добавляем 1 месяц)
-    const newEndDate = new Date(rental.endDate);
-    newEndDate.setMonth(newEndDate.getMonth() + 1);
+    // Рассчитываем новую дату окончания аренды
+    const daysToAdd = rentalDuration || 30; // По умолчанию 30 дней
+    const now = new Date();
+    const currentEndDate = new Date(rental.endDate);
+    
+    // Если аренда активна и не просрочена, продлеваем от даты окончания.
+    // Иначе (если закрыта или просрочена) — продлеваем от сегодняшнего дня.
+    const baseDate = rental.isActive && currentEndDate > now ? currentEndDate : now;
+    
+    const newEndDate = new Date(baseDate);
+    newEndDate.setDate(newEndDate.getDate() + daysToAdd);
 
     this.logger.log(`Updating rental ${cellRentalId} with new end date: ${newEndDate}`, 'CellRentalsService');
+    
+    // Готовим данные для обновления
+    const updateData: Prisma.CellRentalUpdateInput = {
+      endDate: newEndDate,
+      lastExtendedAt: new Date(),
+      extensionCount: { increment: 1 },
+    };
+
+    // Если аренда была неактивна, активируем её снова
+    if (!rental.isActive) {
+      updateData.isActive = true;
+      updateData.closedAt = null; // Сбрасываем дату закрытия
+      await this.updateRentalStatus(cellRentalId, CellRentalStatus.ACTIVE); // Обновляем статус
+    }
+
     // Обновляем аренду
     return this.prisma.cellRental.update({
       where: { id: cellRentalId },
-      data: {
-        endDate: newEndDate,
-        lastExtendedAt: new Date(),
-        extensionCount: { increment: 1 },
-      },
+      data: updateData,
       include: {
         cell: {
           include: {
@@ -876,9 +904,10 @@ export class CellRentalsService {
       },
     });
 
-    // Обновляем дату окончания аренды (добавляем 1 месяц)
+    // Обновляем дату окончания аренды, используя срок из платежа или 30 дней по умолчанию
+    const daysToAdd = payment.rentalDuration || 30;
     const newEndDate = new Date(rental.endDate);
-    newEndDate.setMonth(newEndDate.getMonth() + 1);
+    newEndDate.setDate(newEndDate.getDate() + daysToAdd);
 
     this.logger.log(`Extending rental ${rentalId} after attaching payment`, 'CellRentalsService');
     // Обновляем аренду

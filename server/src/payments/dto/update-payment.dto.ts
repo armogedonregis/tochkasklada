@@ -41,4 +41,10 @@ export class UpdatePaymentDto {
   @IsOptional()
   @IsDateString()
   rentalEndDate?: string;   // Новая дата окончания аренды (формат: "YYYY-MM-DD")
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
+  rentalDuration?: number;
 } 

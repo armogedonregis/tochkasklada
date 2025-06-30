@@ -181,7 +181,8 @@ export class PaymentsService {
         userId: data.userId,
         status: data.status || true, // Для админа платеж по умолчанию успешный
         tinkoffPaymentId: data.tinkoffPaymentId,
-        paymentUrl: data.paymentUrl
+        paymentUrl: data.paymentUrl,
+        rentalDuration: data.rentalDuration,
       },
       include: {
         user: {
@@ -219,8 +220,8 @@ export class PaymentsService {
           }
         });
         
-        // Длительность аренды по умолчанию 30 дней (раньше передавалась rentalDays)
-        const rentalDurationDays = 30;
+        // Длительность аренды из платежа или по умолчанию 30 дней
+        const rentalDurationDays = data.rentalDuration || 30;
         this.logger.log(`Rental duration: ${rentalDurationDays} days`, PaymentsService.name);
         
         let rental;
@@ -337,6 +338,7 @@ export class PaymentsService {
     const { 
       cellRentalId, cellId, extendRental, 
       detachRental, rentalStartDate, rentalEndDate, 
+      rentalDuration,
       ...paymentData 
     } = updateData;
     
@@ -399,6 +401,25 @@ export class PaymentsService {
           });
           
           this.logger.log(`Аренда ${cellRentalId} обновлена`, PaymentsService.name);
+        }
+      }
+      
+      // Обновление rentalDuration у существующей аренды
+      else if (rentalDuration && existingPayment.cellRentalId) {
+        const rental = await this.prisma.cellRental.findUnique({
+          where: { id: existingPayment.cellRentalId },
+        });
+
+        if (rental) {
+          const newEndDate = new Date(rental.startDate);
+          newEndDate.setDate(newEndDate.getDate() + rentalDuration);
+
+          await this.prisma.cellRental.update({
+            where: { id: existingPayment.cellRentalId },
+            data: { endDate: newEndDate },
+          });
+
+          this.logger.log(`Срок аренды ${existingPayment.cellRentalId} обновлен. Новая дата окончания: ${newEndDate}`, PaymentsService.name);
         }
       }
       
@@ -508,7 +529,7 @@ export class PaymentsService {
     // Обновляем платеж
     return this.prisma.payment.update({
       where: { id },
-      data: paymentData,
+      data: { ...paymentData, rentalDuration },
       include: {
         user: {
           select: {
@@ -619,14 +640,15 @@ export class PaymentsService {
           where: { id: cellRentalId }
         });
       } else {
-        // Если остались другие платежи – откатываем срок аренды на 30 дней
-        // Получаем текущую аренду
+        // Если остались другие платежи – откатываем срок аренды
         const rental = await this.prisma.cellRental.findUnique({
           where: { id: cellRentalId }
         });
         if (rental) {
+          // Откатываем на то количество дней, которое было в удаленном платеже
+          const daysToSubtract = existingPayment.rentalDuration || 30; // 30 как fallback
           const newEndDate = new Date(rental.endDate);
-          newEndDate.setDate(newEndDate.getDate() - 30);
+          newEndDate.setDate(newEndDate.getDate() - daysToSubtract);
           await this.prisma.cellRental.update({
             where: { id: cellRentalId },
             data: { endDate: newEndDate }
@@ -994,7 +1016,7 @@ export class PaymentsService {
     }
 
     const data = this._normalizeTildaPayload(payload);
-    const { email, phone, name, cellNumber, sizeform, amount, description } = data;
+    const { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays } = data;
 
     if (!email) {
       throw new BadRequestException('Email не был получен от Tilda');
@@ -1010,6 +1032,7 @@ export class PaymentsService {
     const paymentDetails = this._preparePaymentDetails(user.id, cell, amount, description, {
       cellNumber,
       sizeform,
+      rentalDurationDays,
     });
 
     return this.createPaymentByAdmin(paymentDetails);
@@ -1063,23 +1086,45 @@ export class PaymentsService {
       this.logger.warn(`Invalid amount: ${amount}, setting to 0`, context);
     }
 
-    // Описание
-    const description =
-      Array.isArray(paymentJson.products) && paymentJson.products.length > 0
-        ? paymentJson.products.join('; ')
-        : '';
-
-    // Размер (sizeform)
+    // Размер (sizeform) и срок аренды
     let sizeform = p.sizeform;
-    if (!sizeform && Array.isArray(paymentJson.products) && paymentJson.products.length > 0) {
+    let rentalDurationDays: number | undefined;
+    let description = '';
+
+    if (Array.isArray(paymentJson.products) && paymentJson.products.length > 0) {
+      description = paymentJson.products
+        .map((prod: string) => prod.split('=')[0])
+        .join('; ');
+
+      // Парсим sizeform и срок аренды из первого продукта
       const prod = paymentJson.products[0] as string;
-      const bracketMatch = prod.match(/\(([^)]+)\)/);
+      const bracketMatch = prod.match(/\(([^)]+)\)/); // e.g. (XS-1-shu, Срок аренды: 1 месяц)
       if (bracketMatch) {
-        sizeform = bracketMatch[1].split(',')[0].trim();
+        const parts = bracketMatch[1].split(',').map((s) => s.trim());
+        if (!sizeform) {
+          sizeform = parts[0];
+        }
+
+        const rentalStringPart = parts.find((part) => part.toLowerCase().includes('срок аренды'));
+        if (rentalStringPart) {
+          const rentalString = rentalStringPart.replace(/срок аренды:/i, '').trim();
+          const [value, unit] = rentalString.split(' ');
+          const numValue = parseInt(value, 10);
+
+          if (!isNaN(numValue)) {
+            if (unit.startsWith('мес')) {
+              rentalDurationDays = numValue * 30; // Упрощенно
+            } else if (unit.startsWith('дн') || unit.startsWith('day')) {
+              rentalDurationDays = numValue;
+            } else if (unit.startsWith('год') || unit.startsWith('year')) {
+              rentalDurationDays = numValue * 365;
+            }
+          }
+        }
       }
     }
 
-    return { email, phone, name, cellNumber, sizeform, amount, description };
+    return { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays };
   }
 
   /**
@@ -1180,26 +1225,33 @@ export class PaymentsService {
     cell: any,
     amount: number,
     tildaDescription: string,
-    tildaInfo: { cellNumber?: string; sizeform?: string },
+    tildaInfo: { cellNumber?: string; sizeform?: string; rentalDurationDays?: number },
   ): CreateAdminPaymentDto {
     const paymentPayload: Partial<CreateAdminPaymentDto> = {
       userId: userId,
       amount: amount > 0 ? amount : 0,
       status: false,
+      rentalDuration: tildaInfo.rentalDurationDays,
     };
 
+    const { cellNumber, sizeform } = tildaInfo;
+
+    // Начинаем с описания продуктов из Тильды или ставим заглушку
+    let description = tildaDescription || 'Платеж из Tilda';
+
+    // Добавляем конкретный номер ячейки, если он был указан
+    if (cellNumber) {
+      description += ` (Ячейка: ${cellNumber})`;
+    } else if (sizeform) {
+      description += ` (Размер: ${sizeform})`;
+    }
+
+    // Если мы нашли конкретную ячейку в БД, привязываем платеж к ней
     if (cell) {
       paymentPayload.cellId = cell.id;
-      paymentPayload.description = tildaDescription || `Аренда ячейки ${cell.name} (из Tilda)`;
-    } else {
-      this.logger.log('Свободная ячейка не найдена. Создание заявки.', 'TildaPayment');
-      const { cellNumber, sizeform } = tildaInfo;
-      paymentPayload.description =
-        tildaDescription ||
-        `Заявка с Tilda${cellNumber ? ` на ячейку ${cellNumber}` : ''}${
-          sizeform ? ` (${sizeform})` : ''
-        }`;
     }
+
+    paymentPayload.description = description;
 
     return paymentPayload as CreateAdminPaymentDto;
   }

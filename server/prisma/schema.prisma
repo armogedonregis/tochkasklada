@@ -72,6 +72,7 @@ model Payment {
   status           Boolean @default(false)
   tinkoffPaymentId String?
   paymentUrl       String?
+  rentalDuration   Int?    // Срок аренды в днях, который покрывает этот платеж
 
   cellRentalId String?
   cellRental   CellRental? @relation(fields: [cellRentalId], references: [id], onDelete: Cascade)

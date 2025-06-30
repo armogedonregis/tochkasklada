@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, ParseUUIDPipe, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { CellRentalsService } from './cell-rentals.service';
-import { UpdateCellRentalDto, FindCellRentalsDto } from './dto';
+import { UpdateCellRentalDto, FindCellRentalsDto, ExtendCellRentalDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -71,6 +71,22 @@ export class CellRentalsAdminController {
   @HttpCode(HttpStatus.OK)
   updateRentalStatus(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellRentalsService.updateRentalStatus(id);
+  }
+
+  /**
+   * Продление аренды (создает платеж и обновляет дату окончания)
+   */
+  @Post(':id/extend')
+  @HttpCode(HttpStatus.OK)
+  extendRental(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() extendDto: Omit<ExtendCellRentalDto, 'cellRentalId'>
+  ) {
+    const fullDto: ExtendCellRentalDto = {
+      cellRentalId: id,
+      ...extendDto
+    };
+    return this.cellRentalsService.extendRental(fullDto);
   }
 
   /**

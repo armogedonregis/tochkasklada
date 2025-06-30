@@ -21,4 +21,9 @@ export class ExtendCellRentalDto {
   @Min(1)
   @Type(() => Number)
   months?: number = 1; // По умолчанию продление на 1 месяц
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  rentalDuration?: number; // Срок продления в днях
 } 

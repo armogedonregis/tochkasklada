@@ -2,6 +2,7 @@ import { FilterParams, DateRangeParams, PaginatedResponse } from '../services.ty
 import { Cell } from '../cellService/cell.types';
 import { Client } from '../clientsService/clients.types';
 import { Container } from '../containersService/container.types';
+import { Payment } from '../paymentsService/payments.types';
 
 export enum CellRentalSortField {
   CREATED_AT = 'createdAt',
@@ -32,6 +33,8 @@ export interface CellRental {
   client?: Client;
   rentalStatus: CellRentalStatus;
   container?: Container;
+  extensionCount?: number;
+  payments?: Payment[];
 }
 
 export interface CellFreeRental extends Cell {

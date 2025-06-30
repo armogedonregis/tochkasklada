@@ -28,6 +28,8 @@ export interface Payment {
   user?: User;
   cellId?: string;
   cellRental?: CellRental;
+  rentalDuration?: number;
+  tinkoffPaymentId?: string;
 }
 
 export interface CreatePaymentDto {
@@ -46,6 +48,7 @@ export interface CreateAdminPaymentDto {
   status?: boolean;
   cellId?: string;
   statusId?: string;
+  rentalDuration?: number;
 }
 
 export interface UpdatePaymentDto {
@@ -55,6 +58,7 @@ export interface UpdatePaymentDto {
   status?: boolean;
   cellId?: string;
   statusId?: string;
+  rentalDuration?: number;
 }
 
 export interface SetPaymentStatusDto {
