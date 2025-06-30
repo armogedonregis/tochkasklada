@@ -262,6 +262,16 @@ export const Navigation: React.FC<NavigationProps> = ({
         />
 
         <MenuItem
+          icon={<StatisticsIcon className="text-gray-500" />}
+          activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+          pageName="Гант"
+          page={Pages.gantt}
+          isNavOpened={isNavOpened}
+          currentPage={currentPage}
+          onClick={() => navigateTo(Pages.gantt, '/gantt')}
+        />
+
+        <MenuItem
           icon={<FreeCellIcon className="text-gray-500" />}
           activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Аренды ячеек"

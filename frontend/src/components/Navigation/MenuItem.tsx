@@ -18,7 +18,8 @@ export enum Pages {
   cellRentals = 'cellRentals',
   apiDocs = 'apiDocs',
   statistics = 'statistics',
-  logs = 'logs'
+  logs = 'logs',
+  gantt = 'gantt'
   // Добавьте другие необходимые страницы из вашего Flutter-проекта
 }
 

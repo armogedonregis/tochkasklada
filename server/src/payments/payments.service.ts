@@ -989,225 +989,218 @@ export class PaymentsService {
   async createTildaPayment(payload: any) {
     // 0. Обрабатываем только формы с именем 'Cart'
     if (payload.formname && payload.formname !== 'Cart') {
-      this.logger.warn(`Tilda webhook ignored: unsupported formname '${payload.formname}'`, 'createTildaPayment');
+      this.logger.warn(`Tilda webhook ignored: unsupported formname '${payload.formname}'`, 'TildaPayment');
       return { success: false, message: 'Форма не поддерживается' };
     }
 
-    // 1. Поля могут приходить с разным регистром
-    const email = payload.email || payload.Email || payload.EMAIL;
-    const phone = payload.phone || payload.Phone || payload.PHONE;
-    const name = payload.name || payload.Name || 'Клиент из Tilda';
-
-    // 2. Получаем номер ячейки из individualnumber, если есть
-    let cellNumber: string | undefined = payload.individualnumber || payload.INDIVIDUALNUMBER || payload.individualNumber || payload.IndividualNumber;
-    let sizeform: string | undefined = payload.sizeform;
-
-    // 3. Если есть строка payment – в ней JSON, достаем сумму и products
-    let paymentJson: any = null;
-    if (typeof payload.payment === 'string') {
-      this.logger.log(`Parsing payment JSON: ${payload.payment}`, 'createTildaPayment');
-      try {
-        paymentJson = JSON.parse(payload.payment);
-        this.logger.log(`Payment JSON parsed successfully: ${JSON.stringify(paymentJson)}`, 'createTildaPayment');
-      } catch (e) {
-        this.logger.error(`Не удалось распарсить поле payment: ${e.message}`, e.stack, 'createTildaPayment');
-      }
-    } else {
-      this.logger.log('Payment field is not a string, skipping JSON parsing', 'createTildaPayment');
-    }
-
-    // 4. Сумма
-    let amountNum = 0;
-    if (paymentJson?.amount) {
-      amountNum = Number(paymentJson.amount);
-      this.logger.log(`Amount from payment JSON: ${amountNum}`, 'createTildaPayment');
-    } else if (payload.amount) {
-      amountNum = Number(payload.amount);
-      this.logger.log(`Amount from payload: ${amountNum}`, 'createTildaPayment');
-    }
-    if (isNaN(amountNum) || amountNum < 0) {
-      this.logger.warn(`Invalid amount: ${amountNum}, setting to 0`, 'createTildaPayment');
-      amountNum = 0;
-    }
-    this.logger.debug?.(`Tilda amount parsed: ${amountNum}`, 'createTildaPayment');
-
-    // 4.1 Формируем description из products, если есть
-    let tildaDescription = '';
-    if (Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
-      tildaDescription = paymentJson.products.join('; ');
-      this.logger.log(`Description from products: ${tildaDescription}`, 'createTildaPayment');
-    }
-
-    // 5. Если sizeform нет, пробуем из products[0] (для размера)
-    if (!sizeform && Array.isArray(paymentJson?.products) && paymentJson.products.length > 0) {
-      const prod = paymentJson.products[0] as string;
-      this.logger.log(`Extracting sizeform from product: ${prod}`, 'createTildaPayment');
-      // Извлекаем строку внутри скобок
-      const bracketMatch = prod.match(/\(([^)]+)\)/);
-      if (bracketMatch) {
-        // Берём только первую часть до запятой (если есть)
-        sizeform = bracketMatch[1].split(',')[0].trim(); // "XS-1-shu"
-        this.logger.log(`Sizeform extracted: ${sizeform}`, 'createTildaPayment');
-      } else {
-        this.logger.warn(`No brackets found in product: ${prod}`, 'createTildaPayment');
-      }
-    }
-    this.logger.debug?.(`Tilda sizeform parsed: ${sizeform}`, 'createTildaPayment');
+    const data = this._normalizeTildaPayload(payload);
+    const { email, phone, name, cellNumber, sizeform, amount, description } = data;
 
     if (!email) {
       throw new BadRequestException('Email не был получен от Tilda');
     }
-  
-    // 6. Найти или создать пользователя
+
+    const user = await this._findOrCreateUserWithClient({ email, phone, name });
+    if (!user || !user.client) {
+      throw new InternalServerErrorException('Не удалось найти или создать клиента для пользователя');
+    }
+
+    const cell = await this._findAvailableCell(cellNumber, sizeform);
+
+    const paymentDetails = this._preparePaymentDetails(user.id, cell, amount, description, {
+      cellNumber,
+      sizeform,
+    });
+
+    return this.createPaymentByAdmin(paymentDetails);
+  }
+
+  /**
+   * Нормализует ключи в payload от Tilda и извлекает основные данные.
+   */
+  private _normalizeTildaPayload(payload: any) {
+    const context = 'TildaPayload';
+    // Приводим все ключи к нижнему регистру для удобства
+    const p = Object.keys(payload).reduce(
+      (acc, key) => {
+        acc[key.toLowerCase()] = payload[key];
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
+
+    // Основные поля
+    const email = p.email;
+    const phone = p.phone;
+    const name = p.name || 'Клиент из Tilda';
+    let cellNumber = p.individualnumber;
+
+    // Хардкод для обработки пользовательского ввода номера ячейки
+    if (cellNumber) {
+      this.logger.log(`Original Tilda cellNumber: ${cellNumber}`, context);
+      cellNumber = String(cellNumber)
+        .toUpperCase()
+        .replace(/А/g, 'A')
+        .replace(/В/g, 'B')
+        .replace(/С/g, 'C')
+        .replace(/Е/g, 'E');
+      this.logger.log(`Normalized Tilda cellNumber: ${cellNumber}`, context);
+    }
+
+    // Поля из JSON-строки 'payment'
+    let paymentJson: any = {};
+    if (typeof p.payment === 'string') {
+      try {
+        paymentJson = JSON.parse(p.payment);
+      } catch (e) {
+        this.logger.error(`Не удалось распарсить поле payment: ${e.message}`, e.stack, context);
+      }
+    }
+
+    // Сумма
+    const amount = Number(paymentJson.amount || p.amount || 0);
+    if (isNaN(amount) || amount < 0) {
+      this.logger.warn(`Invalid amount: ${amount}, setting to 0`, context);
+    }
+
+    // Описание
+    const description =
+      Array.isArray(paymentJson.products) && paymentJson.products.length > 0
+        ? paymentJson.products.join('; ')
+        : '';
+
+    // Размер (sizeform)
+    let sizeform = p.sizeform;
+    if (!sizeform && Array.isArray(paymentJson.products) && paymentJson.products.length > 0) {
+      const prod = paymentJson.products[0] as string;
+      const bracketMatch = prod.match(/\(([^)]+)\)/);
+      if (bracketMatch) {
+        sizeform = bracketMatch[1].split(',')[0].trim();
+      }
+    }
+
+    return { email, phone, name, cellNumber, sizeform, amount, description };
+  }
+
+  /**
+   * Находит или создает пользователя и связанного с ним клиента.
+   */
+  private async _findOrCreateUserWithClient(data: { email: string; phone?: string; name?: string }) {
+    const context = 'TildaUserCreation';
+    const { email, phone, name } = data;
+
     let user = await this.prisma.user.findUnique({
       where: { email },
       include: { client: true },
     });
-  
-    if (!user) {
+
+    if (user) {
+      // Если пользователь есть, а клиента нет - создаем клиента
+      if (!user.client) {
+        const client = await this.prisma.client.create({
+          data: {
+            userId: user.id,
+            name: name || 'Клиент из Tilda',
+            phones: { create: { phone: phone || '' } },
+          },
+        });
+        user.client = client;
+        this.logger.log(`Client created for existing user: ${email}`, context);
+      }
+    } else {
       // Если пользователя нет, создаем его и связанного клиента
       user = await this.prisma.user.create({
         data: {
           email,
-          password: uuidv4(), 
+          password: uuidv4(),
           client: {
             create: {
               name: name || 'Клиент из Tilda',
-              phones: {
-                create: {
-                  phone: phone || '',
-                },
-              },
+              phones: { create: { phone: phone || '' } },
             },
           },
         },
         include: { client: true },
       });
-      this.logger.log(`User created: ${user.email}`, 'createTildaPayment');
-    } else if (!user.client) {
-      // Если пользователь есть, а клиента нет - создаем клиента
-      const client = await this.prisma.client.create({
-        data: {
-          userId: user.id,
-          name: name || 'Клиент из Tilda',
-           phones: {
-            create: {
-              phone: phone || '',
-            },
-          },
-        }
-      });
-      user = { ...user, client };
+      this.logger.log(`User and client created: ${email}`, context);
     }
 
-    if (!user || !user.client) {
-        throw new InternalServerErrorException('Не удалось найти или создать клиента для пользователя');
-    }
+    return user;
+  }
 
-    // 7. Поиск ячейки: сначала по номеру, потом по размеру/локации
-    let cell: any = null;
+  /**
+   * Ищет доступную ячейку сначала по номеру, потом по размеру/локации.
+   */
+  private async _findAvailableCell(cellNumber?: string, sizeform?: string) {
+    const context = 'TildaCellSearch';
     if (cellNumber) {
-      this.logger.log(`Searching for cell by number: ${cellNumber}`, 'createTildaPayment');
-      cell = await this.prisma.cells.findFirst({
+      this.logger.log(`Searching for cell by number: ${cellNumber}`, context);
+      const cell = await this.prisma.cells.findFirst({
         where: {
-          name: {
-            equals: cellNumber,
-            mode: 'insensitive' // Регистронезависимый поиск
-          },
+          name: { equals: cellNumber, mode: 'insensitive' },
           status: { name: 'Свободна' },
-          rentals: {
-            none: {
-              isActive: true,
-            },
-          },
-        }
+          rentals: { none: { isActive: true } },
+        },
       });
-      this.logger.debug?.(`Tilda cell search by number: ${cellNumber}, found: ${!!cell}`, 'createTildaPayment');
       if (cell) {
-        this.logger.log(`Cell found by number: ${cell.name} (ID: ${cell.id})`, 'createTildaPayment');
-      } else {
-        this.logger.warn(`Cell not found by number: ${cellNumber}`, 'createTildaPayment');
+        this.logger.log(`Cell found by number: ${cell.name} (ID: ${cell.id})`, context);
+        return cell;
       }
+      this.logger.warn(`Cell not found by number: ${cellNumber}`, context);
     }
-    // Если не нашли по номеру, пробуем по размеру и локации
-    if (!cell && sizeform) {
-      this.logger.log(`Searching for cell by size/location: ${sizeform}`, 'createTildaPayment');
+
+    if (sizeform) {
+      this.logger.log(`Searching for cell by size/location: ${sizeform}`, context);
       const [size, location] = sizeform.split(' ');
       if (size && location) {
-        cell = await this.prisma.cells.findFirst({
+        const cell = await this.prisma.cells.findFirst({
           where: {
             size: { name: size },
-            container: {
-              location: {
-                name: { contains: location, mode: 'insensitive' }
-              }
-            },
+            container: { location: { name: { contains: location, mode: 'insensitive' } } },
             status: { name: 'Свободна' },
-            rentals: {
-              none: {
-                isActive: true
-              }
-            }
-          }
+            rentals: { none: { isActive: true } },
+          },
         });
-        this.logger.debug?.(`Tilda cell search by size/location: size=${size}, location=${location}, found=${!!cell}`, 'createTildaPayment');
         if (cell) {
-          this.logger.log(`Cell found by size/location: ${cell.name} (ID: ${cell.id})`, 'createTildaPayment');
-        } else {
-          this.logger.warn(`Cell not found by size/location: size=${size}, location=${location}`, 'createTildaPayment');
+          this.logger.log(`Cell found by size/location: ${cell.name} (ID: ${cell.id})`, context);
+          return cell;
         }
+        this.logger.warn(`Cell not found by size/location: size=${size}, location=${location}`, context);
       }
     }
 
-    if (!cell) {
-      // Если ячейка не найдена, можно создать просто платеж-заявку
-      this.logger.log('Свободная ячейка не найдена. Создание заявки.', 'createTildaPayment');
-      return this.createPaymentByAdmin({
-        userId: user.id,
-        amount: amountNum, // Корректная сумма
-        description: tildaDescription || `Заявка с Tilda${cellNumber ? ` на ячейку ${cellNumber}` : ''}${sizeform ? ` (${sizeform})` : ''}`,
-        status: false,
-      });
-    }
-  
-    // 8. Создать/заявить платеж через существующий метод
-    if (amountNum <= 0) {
-      // Если суммы нет, можно просто создать заявку без суммы
-      if (cell && cell.name && cell.id) {
-        this.logger.log(`Некорректная сумма. Создание заявки для ${email} на ячейку ${cell.name}.`, 'createTildaPayment');
-        return this.createPaymentByAdmin({
-          userId: user.id,
-          amount: 0,
-          description: tildaDescription || `Заявка с Tilda на ячейку ${cell.name}`,
-          status: false,
-        });
-      } else {
-        // fallback, если вдруг cell невалиден
-        return this.createPaymentByAdmin({
-          userId: user.id,
-          amount: 0,
-          description: tildaDescription || `Заявка с Tilda (ячейка не определена)`,
-          status: false,
-        });
-      }
-    }
+    return null;
+  }
 
-    if (cell && cell.id && cell.name) {
-      return this.createPaymentByAdmin({
-        userId: user.id,
-        cellId: cell.id,
-        amount: amountNum,
-        description: tildaDescription || `Аренда ячейки ${cell.name} (из Tilda)` ,
-        status: false, // Платеж должен быть создан как неоплаченный
-      });
+  /**
+   * Готовит параметры для создания платежа.
+   */
+  private _preparePaymentDetails(
+    userId: string,
+    cell: any,
+    amount: number,
+    tildaDescription: string,
+    tildaInfo: { cellNumber?: string; sizeform?: string },
+  ): CreateAdminPaymentDto {
+    const paymentPayload: Partial<CreateAdminPaymentDto> = {
+      userId: userId,
+      amount: amount > 0 ? amount : 0,
+      status: false,
+    };
+
+    if (cell) {
+      paymentPayload.cellId = cell.id;
+      paymentPayload.description = tildaDescription || `Аренда ячейки ${cell.name} (из Tilda)`;
     } else {
-      // fallback, если вдруг cell невалиден
-      return this.createPaymentByAdmin({
-        userId: user.id,
-        amount: amountNum,
-        description: tildaDescription || `Аренда ячейки (ячейка не определена, из Tilda)`,
-        status: false,
-      });
+      this.logger.log('Свободная ячейка не найдена. Создание заявки.', 'TildaPayment');
+      const { cellNumber, sizeform } = tildaInfo;
+      paymentPayload.description =
+        tildaDescription ||
+        `Заявка с Tilda${cellNumber ? ` на ячейку ${cellNumber}` : ''}${
+          sizeform ? ` (${sizeform})` : ''
+        }`;
     }
+
+    return paymentPayload as CreateAdminPaymentDto;
   }
 } 
