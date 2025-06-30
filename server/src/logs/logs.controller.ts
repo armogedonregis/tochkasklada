@@ -8,27 +8,65 @@ import { UserRole } from '@prisma/client';
 
 @Controller('logs')
 export class LogsController {
+  private readonly logsDir = process.env.LOGS_DIR || path.join(__dirname, '..', '..', 'logs');
+
   /**
-   * Возвращает последние N строк последнего лог-файла Winston/PM2.
+   * Возвращает список доступных лог-файлов.
+   * Только для ролей SUPERADMIN.
+   */
+  @Get('files')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
+  getLogFiles(): string[] {
+    if (!fs.existsSync(this.logsDir)) {
+      return [];
+    }
+
+    const files = fs.readdirSync(this.logsDir)
+      .filter(f => f.endsWith('.log') || f.endsWith('.log.gz'))
+      .map(f => ({ name: f, time: fs.statSync(path.join(this.logsDir, f)).mtime.getTime() }))
+      .sort((a, b) => b.time - a.time)
+      .map(f => f.name);
+
+    return files;
+  }
+
+  /**
+   * Возвращает последние N строк указанного лог-файла или последнего лог-файла.
    * Только для ролей SUPERADMIN.
    */
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPERADMIN)
-  getLastLines(@Query('lines') lines = '200'): string[] {
+  getLastLines(
+    @Query('lines') lines = '200',
+    @Query('file') logFile?: string,
+  ): string[] {
     const linesNum = Number(lines);
     if (isNaN(linesNum) || linesNum <= 0) {
       throw new BadRequestException('Query param "lines" должен быть положительным числом');
     }
 
-    // Ищем логи в папке logs внутри директории сервера
-    const logsDir = process.env.LOGS_DIR || path.join(__dirname, '..', '..', 'logs');
-    const latestLogFile = this.getLatestLogFile(logsDir);
-    if (!latestLogFile) {
+    let targetFile: string | null;
+
+    if (logFile) {
+      if (logFile.includes('..')) {
+        throw new BadRequestException('Недопустимое имя файла.');
+      }
+      targetFile = path.join(this.logsDir, logFile);
+      if (!fs.existsSync(targetFile)) {
+        throw new BadRequestException(`Файл логов ${logFile} не найден.`);
+      }
+    } else {
+      const latestLogFileName = this.getLatestLogFile(this.logsDir);
+      targetFile = latestLogFileName ? path.join(this.logsDir, latestLogFileName) : null;
+    }
+
+    if (!targetFile) {
       return [];
     }
 
-    const data = fs.readFileSync(latestLogFile, 'utf-8');
+    const data = fs.readFileSync(targetFile, 'utf-8');
     const allLines = data.trimEnd().split(/\r?\n/);
     return allLines.slice(-linesNum);
   }
@@ -43,6 +81,6 @@ export class LogsController {
       .map(f => ({ name: f, time: fs.statSync(path.join(dir, f)).mtime.getTime() }))
       .sort((a, b) => b.time - a.time);
     
-    return files.length > 0 ? path.join(dir, files[0].name) : null;
+    return files.length > 0 ? files[0].name : null;
   }
 } 
