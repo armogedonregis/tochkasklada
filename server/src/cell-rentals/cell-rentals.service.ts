@@ -118,6 +118,11 @@ export class CellRentalsService {
           client: {
             include: {
               phones: true,
+              user: {
+                select: {
+                  email: true,
+                }
+              }
             }
           },
           status: true,

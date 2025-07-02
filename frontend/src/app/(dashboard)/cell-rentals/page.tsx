@@ -128,7 +128,8 @@ export default function CellRentalsPage() {
 
       let computedEnd = initialEnd;
       if (days && startDate && !computedEnd) {
-        const dateEnd = addDays(new Date(startDate), Number(days));
+        const startUtc = new Date(`${startDate}T00:00:00Z`);
+        const dateEnd = addDays(startUtc, Number(days));
         computedEnd = dateEnd.toISOString().split('T')[0];
       }
 
@@ -209,7 +210,18 @@ export default function CellRentalsPage() {
       inputType: 'number',
       fieldName: 'days' as const,
       label: 'Дней аренды',
-      placeholder: 'Введите количество дней'
+      placeholder: 'Введите количество дней',
+      onChange: (form: any, value: string) => {
+        const days = parseInt(value, 10);
+        const start = form.getValues('startDate');
+        if (start && !isNaN(days)) {
+          const startUtc = new Date(`${start}T00:00:00Z`);
+          const dateEnd = addDays(startUtc, days);
+          const endString = dateEnd.toISOString().split('T')[0];
+          form.setValue('endDate', endString, { shouldValidate: true });
+          form.trigger('endDate');
+        }
+      }
     },
     {
       type: 'select' as const,
@@ -412,7 +424,10 @@ export default function CellRentalsPage() {
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   return (

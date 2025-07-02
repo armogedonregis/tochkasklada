@@ -1,5 +1,5 @@
 import { LucideIcon } from 'lucide-react';
-import { Path } from 'react-hook-form';
+import { Path, FieldValues } from 'react-hook-form';
 
 // Типы полей формы
 export type IFormType = 
@@ -28,15 +28,17 @@ export interface BaseFormArea {
 }
 
 // Тип для input полей
-export interface InputFormArea<T> extends BaseFormArea {
+export interface InputFormArea<T extends FieldValues> extends BaseFormArea {
   type: 'input';
   fieldName: Path<T>;
   placeholder?: string;
   inputType?: string;
+  // Функция обратного вызова при изменении значения поля
+  onChange?: (form: import('react-hook-form').UseFormReturn<T>, value: string) => void;
 }
 
 // Тип для select полей
-export interface SelectFormArea<T> extends BaseFormArea {
+export interface SelectFormArea<T extends FieldValues> extends BaseFormArea {
   type: 'select';
   fieldName: Path<T>;
   placeholder?: string;
@@ -47,7 +49,7 @@ export interface SelectFormArea<T> extends BaseFormArea {
 }
 
 // Тип для выпадающего списка с поиском и поддержкой RTK Query
-export interface SearchSelectFormArea<T> extends BaseFormArea {
+export interface SearchSelectFormArea<T extends FieldValues> extends BaseFormArea {
   type: 'searchSelect';
   fieldName: Path<T>;
   placeholder?: string;
@@ -57,14 +59,14 @@ export interface SearchSelectFormArea<T> extends BaseFormArea {
 }
 
 // Тип для чекбоксов
-export interface CheckboxFormArea<T> extends BaseFormArea {
+export interface CheckboxFormArea<T extends FieldValues> extends BaseFormArea {
   type: 'checkbox';
   fieldName: Path<T>;
   description?: string;
 }
 
 // Тип для чекбоксов с селектором
-export interface CheckboxWithSelectFormArea<T> extends BaseFormArea {
+export interface CheckboxWithSelectFormArea<T extends FieldValues> extends BaseFormArea {
   type: 'checkboxWithSelect';
   fieldName: Path<T>;         // Имя поля для чекбокса
   selectField: Path<T>;       // Имя поля для селектора
@@ -80,7 +82,7 @@ export interface TitleFormArea extends BaseFormArea {
 }
 
 // Тип для выбора цвета
-export interface ColorPickerFormArea<T> extends BaseFormArea {
+export interface ColorPickerFormArea<T extends FieldValues> extends BaseFormArea {
   type: 'colorPicker';
   fieldName: Path<T>;
   placeholder?: string;
@@ -88,7 +90,7 @@ export interface ColorPickerFormArea<T> extends BaseFormArea {
 }
 
 // Тип для выбора даты
-export interface DatePickerFormArea<T> extends BaseFormArea {
+export interface DatePickerFormArea<T extends FieldValues> extends BaseFormArea {
   type: 'datePicker';
   fieldName: Path<T>;
   placeholder?: string;
@@ -97,7 +99,7 @@ export interface DatePickerFormArea<T> extends BaseFormArea {
 }
 
 // Тип для ввода телефонного номера
-export interface PhoneInputFormArea<T> extends BaseFormArea {
+export interface PhoneInputFormArea<T extends FieldValues> extends BaseFormArea {
   type: 'phoneInput';
   fieldName: Path<T>;
   placeholder?: string;
@@ -105,7 +107,7 @@ export interface PhoneInputFormArea<T> extends BaseFormArea {
 }
 
 // Объединение всех типов
-export type IForm<T> = 
+export type IForm<T extends FieldValues> = 
   | InputFormArea<T> 
   | SelectFormArea<T> 
   | CheckboxFormArea<T> 

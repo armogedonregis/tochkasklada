@@ -14,6 +14,7 @@ interface FormInputProps<T extends FieldValues> {
   icon?: LucideIcon;
   className?: string;
   type?: string;
+  onChange?: (form: UseFormReturn<T>, value: string) => void;
 }
 
 const FormInput = <T extends FieldValues>({
@@ -23,7 +24,8 @@ const FormInput = <T extends FieldValues>({
   placeholder,
   icon,
   className = '',
-  type = 'text'
+  type = 'text',
+  onChange,
 }: FormInputProps<T>) => {
   return (
     <FormField
@@ -45,6 +47,12 @@ const FormInput = <T extends FieldValues>({
                 placeholder={placeholder}
                 className={icon ? 'pl-10' : ''}
                 {...field}
+                onChange={(e) => {
+                  field.onChange(e);
+                  if (onChange) {
+                    onChange(form, e.target.value);
+                  }
+                }}
                 value={field.value ?? ''}
                 type={type}
                 min={type === "number" ? 0 : undefined}

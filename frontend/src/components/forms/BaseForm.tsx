@@ -103,6 +103,7 @@ const BaseForm = <T extends FieldValues>({
             icon={item.icon}
             type={item.inputType}
             className={inputClassName}
+            onChange={('onChange' in item) ? (item as any).onChange : undefined}
           />
         );
       
