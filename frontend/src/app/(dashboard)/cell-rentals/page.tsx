@@ -374,7 +374,7 @@ export default function CellRentalsPage() {
         if (!startDate || !endDate) return '-';
 
         try {
-          return differenceInDays(new Date(endDate), new Date(startDate)) - 1;
+          return differenceInDays(new Date(endDate), new Date(startDate)) + 1;
         } catch {
           return '-';
         }
