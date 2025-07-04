@@ -216,7 +216,7 @@ export default function CellRentalsPage() {
         const start = form.getValues('startDate');
         if (start && !isNaN(days)) {
           const startUtc = new Date(`${start}T00:00:00Z`);
-          const dateEnd = addDays(startUtc, days);
+          const dateEnd = addDays(startUtc, days - 1);
           const endString = dateEnd.toISOString().split('T')[0];
           form.setValue('endDate', endString, { shouldValidate: true });
           form.trigger('endDate');
@@ -374,7 +374,7 @@ export default function CellRentalsPage() {
         if (!startDate || !endDate) return '-';
 
         try {
-          return differenceInDays(new Date(endDate), new Date(startDate));
+          return differenceInDays(new Date(endDate), new Date(startDate)) - 1;
         } catch {
           return '-';
         }
