@@ -1027,7 +1027,14 @@ export class PaymentsService {
       throw new InternalServerErrorException('Не удалось найти или создать клиента для пользователя');
     }
 
-    const cell = await this._findAvailableCell(cellNumber, sizeform);
+    if (!cellNumber) {
+      throw new BadRequestException('Номер ячейки (individualnumber) обязателен');
+    }
+
+    const cell = await this._findAvailableCell(cellNumber);
+    if (!cell) {
+      throw new BadRequestException(`Ячейка с номером ${cellNumber} не найдена`);
+    }
 
     const paymentDetails = this._preparePaymentDetails(user.id, cell, amount, description, {
       cellNumber,
@@ -1183,37 +1190,45 @@ export class PaymentsService {
       const cell = await this.prisma.cells.findFirst({
         where: {
           name: { equals: cellNumber, mode: 'insensitive' },
-          status: { name: 'Свободна' },
           rentals: { none: { isActive: true } },
         },
+        include: {
+          status: true,
+          rentals: {
+            where: { isActive: true }
+          }
+        }
       });
+      
       if (cell) {
         this.logger.log(`Cell found by number: ${cell.name} (ID: ${cell.id})`, context);
         return cell;
-      }
-      this.logger.warn(`Cell not found by number: ${cellNumber}`, context);
-    }
-
-    if (sizeform) {
-      this.logger.log(`Searching for cell by size/location: ${sizeform}`, context);
-      const [size, location] = sizeform.split(' ');
-      if (size && location) {
-        const cell = await this.prisma.cells.findFirst({
+      } else {
+        // Проверяем, существует ли ячейка вообще
+        const existingCell = await this.prisma.cells.findFirst({
           where: {
-            size: { name: size },
-            container: { location: { name: { contains: location, mode: 'insensitive' } } },
-            status: { name: 'Свободна' },
-            rentals: { none: { isActive: true } },
+            name: { equals: cellNumber, mode: 'insensitive' }
           },
+          include: {
+            status: true,
+            rentals: {
+              where: { isActive: true }
+            }
+          }
         });
-        if (cell) {
-          this.logger.log(`Cell found by size/location: ${cell.name} (ID: ${cell.id})`, context);
-          return cell;
+
+        if (existingCell) {
+          // Ячейка существует, но занята
+          if (existingCell.rentals && existingCell.rentals.length > 0) {
+            throw new BadRequestException(`Ячейка ${cellNumber} уже арендована`);
+          } else {
+            throw new BadRequestException(`Ячейка ${cellNumber} недоступна для аренды (статус: ${existingCell.status?.name || 'неизвестен'})`);
+          }
+        } else {
+          this.logger.warn(`Cell not found by number: ${cellNumber}`, context);
         }
-        this.logger.warn(`Cell not found by size/location: size=${size}, location=${location}`, context);
       }
     }
-
     return null;
   }
 
