@@ -32,8 +32,9 @@ enum UserRole {
 
 // Подмодель для клиентов
 model Client {
-  id   String @id @default(uuid())
-  name String
+  id       String  @id @default(uuid())
+  name     String
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -70,7 +71,7 @@ model Payment {
   userId           String
   user             User    @relation(fields: [userId], references: [id])
   status           Boolean @default(false)
-  tinkoffPaymentId String?
+  bankPaymentId    String?
   paymentUrl       String?
   rentalDuration   Int?    // Срок аренды в днях, который покрывает этот платеж
 

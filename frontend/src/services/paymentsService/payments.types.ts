@@ -18,18 +18,19 @@ export interface User {
 
 export interface Payment {
   id: string;
-  userId: string;
   amount: number;
-  description: string;
   orderId?: string;
+  description?: string;
+  userId: string;
   status: boolean;
+  bankPaymentId?: string;
+  paymentUrl?: string;
+  rentalDuration?: number;
+  cellRentalId?: string;
   createdAt: string;
   updatedAt: string;
   user?: User;
-  cellId?: string;
   cellRental?: CellRental;
-  rentalDuration?: number;
-  tinkoffPaymentId?: string;
 }
 
 export interface CreatePaymentDto {

@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken, PaymentParams } from './utils/generate-token';
 import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, PaymentSortField, SortDirection } from './dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
@@ -89,19 +89,19 @@ export class PaymentsService {
     if (payment && (user.role === 'ADMIN' || payment.userId === user.id)) {
       return payment;
     }
-    
+
     return { success: false, message: 'Платеж не найден или у вас нет доступа' };
   }
 
   // Создание платежа пользователем
-  async createPayment(data: { 
-    amount: number; 
-    description?: string; 
+  async createPayment(data: {
+    amount: number;
+    description?: string;
     userId: string;
   }) {
     this.logger.log(`=== Creating payment for user ${data.userId} ===`, PaymentsService.name);
     this.logger.log(`Amount: ${data.amount}, Description: ${data.description}`, PaymentsService.name);
-    
+
     const orderId = uuidv4();
     this.logger.log(`Generated orderId: ${orderId}`, PaymentsService.name);
 
@@ -121,7 +121,7 @@ export class PaymentsService {
     // Генерируем ссылку на оплату Tinkoff
     this.logger.log('Generating Tinkoff payment link...', PaymentsService.name);
     const paymentResult = await this.createTinkoffPayment(orderId);
-    
+
     if (paymentResult.success) {
       this.logger.log(`Tinkoff payment URL generated: ${paymentResult.url}`, PaymentsService.name);
       // Обновляем запись платежа, добавляя URL для оплаты
@@ -129,13 +129,13 @@ export class PaymentsService {
         where: { id: payment.id },
         data: { paymentUrl: paymentResult.url }
       });
-      
+
       this.logger.log('Payment record updated with payment URL', PaymentsService.name);
       return { ...payment, paymentUrl: paymentResult.url };
     } else {
       this.logger.error(`Failed to generate Tinkoff payment: ${paymentResult.message}`, '', PaymentsService.name);
     }
-    
+
     this.logger.log('=== Payment creation completed ===', PaymentsService.name);
     return payment;
   }
@@ -144,7 +144,7 @@ export class PaymentsService {
   async createPaymentByAdmin(data: CreateAdminPaymentDto) {
     this.logger.log(`=== Creating admin payment ===`, PaymentsService.name);
     this.logger.log(`User ID: ${data.userId}, Amount: ${data.amount}, Cell ID: ${data.cellId}`, PaymentsService.name);
-    
+
     // Проверяем, существует ли пользователь
     this.logger.log('Checking if user exists...', PaymentsService.name);
     const user = await this.prisma.user.findUnique({
@@ -163,14 +163,14 @@ export class PaymentsService {
     // Создаем orderId
     const orderId = uuidv4();
     this.logger.log(`Generated orderId: ${orderId}`, PaymentsService.name);
-    
+
     // Проверяем, является ли платеж оплатой за аренду ячейки
     const isCellRental = data.cellId && user.client !== null;
     this.logger.log(`Is cell rental payment: ${isCellRental}`, PaymentsService.name);
-    
+
     // Определяем описание платежа
     let description = data.description;
-    
+
     // Создаем платеж с предоставленными данными
     this.logger.log('Creating payment record...', PaymentsService.name);
     const payment = await this.prisma.payment.create({
@@ -180,7 +180,7 @@ export class PaymentsService {
         description: description,
         userId: data.userId,
         status: data.status || true, // Для админа платеж по умолчанию успешный
-        tinkoffPaymentId: data.tinkoffPaymentId,
+        bankPaymentId: data.bankPaymentId,
         paymentUrl: data.paymentUrl,
         rentalDuration: data.rentalDuration,
       },
@@ -194,7 +194,7 @@ export class PaymentsService {
       }
     });
     this.logger.log(`Payment created with ID: ${payment.id}`, PaymentsService.name);
-    
+
     // Если это платеж за аренду ячейки, то обрабатываем аренду
     if (isCellRental && user.client) {
       this.logger.log('Processing cell rental...', PaymentsService.name);
@@ -210,7 +210,7 @@ export class PaymentsService {
           throw new BadRequestException(`Ячейка с ID ${data.cellId} не найдена`);
         }
         this.logger.log(`Cell found: ${cell.name}`, PaymentsService.name);
-        
+
         // Проверяем, есть ли уже активная аренда для этой ячейки
         this.logger.log('Checking for existing active rental...', PaymentsService.name);
         const existingRental = await this.prisma.cellRental.findFirst({
@@ -219,13 +219,13 @@ export class PaymentsService {
             isActive: true
           }
         });
-        
+
         // Длительность аренды из платежа или по умолчанию 30 дней
         const rentalDurationDays = data.rentalDuration || 30;
         this.logger.log(`Rental duration: ${rentalDurationDays} days`, PaymentsService.name);
-        
+
         let rental;
-        
+
         if (existingRental) {
           this.logger.log(`Existing rental found: ${existingRental.id}`, PaymentsService.name);
           // Ячейка уже арендована
@@ -234,7 +234,7 @@ export class PaymentsService {
             // Аренда принадлежит этому же клиенту - продлеваем ее
             const newEndDate = new Date(existingRental.endDate);
             newEndDate.setDate(newEndDate.getDate() + rentalDurationDays);
-            
+
             // Обновляем аренду
             rental = await this.prisma.cellRental.update({
               where: { id: existingRental.id },
@@ -245,11 +245,11 @@ export class PaymentsService {
               }
             });
             this.logger.log(`Rental extended, new end date: ${newEndDate}`, PaymentsService.name);
-            
+
             // Связываем платеж с арендой
             await this.prisma.payment.update({
               where: { id: payment.id },
-              data: { 
+              data: {
                 cellRentalId: rental.id,
                 description: description || `Продление аренды ячейки #${cell.name} на ${rentalDurationDays} дн.`
               }
@@ -266,13 +266,13 @@ export class PaymentsService {
           const startDate = new Date();
           const endDate = new Date(startDate);
           endDate.setDate(endDate.getDate() + rentalDurationDays);
-          
+
           // Проверка cellId перед созданием аренды
           if (!data.cellId) {
             this.logger.error('Cell ID is required for creating rental', '', PaymentsService.name);
             throw new BadRequestException('ID ячейки (cellId) обязателен для создания аренды');
           }
-          
+
           rental = await this.prisma.cellRental.create({
             data: {
               cellId: data.cellId,
@@ -284,18 +284,18 @@ export class PaymentsService {
             }
           });
           this.logger.log(`New rental created: ${rental.id}, start: ${startDate}, end: ${endDate}`, PaymentsService.name);
-          
+
           // Связываем платеж с арендой и обновляем описание
           await this.prisma.payment.update({
             where: { id: payment.id },
-            data: { 
+            data: {
               cellRentalId: rental.id,
               description: description || `Аренда ячейки #${cell.name} на ${rentalDurationDays} дн.`
             }
           });
           this.logger.log('Payment linked to new rental', PaymentsService.name);
         }
-        
+
         // Получаем обновленный платеж с информацией об аренде
         const updatedPayment = await this.prisma.payment.findUnique({
           where: { id: payment.id },
@@ -309,7 +309,7 @@ export class PaymentsService {
             cellRental: true
           }
         });
-        
+
         this.logger.log('=== Admin payment with rental completed ===', PaymentsService.name);
         return updatedPayment;
       } catch (error) {
@@ -318,7 +318,7 @@ export class PaymentsService {
         return payment;
       }
     }
-    
+
     this.logger.log('=== Admin payment completed ===', PaymentsService.name);
     return payment;
   }
@@ -327,21 +327,21 @@ export class PaymentsService {
   async updatePayment(id: string, data: UpdatePaymentDto) {
     // Проверяем, существует ли платеж
     const existingPayment = await this.getPaymentById(id);
-    
+
     if (!existingPayment) {
       throw new NotFoundException(`Платеж с ID ${id} не найден`);
     }
-    
+
     let updateData: any = { ...data };
-    
+
     // Удаляем поля, которые не являются частью модели платежа
-    const { 
-      cellRentalId, cellId, extendRental, 
-      detachRental, rentalStartDate, rentalEndDate, 
+    const {
+      cellRentalId, cellId, extendRental,
+      detachRental, rentalStartDate, rentalEndDate,
       rentalDuration,
-      ...paymentData 
+      ...paymentData
     } = updateData;
-    
+
     // Обрабатываем действия с арендой
     try {
       // Отвязка от аренды
@@ -355,35 +355,35 @@ export class PaymentsService {
           this.logger.log(`Платеж ${id} отвязан от аренды ${existingPayment.cellRentalId}`, PaymentsService.name);
         }
       }
-      
+
       // Привязка к существующей аренде
       else if (cellRentalId) {
         // Проверяем, существует ли аренда
         const rental = await this.prisma.cellRental.findUnique({
           where: { id: cellRentalId }
         });
-        
+
         if (!rental) {
           throw new NotFoundException(`Аренда с ID ${cellRentalId} не найдена`);
         }
-        
+
         // Привязываем платеж к аренде
         await this.prisma.payment.update({
           where: { id },
           data: { cellRentalId }
         });
-        
+
         // Обрабатываем корректировку дат аренды
         const updateRentalData: any = {};
-        
+
         if (rentalStartDate) {
           updateRentalData.startDate = new Date(rentalStartDate);
         }
-        
+
         if (rentalEndDate) {
           updateRentalData.endDate = new Date(rentalEndDate);
         }
-        
+
         // Если нужно продлить аренду
         if (extendRental === true && !rentalEndDate) {
           const newEndDate = new Date(rental.endDate);
@@ -392,18 +392,18 @@ export class PaymentsService {
           updateRentalData.lastExtendedAt = new Date();
           updateRentalData.extensionCount = { increment: 1 };
         }
-        
+
         // Обновляем аренду, если есть изменения
         if (Object.keys(updateRentalData).length > 0) {
           await this.prisma.cellRental.update({
             where: { id: cellRentalId },
             data: updateRentalData
           });
-          
+
           this.logger.log(`Аренда ${cellRentalId} обновлена`, PaymentsService.name);
         }
       }
-      
+
       // Обновление rentalDuration у существующей аренды
       else if (rentalDuration && existingPayment.cellRentalId) {
         const rental = await this.prisma.cellRental.findUnique({
@@ -422,7 +422,7 @@ export class PaymentsService {
           this.logger.log(`Срок аренды ${existingPayment.cellRentalId} обновлен. Новая дата окончания: ${newEndDate}`, PaymentsService.name);
         }
       }
-      
+
       // Создание новой аренды
       else if (cellId) {
         // Получаем информацию о пользователе
@@ -436,24 +436,24 @@ export class PaymentsService {
             }
           }
         });
-        
+
         if (!payment) {
           throw new NotFoundException(`Платеж с ID ${id} не найден`);
         }
-        
+
         if (!payment.user.client) {
           throw new BadRequestException(`Пользователь платежа не является клиентом`);
         }
-        
+
         // Проверяем, существует ли ячейка
         const cell = await this.prisma.cells.findUnique({
           where: { id: cellId }
         });
-        
+
         if (!cell) {
           throw new BadRequestException(`Ячейка с ID ${cellId} не найдена`);
         }
-        
+
         // Проверяем, не арендована ли уже ячейка
         const existingRental = await this.prisma.cellRental.findFirst({
           where: {
@@ -461,22 +461,22 @@ export class PaymentsService {
             isActive: true
           }
         });
-        
+
         if (existingRental) {
           throw new BadRequestException(`Ячейка ${cell.name} уже арендована`);
         }
-        
+
         // Определяем даты начала и окончания аренды
         let startDate = rentalStartDate ? new Date(rentalStartDate) : new Date();
         let endDate: Date;
-        
+
         if (rentalEndDate) {
           endDate = new Date(rentalEndDate);
         } else {
           endDate = new Date(startDate);
           endDate.setMonth(endDate.getMonth() + 1);
         }
-        
+
         // Создаем новую аренду
         const rental = await this.prisma.cellRental.create({
           data: {
@@ -487,37 +487,37 @@ export class PaymentsService {
             isActive: true
           }
         });
-        
+
         // Привязываем платеж к новой аренде
         await this.prisma.payment.update({
           where: { id },
-          data: { 
+          data: {
             cellRentalId: rental.id,
             description: paymentData.description || `Аренда ячейки #${cell.name}`
           }
         });
-        
+
         this.logger.log(`Создана новая аренда ${rental.id} для ячейки ${cellId}`, PaymentsService.name);
       }
-      
+
       // Обновление дат существующей аренды, связанной с платежом
       else if ((rentalStartDate || rentalEndDate) && existingPayment.cellRentalId) {
         const updateRentalData: any = {};
-        
+
         if (rentalStartDate) {
           updateRentalData.startDate = new Date(rentalStartDate);
         }
-        
+
         if (rentalEndDate) {
           updateRentalData.endDate = new Date(rentalEndDate);
         }
-        
+
         if (Object.keys(updateRentalData).length > 0) {
           await this.prisma.cellRental.update({
             where: { id: existingPayment.cellRentalId },
             data: updateRentalData
           });
-          
+
           this.logger.log(`Аренда ${existingPayment.cellRentalId} обновлена`, PaymentsService.name);
         }
       }
@@ -525,7 +525,7 @@ export class PaymentsService {
       this.logger.error(`Ошибка при обработке аренды: ${error.message}`, error.stack, PaymentsService.name);
       // Продолжаем обновление платежа даже при ошибке с арендой
     }
-    
+
     // Обновляем платеж
     return this.prisma.payment.update({
       where: { id },
@@ -561,11 +561,11 @@ export class PaymentsService {
   async setPaymentStatus(id: string, status: boolean) {
     // Проверяем, существует ли платеж
     const existingPayment = await this.getPaymentById(id);
-    
+
     if (!existingPayment) {
       throw new NotFoundException(`Платеж с ID ${id} не найден`);
     }
-    
+
     // Обновляем статус платежа
     return this.prisma.payment.update({
       where: { id },
@@ -600,7 +600,7 @@ export class PaymentsService {
   async deletePayment(id: string) {
     // Проверяем, существует ли платеж
     const existingPayment = await this.getPaymentById(id);
-    
+
     if (!existingPayment) {
       throw new NotFoundException(`Платеж с ID ${id} не найден`);
     }
@@ -656,7 +656,7 @@ export class PaymentsService {
         }
       }
     }
-    
+
     return { success: true, message: `Платеж ${id} успешно удалён` };
   }
 
@@ -716,16 +716,16 @@ export class PaymentsService {
       }
 
       const responseData = await response.json();
-      
+
       if (responseData && responseData.PaymentURL) {
-        // Сохраняем ID платежа от Tinkoff, если он есть
+        // Сохраняем ID платежа от банка, если он есть
         if (responseData.PaymentId) {
           await this.prisma.payment.update({
             where: { orderId },
-            data: { tinkoffPaymentId: responseData.PaymentId }
+            data: { bankPaymentId: responseData.PaymentId }
           });
         }
-        
+
         return { success: true, url: responseData.PaymentURL };
       } else {
         return { success: false, message: 'Ошибка получения ссылки на оплату' };
@@ -762,7 +762,7 @@ export class PaymentsService {
         where: { orderId: originalOrderId },
         data: { 
           status: isSuccess,
-          tinkoffPaymentId: data.PaymentId || payment.tinkoffPaymentId
+          bankPaymentId: data.PaymentId || payment.bankPaymentId
         }
       });
       
@@ -842,7 +842,7 @@ export class PaymentsService {
 
       // Настройка сортировки
       let orderBy: any = {};
-      
+
       // В зависимости от выбранного поля сортировки
       switch (sortBy) {
         case PaymentSortField.AMOUNT:
@@ -915,8 +915,8 @@ export class PaymentsService {
     }
   }
 
-   // Получение всех платежей (для администратора)
-   async getPaymentsByLocations() {
+  // Получение всех платежей (для администратора)
+  async getPaymentsByLocations() {
     try {
       // Получаем все локации с агрегированными данными по платежам
       const locationsWithStats = await this.prisma.location.findMany({
@@ -957,14 +957,14 @@ export class PaymentsService {
           }
         }
       });
-  
+
       // Формируем итоговый результат
       const result = locationsWithStats.map(location => {
         let totalPayments = 0;
         let totalAmount = 0;
         let lastPaymentDate: Date | null = null;
         let activeRentals = 0;
-  
+
         // Проходим по всем контейнерам и ячейкам локации
         location.containers.forEach(container => {
           container.cells.forEach(cell => {
@@ -980,7 +980,7 @@ export class PaymentsService {
             });
           });
         });
-  
+
         return {
           locationId: location.id,
           locationName: location.name,
@@ -993,13 +993,13 @@ export class PaymentsService {
           averagePayment: totalPayments > 0 ? totalAmount / totalPayments : 0,
           lastPaymentDate,
           // Дополнительные метрики, которые могут быть полезны:
-          paymentFrequency: totalPayments > 0 ? 
+          paymentFrequency: totalPayments > 0 ?
             (activeRentals / totalPayments) : 0,
-          revenuePerRental: activeRentals > 0 ? 
+          revenuePerRental: activeRentals > 0 ?
             (totalAmount / activeRentals) : 0
         };
       });
-  
+
       return result;
     } catch (error) {
       throw new InternalServerErrorException(
@@ -1009,26 +1009,31 @@ export class PaymentsService {
   }
 
   async createTildaPayment(payload: any) {
-    // 0. Обрабатываем только формы с именем 'Cart'
-    if (payload.formname && payload.formname !== 'Cart') {
-      this.logger.warn(`Tilda webhook ignored: unsupported formname '${payload.formname}'`, 'TildaPayment');
-      return { success: false, message: 'Форма не поддерживается' };
-    }
-
     const data = this._normalizeTildaPayload(payload);
-    const { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays } = data;
+    const { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays, systranid } = data;
 
     if (!email) {
       throw new BadRequestException('Email не был получен от Tilda');
     }
 
-    const user = await this._findOrCreateUserWithClient({ email, phone, name });
+    // Создаем пользователя и клиента для любой формы
+    const user = await this._findOrCreateUserWithClient({ email, phone, name, formname: payload.formname });
     if (!user || !user.client) {
       throw new InternalServerErrorException('Не удалось найти или создать клиента для пользователя');
     }
 
+    // Если форма не Cart, то просто возвращаем успешный результат регистрации
+    if (payload.formname !== 'Cart') {
+      return {
+        success: true,
+        message: 'Пользователь успешно зарегистрирован',
+        isActive: false
+      };
+    }
+
+    // Дальнейшая обработка только для формы Cart
     if (!cellNumber) {
-      throw new BadRequestException('Номер ячейки (individualnumber) обязателен');
+      throw new BadRequestException('Номер ячейки (individualnumber) обязателен для формы Cart');
     }
 
     const cell = await this._findAvailableCell(cellNumber);
@@ -1040,9 +1045,16 @@ export class PaymentsService {
       cellNumber,
       sizeform,
       rentalDurationDays,
+      systranid
     });
 
-    return this.createPaymentByAdmin(paymentDetails);
+    const payment = await this.createPaymentByAdmin(paymentDetails);
+    return {
+      success: true,
+      message: 'Платеж успешно создан',
+      isActive: true,
+      payment
+    };
   }
 
   /**
@@ -1063,6 +1075,7 @@ export class PaymentsService {
     const email = p.email;
     const phone = p.phone;
     const name = p.name || 'Клиент из Tilda';
+    const systranid = p.systranid; // ID транзакции из банка
     let cellNumber = p.individualnumber;
 
     // Хардкод для обработки пользовательского ввода номера ячейки
@@ -1131,15 +1144,15 @@ export class PaymentsService {
       }
     }
 
-    return { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays };
+    return { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays, systranid };
   }
 
   /**
    * Находит или создает пользователя и связанного с ним клиента.
    */
-  private async _findOrCreateUserWithClient(data: { email: string; phone?: string; name?: string }) {
+  private async _findOrCreateUserWithClient(data: { email: string; phone?: string; name?: string; formname?: string }) {
     const context = 'TildaUserCreation';
-    const { email, phone, name } = data;
+    const { email, phone, name, formname } = data;
 
     let user = await this.prisma.user.findUnique({
       where: { email },
@@ -1153,7 +1166,10 @@ export class PaymentsService {
           data: {
             userId: user.id,
             name: name || 'Клиент из Tilda',
-            phones: { create: { phone: phone || '' } },
+            isActive: formname === 'Cart',
+            phones: {
+              create: phone ? { phone } : undefined
+            }
           },
         });
         user.client = client;
@@ -1165,10 +1181,14 @@ export class PaymentsService {
         data: {
           email,
           password: uuidv4(),
+          role: UserRole.CLIENT,
           client: {
             create: {
               name: name || 'Клиент из Tilda',
-              phones: { create: { phone: phone || '' } },
+              isActive: formname === 'Cart',
+              phones: {
+                create: phone ? { phone } : undefined
+              }
             },
           },
         },
@@ -1199,7 +1219,7 @@ export class PaymentsService {
           }
         }
       });
-      
+
       if (cell) {
         this.logger.log(`Cell found by number: ${cell.name} (ID: ${cell.id})`, context);
         return cell;
@@ -1240,13 +1260,14 @@ export class PaymentsService {
     cell: any,
     amount: number,
     tildaDescription: string,
-    tildaInfo: { cellNumber?: string; sizeform?: string; rentalDurationDays?: number },
+    tildaInfo: { cellNumber?: string; sizeform?: string; rentalDurationDays?: number; systranid?: string },
   ): CreateAdminPaymentDto {
     const paymentPayload: Partial<CreateAdminPaymentDto> = {
       userId: userId,
       amount: amount > 0 ? amount : 0,
       status: false,
       rentalDuration: tildaInfo.rentalDurationDays,
+      bankPaymentId: tildaInfo.systranid // Сохраняем systranid из Tilda как bankPaymentId
     };
 
     const { cellNumber, sizeform } = tildaInfo;

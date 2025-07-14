@@ -23,7 +23,7 @@ export class CreateAdminPaymentDto {
 
   @IsOptional()
   @IsString()
-  tinkoffPaymentId?: string;
+  bankPaymentId?: string;
 
   @IsOptional()
   @IsUrl()

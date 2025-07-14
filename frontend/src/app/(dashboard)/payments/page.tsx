@@ -260,8 +260,8 @@ const PaymentsPage = () => {
       accessorKey: 'orderId',
       header: 'id Банка',
       cell: ({ row }) => (
-        <div className="font-mono text-xs truncate max-w-[140px]" title={row.original.tinkoffPaymentId}>
-          {row.original.tinkoffPaymentId ? row.original.tinkoffPaymentId : "не указан"}
+        <div className="font-mono text-xs truncate max-w-[140px]" title={row.original.bankPaymentId}>
+          {row.original.bankPaymentId ? row.original.bankPaymentId : "не указан"}
         </div>
       ),
     },
