@@ -133,6 +133,15 @@ export const cellRentalsApi = api.injectEndpoints({
         { type: 'CellRentals', id: 'LIST' },
       ],
     }),
+
+    // Добавляем endpoint для получения данных Ганта
+    getGanttRentals: builder.query<{ data: CellRental[]; meta: { count: number; startDate: string | null; endDate: string | null } }, { startDate?: string; endDate?: string; limit?: number }>({
+      query: (params) => ({
+        url: 'admin/cell-rentals/gantt',
+        params
+      }),
+      providesTags: ['CellRentals']
+    }),
   }),
 });
 
@@ -147,4 +156,5 @@ export const {
   useCloseCellRentalMutation,
   useGetClientRentalsQuery,
   useGetCellActiveRentalsQuery,
+  useGetGanttRentalsQuery,
 } = cellRentalsApi; 

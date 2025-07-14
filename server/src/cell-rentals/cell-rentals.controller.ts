@@ -6,6 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { FindFreeCellRentalsDto } from './dto/find-free-cells.dto';
+import { FindGanttRentalsDto } from './dto/find-gantt-rentals.dto';
 
 /**
  * Административный контроллер для управления арендами ячеек
@@ -132,5 +133,14 @@ export class CellRentalsAdminController {
   @HttpCode(HttpStatus.OK)
   getFreeCells(@Query() query: FindFreeCellRentalsDto) {
     return this.cellRentalsService.getFreeCells(query);
+  }
+
+  /**
+   * Получение данных для диаграммы Ганта
+   */
+  @Get('gantt')
+  @HttpCode(HttpStatus.OK)
+  getGanttData(@Query() query: FindGanttRentalsDto) {
+    return this.cellRentalsService.findGanttRentals(query);
   }
 } 

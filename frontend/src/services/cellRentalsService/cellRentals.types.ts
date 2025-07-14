@@ -3,6 +3,7 @@ import { Cell } from '../cellService/cell.types';
 import { Client } from '../clientsService/clients.types';
 import { Container } from '../containersService/container.types';
 import { Payment } from '../paymentsService/payments.types';
+import { CellStatus } from '../cellStatusesService/cellStatuses.types';
 
 export enum CellRentalSortField {
   CREATED_AT = 'createdAt',
@@ -30,6 +31,7 @@ export interface CellRental {
   cell?: Cell & {
     container?: Container;
   };
+  status?: CellStatus;
   client?: Client;
   rentalStatus: CellRentalStatus;
   container?: Container;

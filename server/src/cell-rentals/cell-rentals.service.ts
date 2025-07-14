@@ -6,6 +6,7 @@ import { CellFreeSortField, FindFreeCellRentalsDto } from './dto/find-free-cells
 import { LoggerService } from '../logger/logger.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 // import { Logger } from '@nestjs/common';
+import { FindGanttRentalsDto } from './dto/find-gantt-rentals.dto';
 
 @Injectable()
 export class CellRentalsService {
@@ -13,7 +14,7 @@ export class CellRentalsService {
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
   ) {
-    this.logger.log('CellRentalsService instantiated. CRON tasks initialized.', 'CellRentalsService');
+    this.logger.log('CellRentalsService instantiated', 'CellRentalsService');
   }
 
   // Получение аренд с фильтрацией, поиском и пагинацией
@@ -774,20 +775,16 @@ export class CellRentalsService {
   }
 
   // Задача по расписанию для автоматического обновления статусов аренд
-  // Запускается каждый день в 13:35
-  @Cron('0 45 13 * * *', {
-    name: 'update_rental_statuses',
-    timeZone: 'Europe/Moscow' // Явно указываем часовой пояс
-  })
+  // Запускается каждый день в 00:00
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleAutomaticStatusUpdates() {
-    const now = new Date();
-    this.logger.log(`Запуск автоматического обновления статусов аренд... Текущее время сервера: ${now.toISOString()}`, 'CellRentalsService');
+    this.logger.log('Запуск автоматического обновления статусов аренд...', 'CellRentalsService');
 
     try {
       const { updatedCount } = await this.updateAllRentalStatuses();
 
       this.logger.log(
-        `Обновление статусов завершено: обновлено ${updatedCount} статусов. Время завершения: ${new Date().toISOString()}`,
+        `Обновление статусов завершено: обновлено ${updatedCount} статусов`,
         'CellRentalsService'
       );
     } catch (error) {
@@ -999,6 +996,76 @@ export class CellRentalsService {
         throw error;
       }
       throw new NotFoundException(`Ячейка с ID ${cellId} не найдена`);
+    }
+  }
+
+  // Получение данных для диаграммы Ганта
+  async findGanttRentals(query: FindGanttRentalsDto) {
+    this.logger.log(`Fetching rentals for Gantt chart: ${JSON.stringify(query)}`, 'CellRentalsService');
+    
+    try {
+      const { startDate, endDate, limit = 1000 } = query;
+
+      // Базовые условия фильтрации
+      let where: Prisma.CellRentalWhereInput = {};
+
+      // Фильтрация по датам
+      if (startDate || endDate) {
+        where.OR = [
+          // Аренды, которые начинаются в указанном периоде
+          {
+            startDate: {
+              gte: startDate ? new Date(startDate) : undefined,
+              lte: endDate ? new Date(endDate) : undefined
+            }
+          },
+          // Аренды, которые заканчиваются в указанном периоде
+          {
+            endDate: {
+              gte: startDate ? new Date(startDate) : undefined,
+              lte: endDate ? new Date(endDate) : undefined
+            }
+          },
+          // Аренды, которые охватывают весь период
+          {
+            AND: [
+              { startDate: { lte: startDate ? new Date(startDate) : undefined } },
+              { endDate: { gte: endDate ? new Date(endDate) : undefined } }
+            ]
+          }
+        ];
+      }
+
+      // Получаем аренды с включением всех необходимых связей
+      const rentals = await this.prisma.cellRental.findMany({
+        where,
+        take: limit,
+        orderBy: [
+          { startDate: 'asc' },
+          { createdAt: 'asc' }
+        ],
+        include: {
+          cell: {
+            include: {
+              container: true,
+              status: true,
+            }
+          },
+          status: true
+        }
+      });
+
+      return {
+        data: rentals,
+        meta: {
+          count: rentals.length,
+          startDate: startDate || null,
+          endDate: endDate || null
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Failed to fetch Gantt rentals: ${error.message}`, error.stack, 'CellRentalsService');
+      throw new InternalServerErrorException(`Ошибка при получении данных для диаграммы Ганта: ${error.message}`);
     }
   }
 
