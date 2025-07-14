@@ -21,12 +21,14 @@ import { SwaggerDocModule } from './swagger/swagger.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { LogsModule } from './logs/logs.module';
 import { LoggerModule } from './logger/logger.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     LoggerModule,
     PrismaModule,
     AuthModule,

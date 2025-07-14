@@ -4,7 +4,7 @@ import { CreateCellRentalDto, UpdateCellRentalDto, ExtendCellRentalDto, FindCell
 import { CellRentalStatus, Prisma } from '@prisma/client';
 import { CellFreeSortField, FindFreeCellRentalsDto } from './dto/find-free-cells.dto';
 import { LoggerService } from '../logger/logger.service';
-// import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 // import { Logger } from '@nestjs/common';
 
 @Injectable()
@@ -775,20 +775,25 @@ export class CellRentalsService {
 
   // Задача по расписанию для автоматического обновления статусов аренд
   // Запускается каждый день в 00:00
-  // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  // async handleAutomaticStatusUpdates() {
-  //   this.logger.log('Запуск автоматического обновления статусов аренд...');
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async handleAutomaticStatusUpdates() {
+    this.logger.log('Запуск автоматического обновления статусов аренд...', 'CellRentalsService');
 
-  //   try {
-  //     const result = await this.updateAllRentalStatuses();
+    try {
+      const { updatedCount } = await this.updateAllRentalStatuses();
 
-  //     this.logger.log(
-  //       `Обновление статусов завершено: обработано ${result.processed} аренд, обновлено ${result.updated} статусов`
-  //     );
-  //   } catch (error) {
-  //     this.logger.error('Ошибка при обновлении статусов аренд:', error.stack);
-  //   }
-  // }
+      this.logger.log(
+        `Обновление статусов завершено: обновлено ${updatedCount} статусов`,
+        'CellRentalsService'
+      );
+    } catch (error) {
+      this.logger.error(
+        'Ошибка при обновлении статусов аренд:',
+        error.stack,
+        'CellRentalsService'
+      );
+    }
+  }
 
   // Обновление статусов всех активных аренд
   async updateAllRentalStatuses() {
