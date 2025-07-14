@@ -774,8 +774,8 @@ export class CellRentalsService {
   }
 
   // Задача по расписанию для автоматического обновления статусов аренд
-  // Запускается каждый день в 00:00
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  // Запускается каждый день в 13:38
+  @Cron('0 35 13 * * *')
   async handleAutomaticStatusUpdates() {
     this.logger.log('Запуск автоматического обновления статусов аренд...', 'CellRentalsService');
 
