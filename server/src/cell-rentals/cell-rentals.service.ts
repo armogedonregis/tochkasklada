@@ -13,7 +13,7 @@ export class CellRentalsService {
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
   ) {
-    this.logger.log('CellRentalsService instantiated', 'CellRentalsService');
+    this.logger.log('CellRentalsService instantiated. CRON tasks initialized.', 'CellRentalsService');
   }
 
   // Получение аренд с фильтрацией, поиском и пагинацией
@@ -774,16 +774,20 @@ export class CellRentalsService {
   }
 
   // Задача по расписанию для автоматического обновления статусов аренд
-  // Запускается каждый день в 13:38
-  @Cron('0 35 13 * * *')
+  // Запускается каждый день в 13:35
+  @Cron('0 45 13 * * *', {
+    name: 'update_rental_statuses',
+    timeZone: 'Europe/Moscow' // Явно указываем часовой пояс
+  })
   async handleAutomaticStatusUpdates() {
-    this.logger.log('Запуск автоматического обновления статусов аренд...', 'CellRentalsService');
+    const now = new Date();
+    this.logger.log(`Запуск автоматического обновления статусов аренд... Текущее время сервера: ${now.toISOString()}`, 'CellRentalsService');
 
     try {
       const { updatedCount } = await this.updateAllRentalStatuses();
 
       this.logger.log(
-        `Обновление статусов завершено: обновлено ${updatedCount} статусов`,
+        `Обновление статусов завершено: обновлено ${updatedCount} статусов. Время завершения: ${new Date().toISOString()}`,
         'CellRentalsService'
       );
     } catch (error) {
