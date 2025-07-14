@@ -1,74 +1,41 @@
-import { IsOptional, IsString, IsInt, Min, IsEnum } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsOptional, IsString, IsEnum, IsNumber, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
 
-/**
- * Enum для полей сортировки
- */
 export enum ClientSortField {
   NAME = 'name',
-  CREATED_AT = 'createdAt',
   EMAIL = 'email',
+  CREATED_AT = 'createdAt'
 }
 
-/**
- * Направление сортировки
- */
 export enum SortDirection {
   ASC = 'asc',
-  DESC = 'desc',
+  DESC = 'desc'
 }
 
-/**
- * DTO для поиска клиентов с пагинацией
- */
 export class FindClientsDto {
-  /**
-   * Поисковый запрос (для name, email, phone)
-   * @example "Иван"
-   */
-  @IsString()
   @IsOptional()
+  @IsString()
   search?: string;
 
-  /**
-   * Номер страницы (начиная с 1)
-   * @minimum 1
-   * @default 1
-   * @example 1
-   */
-  @IsInt()
-  @Min(1)
   @IsOptional()
-  @Transform(({ value }) => parseInt(value, 10))
-  page?: number = 1;
+  @Type(() => Number)
+  @IsNumber()
+  page?: number;
 
-  /**
-   * Количество элементов на странице
-   * @minimum 1
-   * @default 10
-   * @example 10
-   */
-  @IsInt()
-  @Min(1)
   @IsOptional()
-  @Transform(({ value }) => parseInt(value, 10))
-  limit?: number = 10;
+  @Type(() => Number)
+  @IsNumber()
+  limit?: number;
 
-  /**
-   * Поле для сортировки
-   * @default "createdAt"
-   * @example "name"
-   */
+  @IsOptional()
   @IsEnum(ClientSortField)
-  @IsOptional()
-  sortBy?: ClientSortField = ClientSortField.CREATED_AT;
+  sortBy?: ClientSortField;
 
-  /**
-   * Направление сортировки
-   * @default "desc"
-   * @example "asc"
-   */
-  @IsEnum(SortDirection)
   @IsOptional()
-  sortDirection?: SortDirection = SortDirection.DESC;
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 } 

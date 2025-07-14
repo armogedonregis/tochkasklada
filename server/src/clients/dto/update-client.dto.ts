@@ -1,4 +1,4 @@
-import { IsArray, IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEmail, IsOptional, IsString, IsBoolean } from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateClientDto } from './create-client.dto';
 
@@ -30,4 +30,12 @@ export class UpdateClientDto extends PartialType(CreateClientDto) {
   @IsString({ each: true })
   @IsOptional()
   phones?: string[];
+
+  /**
+   * Активность клиента
+   * @example true
+   */
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 } 

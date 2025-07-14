@@ -1,4 +1,4 @@
-import { IsArray, IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsBoolean } from 'class-validator';
 
 /**
  * DTO для создания клиента администратором
@@ -37,4 +37,12 @@ export class CreateClientDto {
   @IsString({ each: true })
   @IsOptional()
   phones?: string[];
+
+  /**
+   * Активность клиента
+   * @example true
+   */
+  @IsBoolean()
+  @IsNotEmpty()
+  isActive: boolean;
 } 

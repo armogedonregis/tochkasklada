@@ -10,7 +10,8 @@ import {
   HttpCode,
   HttpStatus,
   Query,
-  ParseUUIDPipe
+  ParseUUIDPipe,
+  Logger
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -26,6 +27,8 @@ import {
 
 @Controller('clients')
 export class ClientsController {
+  private readonly logger = new Logger('ClientsController');
+  
   constructor(private readonly clientsService: ClientsService) {}
 
   /**
@@ -72,8 +75,19 @@ export class ClientsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPERADMIN')
   @Get()
-  async findAll(@Query() query: FindClientsDto) {
-    return this.clientsService.findAll(query);
+  async findAll(
+    @Query() dto: FindClientsDto,
+    @Query('isActive') rawIsActive?: string
+  ) {
+    this.logger.log(`Raw isActive query param: ${rawIsActive}, type: ${typeof rawIsActive}`);
+
+    // Если isActive передан в запросе, переопределяем его значение в DTO
+    if (rawIsActive !== undefined) {
+      dto.isActive = rawIsActive.toLowerCase() === 'true';
+      this.logger.log(`Overriding isActive in DTO to: ${dto.isActive}`);
+    }
+    
+    return this.clientsService.findAll(dto);
   }
 
   /**

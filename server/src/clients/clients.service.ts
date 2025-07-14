@@ -47,6 +47,7 @@ export class ClientsService {
         data: {
           name: data.name,
           userId: newUser.id,
+          isActive: data.isActive ?? false,
           phones: data.phones && data.phones.length > 0 ? {
             create: data.phones.map(phone => ({ phone }))
           } : undefined
@@ -250,29 +251,47 @@ export class ClientsService {
    * Поиск клиентов с пагинацией и фильтрацией
    */
   async findAll(queryParams: FindClientsDto) {
-    this.logger.log(`Fetching all clients with query: ${JSON.stringify(queryParams)}`, 'ClientsService');
+    this.logger.log(`Fetching all clients with query params: ${JSON.stringify(queryParams)}`, 'ClientsService');
     const { 
       search, 
       page = 1, 
       limit = 10, 
       sortBy = ClientSortField.CREATED_AT, 
-      sortDirection = SortDirection.DESC 
+      sortDirection = SortDirection.DESC,
+      isActive 
     } = queryParams;
 
     // Базовые условия фильтрации
     const where: any = {};
 
+    // Проверяем все клиенты в базе для отладки
+    const allClients = await this.prisma.client.findMany({
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      }
+    });
+    this.logger.log(`All clients in database: ${JSON.stringify(allClients)}`, 'ClientsService');
+
+    // Добавляем фильтр по активности
+    if (isActive !== undefined) {
+      this.logger.log(`isActive parameter received: ${isActive} (${typeof isActive})`, 'ClientsService');
+      where.isActive = {
+        equals: isActive
+      };
+      this.logger.log(`Applied where condition for isActive: ${JSON.stringify(where)}`, 'ClientsService');
+    }
+
     // Если есть поисковый запрос, добавляем условия поиска
     if (search) {
       where.OR = [
-        // Поиск по имени
         {
           name: {
             contains: search,
             mode: 'insensitive',
           }
         },
-        // Поиск по email пользователя
         {
           user: {
             email: {
@@ -281,7 +300,6 @@ export class ClientsService {
             }
           }
         },
-        // Поиск по телефонам
         {
           phones: {
             some: {
@@ -294,35 +312,14 @@ export class ClientsService {
       ];
     }
 
-    // Вычисляем параметры пагинации
-    const skip = (page - 1) * limit;
-
-    // Настройка сортировки
-    let orderBy: any = {};
-    
-    // В зависимости от выбранного поля сортировки
-    switch (sortBy) {
-      case ClientSortField.NAME:
-        orderBy.name = sortDirection;
-        break;
-      case ClientSortField.EMAIL:
-        orderBy.user = { email: sortDirection };
-        break;
-      case ClientSortField.CREATED_AT:
-      default:
-        orderBy.createdAt = sortDirection;
-        break;
-    }
-
-    // Запрос на получение общего количества
-    const totalCount = await this.prisma.client.count({ where });
+    this.logger.log(`Final where conditions: ${JSON.stringify(where)}`, 'ClientsService');
 
     // Запрос на получение данных с пагинацией
     const clients = await this.prisma.client.findMany({
       where,
-      skip,
+      skip: (page - 1) * limit,
       take: limit,
-      orderBy,
+      orderBy: this.getOrderBy(sortBy, sortDirection),
       include: {
         user: {
           select: {
@@ -335,10 +332,15 @@ export class ClientsService {
       },
     });
 
+    this.logger.log(`Found ${clients.length} clients with filter`, 'ClientsService');
+    this.logger.log(`Filtered clients: ${JSON.stringify(clients.map(c => ({ id: c.id, name: c.name, isActive: c.isActive })))}`, 'ClientsService');
+
+    // Запрос на получение общего количества с учетом фильтров
+    const totalCount = await this.prisma.client.count({ where });
+
     // Рассчитываем количество страниц
     const totalPages = Math.ceil(totalCount / limit);
 
-    // Возвращаем результат с мета-информацией
     return {
       data: clients,
       meta: {
@@ -348,6 +350,18 @@ export class ClientsService {
         totalPages,
       },
     };
+  }
+
+  private getOrderBy(sortBy: ClientSortField, sortDirection: SortDirection) {
+    switch (sortBy) {
+      case ClientSortField.NAME:
+        return { name: sortDirection };
+      case ClientSortField.EMAIL:
+        return { user: { email: sortDirection } };
+      case ClientSortField.CREATED_AT:
+      default:
+        return { createdAt: sortDirection };
+    }
   }
 
   /**
