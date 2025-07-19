@@ -1,36 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import { INestApplication } from '@nestjs/common';
 
 @Injectable()
 export class SwaggerService {
-  private document: any;
-  
+  private document: OpenAPIObject | null = null;
+
   /**
    * Создает документ OpenAPI для API-документации
    */
-  async generateDocument(): Promise<any> {
-    if (this.document) {
-      return this.document;
+  public generateDocument(): OpenAPIObject {
+    if (!this.document) {
+      throw new Error('Swagger not initialized');
     }
-    
-    // Если документ еще не создан (initWithApp не был вызван), создаем базовый вариант
-    this.document = {
-      openapi: '3.0.0',
-      info: {
-        title: 'API системы управления точками самостоятельного хранения',
-        description: 'Полная документация API системы',
-        version: '1.0'
-      },
-    };
-    
+
     return this.document;
   }
-  
+
   /**
    * Инициализация сервиса с экземпляром приложения
    */
   public initWithApp(app: INestApplication): void {
+    if (this.document) {
+      return;
+    }
+
     try {
       // Настраиваем документ Swagger
       const config = new DocumentBuilder()
@@ -43,11 +37,11 @@ export class SwaggerService {
         - Бронирования и аренда
         - Платежи и транзакции
       `)
-        .setVersion('1.0')
+        .setVersion('1.0.1')
         .build();
-      
+
       this.document = SwaggerModule.createDocument(app, config);
-      
+
     } catch (error) {
       console.error('Ошибка при инициализации Swagger сервиса:', error);
     }

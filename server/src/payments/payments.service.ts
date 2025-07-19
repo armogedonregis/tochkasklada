@@ -1009,21 +1009,31 @@ export class PaymentsService {
   }
 
   async createTildaPayment(payload: any) {
+    this.logger.log(`=== Processing Tilda payment ===`, PaymentsService.name);
+    
     const data = this._normalizeTildaPayload(payload);
     const { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays, systranid } = data;
+    
+    this.logger.log(`Normalized data: email=${email}, phone=${phone}, name=${name}, cellNumber=${cellNumber}, amount=${amount}`, PaymentsService.name);
+    this.logger.log(`Additional info: sizeform=${sizeform}, rentalDurationDays=${rentalDurationDays}, systranid=${systranid}`, PaymentsService.name);
 
     if (!email) {
+      this.logger.error(`Email not received from Tilda`, '', PaymentsService.name);
       throw new BadRequestException('Email не был получен от Tilda');
     }
 
     // Создаем пользователя и клиента для любой формы
+    this.logger.log(`Finding or creating user with client for email: ${email}`, PaymentsService.name);
     const user = await this._findOrCreateUserWithClient({ email, phone, name, formname: payload.formname });
     if (!user || !user.client) {
+      this.logger.error(`Failed to find or create client for user: ${email}`, '', PaymentsService.name);
       throw new InternalServerErrorException('Не удалось найти или создать клиента для пользователя');
     }
+    this.logger.log(`User found/created: ${user.id}, client: ${user.client.id}`, PaymentsService.name);
 
     // Если форма не Cart, то просто возвращаем успешный результат регистрации
     if (payload.formname !== 'Cart') {
+      this.logger.log(`Non-Cart form, returning success without payment`, PaymentsService.name);
       return {
         success: true,
         message: 'Пользователь успешно зарегистрирован',
@@ -1033,14 +1043,27 @@ export class PaymentsService {
 
     // Дальнейшая обработка только для формы Cart
     if (!cellNumber) {
+      this.logger.error(`Cell number not provided in Cart form`, '', PaymentsService.name);
       throw new BadRequestException('Номер ячейки (individualnumber) обязателен для формы Cart');
     }
 
-    const cell = await this._findAvailableCell(cellNumber);
+    this.logger.log(`Searching for cell: ${cellNumber} for user: ${email}`, PaymentsService.name);
+    const cell = await this._findAvailableCell(cellNumber, sizeform, email);
     if (!cell) {
+      this.logger.error(`Cell not found: ${cellNumber}`, '', PaymentsService.name);
       throw new BadRequestException(`Ячейка с номером ${cellNumber} не найдена`);
     }
+    this.logger.log(`Cell found: ${cell.id}, name: ${cell.name}`, PaymentsService.name);
 
+    // Проверяем, есть ли у ячейки активные аренды
+    const hasActiveRentals = cell.rentals && cell.rentals.length > 0;
+    if (hasActiveRentals) {
+      this.logger.log(`Cell has active rentals. Will extend existing rental.`, PaymentsService.name);
+    } else {
+      this.logger.log(`Cell has no active rentals. Will create new rental.`, PaymentsService.name);
+    }
+
+    this.logger.log(`Preparing payment details...`, PaymentsService.name);
     const paymentDetails = this._preparePaymentDetails(user.id, cell, amount, description, {
       cellNumber,
       sizeform,
@@ -1048,7 +1071,11 @@ export class PaymentsService {
       systranid
     });
 
+    this.logger.log(`Creating admin payment...`, PaymentsService.name);
     const payment = await this.createPaymentByAdmin(paymentDetails);
+    this.logger.log(`Payment created: ${payment?.id || 'unknown'}`, PaymentsService.name);
+    
+    this.logger.log(`=== Tilda payment processing completed ===`, PaymentsService.name);
     return {
       success: true,
       message: 'Платеж успешно создан',
@@ -1203,10 +1230,12 @@ export class PaymentsService {
   /**
    * Ищет доступную ячейку сначала по номеру, потом по размеру/локации.
    */
-  private async _findAvailableCell(cellNumber?: string, sizeform?: string) {
+  private async _findAvailableCell(cellNumber?: string, sizeform?: string, email?: string) {
     const context = 'TildaCellSearch';
     if (cellNumber) {
       this.logger.log(`Searching for cell by number: ${cellNumber}`, context);
+      
+      // Сначала ищем свободную ячейку
       const cell = await this.prisma.cells.findFirst({
         where: {
           name: { equals: cellNumber, mode: 'insensitive' },
@@ -1232,15 +1261,28 @@ export class PaymentsService {
           include: {
             status: true,
             rentals: {
-              where: { isActive: true }
+              where: { isActive: true },
+              include: {
+                client: {
+                  include: {
+                    user: true
+                  }
+                }
+              }
             }
           }
         });
 
         if (existingCell) {
-          // Ячейка существует, но занята
+          // Ячейка существует, но может быть занята
           if (existingCell.rentals && existingCell.rentals.length > 0) {
-            throw new BadRequestException(`Ячейка ${cellNumber} уже арендована`);
+            // Проверяем, принадлежит ли аренда текущему клиенту
+            if (email && existingCell.rentals[0].client?.user?.email === email) {
+              this.logger.log(`Cell ${cellNumber} already rented by the same client (email: ${email}). Will extend rental.`, context);
+              return existingCell; // Возвращаем ячейку для продления аренды
+            } else {
+              throw new BadRequestException(`Ячейка ${cellNumber} уже арендована другим клиентом`);
+            }
           } else {
             throw new BadRequestException(`Ячейка ${cellNumber} недоступна для аренды (статус: ${existingCell.status?.name || 'неизвестен'})`);
           }
@@ -1265,7 +1307,7 @@ export class PaymentsService {
     const paymentPayload: Partial<CreateAdminPaymentDto> = {
       userId: userId,
       amount: amount > 0 ? amount : 0,
-      status: false,
+      status: true, // Платежи из Tilda уже оплачены
       rentalDuration: tildaInfo.rentalDurationDays,
       bankPaymentId: tildaInfo.systranid // Сохраняем systranid из Tilda как bankPaymentId
     };
