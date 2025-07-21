@@ -714,8 +714,14 @@ export class CellRentalsService {
       // Если статус задан принудительно, используем его
       newStatus = forceStatus;
     } else if (!rental.isActive) {
-      // Если аренда неактивна, статус - CLOSED
-      newStatus = CellRentalStatus.CLOSED;
+      // Если аренда неактивна, проверяем, не просрочена ли она
+      const now = new Date();
+      const endDate = new Date(rental.endDate);
+      if (endDate < now && !rental.closedAt) {
+        newStatus = CellRentalStatus.EXPIRED;
+      } else {
+        newStatus = CellRentalStatus.CLOSED;
+      }
     } else {
       // Иначе определяем статус по дате окончания
       const now = new Date();
@@ -776,7 +782,7 @@ export class CellRentalsService {
 
   // Задача по расписанию для автоматического обновления статусов аренд
   // Запускается каждый день в 00:00
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron('39 11 * * *') // каждый день в 11:38
   async handleAutomaticStatusUpdates() {
     this.logger.log('Запуск автоматического обновления статусов аренд...', 'CellRentalsService');
 
@@ -800,9 +806,6 @@ export class CellRentalsService {
   async updateAllRentalStatuses() {
     this.logger.log('Updating statuses for all active rentals', 'CellRentalsService');
     const activeRentals = await this.prisma.cellRental.findMany({
-      where: {
-        isActive: true
-      },
       select: {
         id: true
       }
@@ -852,16 +855,16 @@ export class CellRentalsService {
     const daysToAdd = rentalDuration || 30; // По умолчанию 30 дней
     const now = new Date();
     const currentEndDate = new Date(rental.endDate);
-    
+
     // Если аренда активна и не просрочена, продлеваем от даты окончания.
     // Иначе (если закрыта или просрочена) — продлеваем от сегодняшнего дня.
     const baseDate = rental.isActive && currentEndDate > now ? currentEndDate : now;
-    
+
     const newEndDate = new Date(baseDate);
     newEndDate.setDate(newEndDate.getDate() + daysToAdd);
 
     this.logger.log(`Updating rental ${cellRentalId} with new end date: ${newEndDate}`, 'CellRentalsService');
-    
+
     // Готовим данные для обновления
     const updateData: Prisma.CellRentalUpdateInput = {
       endDate: newEndDate,
@@ -1002,7 +1005,7 @@ export class CellRentalsService {
   // Получение данных для диаграммы Ганта
   async findGanttRentals(query: FindGanttRentalsDto) {
     this.logger.log(`Fetching rentals for Gantt chart: ${JSON.stringify(query)}`, 'CellRentalsService');
-    
+
     try {
       const { startDate, endDate, limit = 1000 } = query;
 
