@@ -490,23 +490,40 @@ export class CellRentalsService {
         }
       }
 
+      const updateData = {
+        ...updateCellRentalDto,
+        startDate: updateCellRentalDto.startDate
+          ? new Date(updateCellRentalDto.startDate)
+          : undefined,
+        endDate: updateCellRentalDto.endDate
+          ? new Date(updateCellRentalDto.endDate)
+          : undefined,
+        lastExtendedAt: updateCellRentalDto.lastExtendedAt
+          ? new Date(updateCellRentalDto.lastExtendedAt)
+          : undefined,
+        closedAt: updateCellRentalDto.closedAt
+          ? new Date(updateCellRentalDto.closedAt)
+          : undefined,
+      };
+  
+      // Автоматическая синхронизация isActive с rentalStatus
+      if (updateCellRentalDto.rentalStatus !== undefined) {
+        if (updateCellRentalDto.rentalStatus === CellRentalStatus.CLOSED) {
+          updateData.isActive = false;
+          // Устанавливаем дату закрытия, если она не задана явно
+          if (!updateData.closedAt) {
+            updateData.closedAt = new Date();
+          }
+        } else {
+          updateData.isActive = true;
+          // Сбрасываем дату закрытия, если статус не CLOSED
+          updateData.closedAt = undefined;
+        }
+      }
+  
       const updatedRental = await this.prisma.cellRental.update({
         where: { id },
-        data: {
-          ...updateCellRentalDto,
-          startDate: updateCellRentalDto.startDate
-            ? new Date(updateCellRentalDto.startDate)
-            : undefined,
-          endDate: updateCellRentalDto.endDate
-            ? new Date(updateCellRentalDto.endDate)
-            : undefined,
-          lastExtendedAt: updateCellRentalDto.lastExtendedAt
-            ? new Date(updateCellRentalDto.lastExtendedAt)
-            : undefined,
-          closedAt: updateCellRentalDto.closedAt
-            ? new Date(updateCellRentalDto.closedAt)
-            : undefined,
-        },
+        data: updateData,
         include: {
           cell: {
             include: {
@@ -769,6 +786,8 @@ export class CellRentalsService {
         data: {
           rentalStatus: newStatus,
           // Устанавливаем визуальный статус, если есть подходящий
+          isActive: newStatus !== CellRentalStatus.CLOSED,
+          closedAt: newStatus === CellRentalStatus.CLOSED ? new Date() : null,
           statusId: matchingStatus ? matchingStatus.id : rental.statusId
         }
       });
@@ -782,7 +801,7 @@ export class CellRentalsService {
 
   // Задача по расписанию для автоматического обновления статусов аренд
   // Запускается каждый день в 00:00
-  @Cron('* * * * *')
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleAutomaticStatusUpdates() {
     this.logger.log('Запуск автоматического обновления статусов аренд...', 'CellRentalsService');
 
