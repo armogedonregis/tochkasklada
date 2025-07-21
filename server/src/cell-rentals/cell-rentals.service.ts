@@ -510,9 +510,15 @@ export class CellRentalsService {
       if (updateCellRentalDto.rentalStatus !== undefined) {
         if (updateCellRentalDto.rentalStatus === CellRentalStatus.CLOSED) {
           updateData.isActive = false;
+          const closeDate = new Date();
           // Устанавливаем дату закрытия, если она не задана явно
           if (!updateData.closedAt) {
-            updateData.closedAt = new Date();
+            updateData.closedAt = closeDate;
+            updateData.endDate = closeDate;
+          }
+          // Фиксируем окончание аренды на день закрытия
+          if (!updateCellRentalDto.endDate) {
+            updateData.endDate = closeDate;
           }
         } else {
           updateData.isActive = true;
@@ -690,11 +696,14 @@ export class CellRentalsService {
     // Обновляем статусы
     await this.updateRentalStatus(id, CellRentalStatus.CLOSED);
 
+    const closeDate = new Date();
+
     return this.prisma.cellRental.update({
       where: { id },
       data: {
         isActive: false,
-        closedAt: new Date(),
+        closedAt: closeDate,
+        endDate: closeDate,
         rentalStatus: CellRentalStatus.CLOSED
       },
       include: {
