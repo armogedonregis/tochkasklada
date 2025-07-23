@@ -8,16 +8,13 @@ FROM deps AS builder
 
 COPY . .
 RUN npx prisma generate
+RUN npm install bcrypt
 RUN npm run build
 RUN npm prune --production
 
 FROM node:20-slim AS runner
 
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y openssl && \
-    npm install bcrypt && \
-    rm -rf /var/lib/apt/lists/*
 
 RUN chown -R node:node /app && \
     chmod -R 755 /app

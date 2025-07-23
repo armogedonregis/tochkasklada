@@ -32,10 +32,6 @@ jobs:
             git pull origin main
             
             make fix-permissions
-
-            mkdir -p server/logs
-            sudo chown -R 1000:1000 server/logs
-            sudo chmod 777 server/logs
             
             make rebuild
             
