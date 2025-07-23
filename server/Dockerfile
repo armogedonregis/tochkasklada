@@ -19,8 +19,10 @@ RUN apt-get update && apt-get install -y openssl && \
     npm install bcrypt && \
     rm -rf /var/lib/apt/lists/*
 
-RUN mkdir logs && \
-    chown -R node:node /app
+RUN mkdir -p logs && \
+    chown -R node:node /app && \
+    chmod -R 755 /app && \
+    chmod 777 logs
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
