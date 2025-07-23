@@ -29,6 +29,7 @@ ps:
 # Установка прав на выполнение скриптов
 fix-permissions:
 	chmod +x scripts/*.sh
+	chmod 777 server/logs
 
 # Применение миграций Prisma
 migrate:
