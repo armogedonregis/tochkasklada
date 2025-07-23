@@ -32,6 +32,8 @@ jobs:
             git pull origin main
             
             make fix-permissions
+
+            chmod -R 777 server/logs
             
             make rebuild
             
