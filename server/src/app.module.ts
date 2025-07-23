@@ -1,6 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -22,15 +20,20 @@ import { StatisticsModule } from './statistics/statistics.module';
 import { LogsModule } from './logs/logs.module';
 import { LoggerModule } from './logger/logger.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
+      ...(process.env.NODE_ENV !== 'production' && {
+        envFilePath: '../.env'
+      }),
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
     LoggerModule,
     PrismaModule,
+    TasksModule,
     AuthModule,
     UsersModule,
     ClientsModule,
@@ -49,7 +52,5 @@ import { ScheduleModule } from '@nestjs/schedule';
     LogsModule,
     SwaggerDocModule.forRoot(),
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

@@ -4,6 +4,8 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerService } from './swagger/swagger.service';
 import { LoggerService } from './logger/logger.service';
+import { fastifyCookie } from '@fastify/cookie';
+import fastifySession from '@fastify/session';
 
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter({
@@ -26,6 +28,18 @@ async function bootstrap() {
       bufferLogs: true, // Буферизация логов до подключения кастомного логгера
     }
   );
+
+
+  // await app.register(fastifyCookie);
+  
+  // await app.register(fastifySession, {
+  //   secret: configService.get('SESSION_SECRET', 'super-secret-session-key'),
+  //   cookie: {
+  //     secure: process.env.NODE_ENV === 'production',
+  //     httpOnly: true,
+  //     maxAge: 7 * 24 * 60 * 60 * 1000,
+  //   },
+  // });
   
   // Используем кастомный логгер
   const logger = app.get(LoggerService);

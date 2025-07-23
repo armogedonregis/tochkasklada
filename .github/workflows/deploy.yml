@@ -27,21 +27,13 @@ jobs:
           script: |
             cd /var/www/html/tochkasklada
             
-            # Обновляем код
             git reset --hard HEAD
             git clean -fd
             git pull origin main
             
-            # Устанавливаем права на выполнение скриптов
             make fix-permissions
             
-            # Создаем папку для логов и устанавливаем права
-            mkdir -p server/logs
-            chmod -R 777 server/logs
-            
-            # Перезапускаем приложение
             make rebuild
             
-            # Ждем запуска и применяем миграции
             sleep 10
             make migrate 

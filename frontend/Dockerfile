@@ -2,30 +2,33 @@ FROM node:20-slim AS deps
 RUN npm install -g pnpm
 WORKDIR /app
 
-# копируем только файлы зависимостей для кеширования
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
-# копируем исходники
+
 COPY . .
 RUN pnpm build
 
-# убираем dev-зависимости для рантайма
 RUN pnpm prune --prod
 
 FROM node:20-slim AS runner
 WORKDIR /app
 
-# копируем только нужное для рантайма
-COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+RUN chown -R node:node /app
+USER node
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:3000/api/health || exit 1
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"] 
+CMD ["node", "server.js"]
