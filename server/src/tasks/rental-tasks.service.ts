@@ -8,17 +8,16 @@ export class RentalTasksService {
   constructor(
     private readonly logger: LoggerService,
     private readonly cellRentalsService: CellRentalsService,
-  ) {}
+  ) {
+    this.logger.log('RentalTasksService instantiated', 'RentalTasksService');
+  }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
-    disabled: process.env.DISABLE_RENTAL_TASKS === 'true'
-  })
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleAutomaticStatusUpdates() {
-    this.logger.log('Запуск автоматического обновления статусов аренд...', 'RentalTasksService');
     try {
       const { updatedCount } = await this.cellRentalsService.updateAllRentalStatuses();
       this.logger.log(
-        `Обновление статусов завершено: обновлено ${updatedCount} статусов`,
+        `🔄 Обновление статусов завершено: обновлено ${updatedCount} статусов`,
         'RentalTasksService'
       );
     } catch (error) {
