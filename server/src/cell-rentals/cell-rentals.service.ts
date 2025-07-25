@@ -636,7 +636,15 @@ export class CellRentalsService {
       include: {
         cell: {
           include: {
-            container: true,
+            container: {
+              include: {
+                location: {
+                  include: {
+                    city: true,
+                  }
+                }
+              }
+            },
             size: true,
             status: true,
           },
@@ -646,6 +654,8 @@ export class CellRentalsService {
           select: {
             id: true,
             amount: true,
+            description: true,
+            rentalDuration: true,
             status: true,
             createdAt: true,
           },
@@ -804,6 +814,29 @@ export class CellRentalsService {
     }
 
     return false;
+  }
+
+  /**
+   * Принудительное обновление статуса аренды
+   */
+  async forceRentalStatus(id: string, status: CellRentalStatus) {
+    this.logger.log(`Force updating rental status for id: ${id} to ${status}`, 'CellRentalsService');
+
+    const rental = await this.prisma.cellRental.update({
+      where: { id },
+      data: {
+        rentalStatus: status,
+        isActive: status !== CellRentalStatus.CLOSED,
+        closedAt: status === CellRentalStatus.CLOSED ? new Date() : null,
+      },
+      include: {
+        cell: true,
+        client: true,
+        status: true,
+      },
+    });
+
+    return rental;
   }
 
   // Обновление статусов всех активных аренд

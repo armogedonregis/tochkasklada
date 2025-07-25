@@ -18,6 +18,8 @@ import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Eye } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 // Схема валидации для клиента
 const clientValidationSchema = yup.object({
@@ -43,6 +45,8 @@ interface ClientFormFields {
 }
 
 export default function ClientsPage() {
+  const router = useRouter();
+  
   // Состояние для фильтра активности
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
@@ -161,6 +165,20 @@ export default function ClientsPage() {
       cell: ({ row }) => row.original.createdAt 
         ? new Date(row.original.createdAt).toLocaleDateString('ru-RU') 
         : '-',
+    },
+    {
+      id: 'details-link',
+      header: 'Детали',
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="icon"
+          title="Подробнее о клиенте"
+          onClick={() => router.push(`/clients/${row.original.id}`)}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      ),
     }
   ];
 

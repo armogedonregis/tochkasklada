@@ -6,7 +6,8 @@ import {
   CellRentalFilters, 
   PaginatedCellRentalResponse,
   CellFreeRental,
-  PaginatedFreeCellRentalResponse
+  PaginatedFreeCellRentalResponse,
+  CellRentalStatus
 } from './cellRentals.types';
 
 export const cellRentalsApi = api.injectEndpoints({
@@ -87,7 +88,7 @@ export const cellRentalsApi = api.injectEndpoints({
 
     // Получение аренд для клиента
     getClientRentals: builder.query<CellRental[], string>({
-      query: (clientId) => `/admin/cell-rentals/client/${clientId}`,
+      query: (clientId) => `/admin/cell-rentals/client/${clientId}/all`,
       providesTags: (result) =>
         result
           ? [
@@ -134,6 +135,19 @@ export const cellRentalsApi = api.injectEndpoints({
       ],
     }),
 
+    // Обновление статуса аренды
+    updateRentalStatus: builder.mutation<CellRental, { id: string; rentalStatus: CellRentalStatus }>({
+      query: ({ id, rentalStatus }) => ({
+        url: `/admin/cell-rentals/${id}/update-status`,
+        method: 'POST',
+        body: { rentalStatus },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'CellRentals', id },
+        { type: 'CellRentals', id: 'LIST' },
+      ],
+    }),
+
     // Добавляем endpoint для получения данных Ганта
     getGanttRentals: builder.query<{ data: CellRental[]; meta: { count: number; startDate: string | null; endDate: string | null } }, { startDate?: string; endDate?: string; limit?: number }>({
       query: (params) => ({
@@ -157,4 +171,5 @@ export const {
   useGetClientRentalsQuery,
   useGetCellActiveRentalsQuery,
   useGetGanttRentalsQuery,
+  useUpdateRentalStatusMutation,
 } = cellRentalsApi; 

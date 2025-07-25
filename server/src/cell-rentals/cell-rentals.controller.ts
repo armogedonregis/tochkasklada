@@ -4,7 +4,7 @@ import { UpdateCellRentalDto, FindCellRentalsDto, ExtendCellRentalDto } from './
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { CellRentalStatus, UserRole } from '@prisma/client';
 import { FindFreeCellRentalsDto } from './dto/find-free-cells.dto';
 import { FindGanttRentalsDto } from './dto/find-gantt-rentals.dto';
 
@@ -70,8 +70,8 @@ export class CellRentalsAdminController {
    */
   @Post(':id/update-status')
   @HttpCode(HttpStatus.OK)
-  updateRentalStatus(@Param('id', ParseUUIDPipe) id: string) {
-    return this.cellRentalsService.updateRentalStatus(id);
+  updateRentalStatus(@Param('id', ParseUUIDPipe) id: string, @Body() { rentalStatus }: { rentalStatus: CellRentalStatus }) {
+    return this.cellRentalsService.forceRentalStatus(id, rentalStatus);
   }
 
   /**

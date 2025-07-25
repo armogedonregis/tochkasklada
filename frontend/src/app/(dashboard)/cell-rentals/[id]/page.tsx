@@ -1,7 +1,8 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useGetCellRentalQuery, useExtendCellRentalMutation, useCloseCellRentalMutation } from '@/services/cellRentalsService/cellRentalsApi';
+import { useGetCellRentalQuery, useExtendCellRentalMutation, useCloseCellRentalMutation, useUpdateRentalStatusMutation } from '@/services/cellRentalsService/cellRentalsApi';
+import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStatusesApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,8 +15,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { ArrowLeft, Calendar, User, Phone, Mail, Box, Tag, FileText, XCircle, Power, DollarSign, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Phone, Mail, Box, Tag, FileText, XCircle, Power, DollarSign, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Payment } from '@/services/paymentsService/payments.types';
+import { CellRentalStatus } from '@/services/cellRentalsService/cellRentals.types';
 
 // Схема валидации для формы продления
 const extendRentalSchema = yup.object({
@@ -24,7 +26,13 @@ const extendRentalSchema = yup.object({
   description: yup.string().optional(),
 });
 
+// Схема валидации для формы изменения статуса
+const updateStatusSchema = yup.object({
+  rentalStatus: yup.string().required('Статус обязателен'),
+});
+
 type ExtendFormValues = yup.InferType<typeof extendRentalSchema>;
+type UpdateStatusFormValues = yup.InferType<typeof updateStatusSchema>;
 
 const CellRentalDetailsPage = () => {
   const params = useParams();
@@ -36,8 +44,11 @@ const CellRentalDetailsPage = () => {
     refetchOnMountOrArgChange: true,
   });
 
+  const { data: cellStatuses } = useGetCellStatusesQuery();
+
   const [extendRental, { isLoading: isExtending }] = useExtendCellRentalMutation();
   const [closeRental, { isLoading: isClosing }] = useCloseCellRentalMutation();
+  const [updateRental, { isLoading: isUpdating }] = useUpdateRentalStatusMutation();
 
   const extendModal = useFormModal<ExtendFormValues>({
     onSubmit: async (values) => {
@@ -47,6 +58,18 @@ const CellRentalDetailsPage = () => {
         refetch();
       } catch (err) {
         toast.error('Ошибка при продлении аренды.');
+      }
+    },
+  });
+
+  const statusModal = useFormModal<UpdateStatusFormValues>({
+    onSubmit: async (values) => {
+      try {
+        await updateRental({ id, rentalStatus: values.rentalStatus as CellRentalStatus }).unwrap();
+        toast.success('Статус аренды успешно обновлен!');
+        refetch();
+      } catch (err) {
+        toast.error('Ошибка при обновлении статуса аренды.');
       }
     },
   });
@@ -115,17 +138,6 @@ const CellRentalDetailsPage = () => {
   }
 
   const daysLeft = differenceInDays(parseISO(rental.endDate), new Date());
-  const statusInfo: Record<string, { color: string; }> = {
-    ACTIVE: { color: 'bg-green-500' },
-    EXPIRING_SOON: { color: 'bg-yellow-500' },
-    EXPIRED: { color: 'bg-red-500' },
-    CLOSED: { color: 'bg-gray-500' },
-    RESERVATION: { color: 'bg-blue-500' },
-    EXTENDED: { color: 'bg-purple-500' },
-    PAYMENT_SOON: { color: 'bg-orange-500' },
-    DEFAULT: { color: 'bg-gray-400' },
-  };
-  const currentStatus = statusInfo[rental.rentalStatus as keyof typeof statusInfo] || statusInfo.DEFAULT;
   const client = rental.client;
   const cell = rental.cell;
   const location = cell?.container?.location;
@@ -141,6 +153,15 @@ const CellRentalDetailsPage = () => {
           <Button onClick={() => extendModal.openCreate()} className="gap-2" disabled={isExtending}>
             <DollarSign className="h-4 w-4" />
             {isExtending ? 'Продление...' : 'Продлить'}
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => statusModal.openCreate()} 
+            className="gap-2" 
+            disabled={isUpdating}
+          >
+            <RefreshCw className="h-4 w-4" />
+            {isUpdating ? 'Обновление...' : 'Изменить статус'}
           </Button>
           <Button variant="destructive" onClick={handleCloseRental} className="gap-2" disabled={isClosing}>
             <Power className="h-4 w-4" />
@@ -163,8 +184,8 @@ const CellRentalDetailsPage = () => {
             <CardContent className="space-y-4 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Статус</span>
-                <Badge style={{ backgroundColor: currentStatus.color, color: 'white' }}>
-                  {rental.status?.name}
+                <Badge style={{ backgroundColor: cellStatuses?.find(status => status.statusType === rental.rentalStatus)?.color || '#gray', color: 'white' }}>
+                  {cellStatuses?.find(status => status.statusType === rental.rentalStatus)?.name || rental.rentalStatus}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
@@ -271,6 +292,7 @@ const CellRentalDetailsPage = () => {
         </Card>
       </main>
 
+      {/* Модальное окно продления */}
       <BaseFormModal
         isOpen={extendModal.isOpen}
         onClose={extendModal.closeModal}
@@ -301,6 +323,29 @@ const CellRentalDetailsPage = () => {
           },
         ]}
         defaultValues={{ rentalDuration: 30, amount: 0, description: '' }}
+      />
+
+      {/* Модальное окно изменения статуса */}
+      <BaseFormModal
+        isOpen={statusModal.isOpen}
+        onClose={statusModal.closeModal}
+        title="Изменение статуса аренды"
+        onSubmit={statusModal.handleSubmit}
+        validationSchema={updateStatusSchema}
+        submitText="Сохранить"
+        fields={[
+          {
+            type: 'select',
+            fieldName: 'rentalStatus',
+            label: 'Статус',
+            placeholder: 'Выберите статус',
+            options: cellStatuses?.map(status => ({
+              label: status.name,
+              value: status.statusType as string
+            })) || []
+          }
+        ]}
+        defaultValues={{ rentalStatus: rental?.rentalStatus || '' }}
       />
     </div>
   );
