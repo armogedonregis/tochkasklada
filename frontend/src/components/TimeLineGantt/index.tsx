@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { CellRental } from '@/services/cellRentalsService/cellRentals.types';
 import { Timeline, TimelineOptions, TimelineTimeAxisOption, TimelineTimeAxisScaleType } from 'vis-timeline/standalone';
 import { DataSet } from 'vis-data';
-import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { addMonths, subMonths, isAfter, isBefore } from 'date-fns';
@@ -191,7 +190,7 @@ const TimelineGantt = ({ tasks }: TimelineGanttProps) => {
             const days = range / (1000 * 60 * 60 * 24);
 
             let step = 2;
-            if (days > 60) step = 5;
+            if (days > 60) step = 6;
             if (days > 120) step = 10;
             if (days > 180) step = 15;
 

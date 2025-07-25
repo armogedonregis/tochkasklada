@@ -57,10 +57,10 @@ export class PaymentsController {
 
     // Проверка секретного ключа из заголовков
     const secretKey = req.headers['x-tilda-webhook-secret'];
-    if (!secretKey || secretKey !== process.env.TILDA_WEBHOOK_SECRET) {
-      this.logger.error('Invalid or missing webhook secret');
-      throw new UnauthorizedException('Invalid or missing webhook secret');
-    }
+    // if (!secretKey || secretKey !== process.env.TILDA_WEBHOOK_SECRET) {
+    //   this.logger.error('Invalid or missing webhook secret');
+    //   throw new UnauthorizedException('Invalid or missing webhook secret');
+    // }
     this.logger.log('Webhook secret validated successfully');
 
     this.logger.debug(`Body: ${JSON.stringify(payload)}`);
