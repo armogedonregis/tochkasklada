@@ -6,6 +6,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
+ENV NODE_ENV=production
 
 COPY . .
 RUN pnpm build
