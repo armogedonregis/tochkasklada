@@ -115,15 +115,15 @@ const CellRentalDetailsPage = () => {
   }
 
   const daysLeft = differenceInDays(parseISO(rental.endDate), new Date());
-  const statusInfo: Record<string, { color: string; text: string }> = {
-    ACTIVE: { color: 'bg-green-500', text: 'Активна' },
-    EXPIRING_SOON: { color: 'bg-yellow-500', text: 'Скоро истекает' },
-    EXPIRED: { color: 'bg-red-500', text: 'Просрочена' },
-    CLOSED: { color: 'bg-gray-500', text: 'Закрыта' },
-    RESERVATION: { color: 'bg-blue-500', text: 'Бронь' },
-    EXTENDED: { color: 'bg-purple-500', text: 'Продлена' },
-    PAYMENT_SOON: { color: 'bg-orange-500', text: 'Скоро оплата' },
-    DEFAULT: { color: 'bg-gray-400', text: 'Неизвестен' },
+  const statusInfo: Record<string, { color: string; }> = {
+    ACTIVE: { color: 'bg-green-500' },
+    EXPIRING_SOON: { color: 'bg-yellow-500' },
+    EXPIRED: { color: 'bg-red-500' },
+    CLOSED: { color: 'bg-gray-500' },
+    RESERVATION: { color: 'bg-blue-500' },
+    EXTENDED: { color: 'bg-purple-500' },
+    PAYMENT_SOON: { color: 'bg-orange-500' },
+    DEFAULT: { color: 'bg-gray-400' },
   };
   const currentStatus = statusInfo[rental.rentalStatus as keyof typeof statusInfo] || statusInfo.DEFAULT;
   const client = rental.client;
@@ -164,7 +164,7 @@ const CellRentalDetailsPage = () => {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Статус</span>
                 <Badge style={{ backgroundColor: currentStatus.color, color: 'white' }}>
-                  {currentStatus.text}
+                  {rental.status?.name}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">

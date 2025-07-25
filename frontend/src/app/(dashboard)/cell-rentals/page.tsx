@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   useGetCellRentalsQuery,
   useCreateCellRentalMutation,
@@ -40,17 +40,6 @@ const cellRentalValidationSchema = yup.object({
   days: yup.number().min(1, 'Минимум 1 день').optional(),
   statusType: yup.string(),
 });
-
-// Названия статусов
-const statusTitles: Record<CellRentalStatus, string> = {
-  [CellRentalStatus.ACTIVE]: 'Активная',
-  [CellRentalStatus.EXPIRING_SOON]: 'Скоро истекает',
-  [CellRentalStatus.EXPIRED]: 'Просрочена',
-  [CellRentalStatus.CLOSED]: 'Закрыта',
-  [CellRentalStatus.RESERVATION]: 'Бронь',
-  [CellRentalStatus.EXTENDED]: 'Продлена',
-  [CellRentalStatus.PAYMENT_SOON]: 'Скоро оплата'
-};
 
 export default function CellRentalsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,6 +89,15 @@ export default function CellRentalsPage() {
 
   const { data: statusList } = useGetCellStatusesQuery();
 
+  // Создаем объект с названиями статусов из полученных данных
+  const statusTitles = useMemo(() => {
+    if (!statusList) return {};
+    return statusList.reduce((acc, status) => ({
+      ...acc,
+      [status.statusType as CellRentalStatus]: status.name
+    }), {} as Record<CellRentalStatus, string>);
+  }, [statusList]);
+  
   // Данные аренд
   const cellRentals = data?.data || [];
   // Используем мета-информацию из ответа
@@ -228,13 +226,10 @@ export default function CellRentalsPage() {
       fieldName: 'rentalStatus' as const,
       label: 'Статус аренды',
       placeholder: 'Выберите статус',
-      options: [
-        { value: 'ALL', label: 'Все статусы' },
-        ...Object.entries(statusTitles).map(([value, label]) => ({
-          value,
-          label
-        }))
-      ]
+      options: statusList ? statusList.map(status => ({
+        label: status.name,
+        value: status.statusType as string
+      })) : []
     }
   ];
 
@@ -332,12 +327,11 @@ export default function CellRentalsPage() {
       accessorKey: 'rentalStatus',
       header: 'Статус',
       cell: ({ row }) => {
-        const statusColor = statusList?.find(item => item.statusType === row.original.rentalStatus)?.color;
-        const statusText = statusTitles[row.original.rentalStatus];
+        const currentStatus = statusList?.find(item => item.statusType === row.original.rentalStatus);
         return (
           <div
             style={{
-              backgroundColor: statusColor,
+              backgroundColor: currentStatus?.color || '#gray',
               padding: '4px 12px',
               borderRadius: '16px',
               display: 'inline-flex',
@@ -350,8 +344,8 @@ export default function CellRentalsPage() {
           >
             <span
               style={{
-                color: 'white',
-                textShadow: '0 0 3px black, 0 0 5px black',
+                color: currentStatus?.color === '#ffffff' ? '#000000' : '#ffffff',
+                textShadow: currentStatus?.color === '#ffffff' ? 'none' : '0 0 3px black, 0 0 5px black',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 lineHeight: '1.25rem',
@@ -360,7 +354,7 @@ export default function CellRentalsPage() {
                 whiteSpace: 'nowrap'
               }}
             >
-              {statusText}
+              {currentStatus?.name || 'Неизвестный статус'}
             </span>
           </div>
         );
@@ -464,9 +458,9 @@ export default function CellRentalsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">Все статусы</SelectItem>
-            {Object.entries(statusTitles).map(([status, title]) => (
-              <SelectItem key={status} value={status}>
-                {title}
+            {statusList?.map((status) => (
+              <SelectItem key={status.statusType} value={status.statusType as string}>
+                {status.name}
               </SelectItem>
             ))}
           </SelectContent>

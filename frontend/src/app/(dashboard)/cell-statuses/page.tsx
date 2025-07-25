@@ -27,12 +27,12 @@ const cellStatusValidationSchema = yup.object({
 
 const StatusMap = {
   [CellRentalStatus.ACTIVE]: 'Активная аренда',
-  [CellRentalStatus.EXPIRING_SOON]: 'Скоро истекает',
+  [CellRentalStatus.EXPIRING_SOON]: 'Осталось ≤ 7 дней',
   [CellRentalStatus.EXPIRED]: 'Просрочена',
   [CellRentalStatus.CLOSED]: 'Договор закрыт администратором',
   [CellRentalStatus.RESERVATION]: 'Бронь',
   [CellRentalStatus.EXTENDED]: 'Продлен',
-  [CellRentalStatus.PAYMENT_SOON]: 'Скоро оплата',
+  [CellRentalStatus.PAYMENT_SOON]: 'Осталось 8-14 дней'
 }
 
 export default function CellStatuses() {
@@ -41,6 +41,9 @@ export default function CellStatuses() {
     const [deleteCellStatus] = useDeleteCellStatusMutation();
     const [updateCellStatus] = useUpdateCellStatusMutation();
     const [createCellStatus] = useAddCellStatusMutation();
+
+  // Получаем список возможных типов статусов
+  const { data: statusTypes } = useGetCellStatusesQuery();
 
   const modal = useFormModal<CellStatus, CellStatus>({
     onSubmit: async (values) => {
@@ -102,7 +105,10 @@ export default function CellStatuses() {
       type: 'select' as const,
       fieldName: 'statusType' as const,
       label: 'Тип статуса',
-      options: Object.values(CellRentalStatus).map(status => ({ label: StatusMap[status], value: status }))
+      options: Object.values(CellRentalStatus).map(statusType => ({
+        label: StatusMap[statusType],
+        value: statusType
+      }))
     }
   ];
 
