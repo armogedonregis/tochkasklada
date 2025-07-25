@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { Button } from "@/components/ui/button";
 import AuthGuard from "@/components/auth/AuthGuard";
+import Link from "next/link";
 
 // Интерфейс для клиентского профиля 
 interface ClientProfile {
@@ -75,7 +76,7 @@ export default function ProfilePage() {
                 <ul className="space-y-2">
                   <li>
                     <Button variant="outline" asChild>
-                      <a href="/clients">Управление клиентами</a>
+                      <Link href="/clients">Управление клиентами</Link>
                     </Button>
                   </li>
                   {/* Другие действия администратора */}
