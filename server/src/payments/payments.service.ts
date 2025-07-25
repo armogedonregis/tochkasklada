@@ -251,7 +251,7 @@ export class PaymentsService {
               where: { id: payment.id },
               data: {
                 cellRentalId: rental.id,
-                description: description || `Продление аренды ячейки #${cell.name} на ${rentalDurationDays} дн.`
+                description: description || `Продление аренды ячейки №${cell.name} на ${rentalDurationDays} дн.`
               }
             });
             this.logger.log('Payment linked to extended rental', PaymentsService.name);

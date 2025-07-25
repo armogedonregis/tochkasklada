@@ -39,6 +39,9 @@ export default function LoginPage() {
     },
   });
 
+  console.log(process.env.API_URL)
+
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setError(null);
@@ -73,7 +76,7 @@ export default function LoginPage() {
               <FormItem>
                 <FormLabel className="text-gray-700 dark:text-gray-300">Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="email@example.com" {...field} />
+                  <Input autoComplete="username" type="email" placeholder="email@example.com" {...field} />
                 </FormControl>
                 <FormMessage className="text-red-500 dark:text-red-400" />
               </FormItem>
@@ -87,7 +90,7 @@ export default function LoginPage() {
               <FormItem>
                 <FormLabel className="text-gray-700 dark:text-gray-300">Пароль</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="******" {...field} />
+                  <Input autoComplete="current-password" type="password" placeholder="******" {...field} />
                 </FormControl>
                 <FormMessage className="text-red-500 dark:text-red-400" />
               </FormItem>

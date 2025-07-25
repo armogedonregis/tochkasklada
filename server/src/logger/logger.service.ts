@@ -16,7 +16,7 @@ export class LoggerService implements NestLoggerService {
       datePattern: 'YYYY-MM-DD',
       maxSize: '5m',
       maxFiles: '14d',
-      zippedArchive: true,
+      zippedArchive: false,
     });
 
     const combinedTransport = new winston.transports.DailyRotateFile({
@@ -24,7 +24,7 @@ export class LoggerService implements NestLoggerService {
       datePattern: 'YYYY-MM-DD',
       maxSize: '5m',
       maxFiles: '14d',
-      zippedArchive: true,
+      zippedArchive: false,
     });
 
     errorTransport.on('error', (error) => {

@@ -9,7 +9,7 @@ const getToken = (): string | null => {
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: '/api',
+    baseUrl: process.env.API_URL,
     credentials: 'include',
     prepareHeaders: (headers, { getState, type }) => {
       const token = getToken();

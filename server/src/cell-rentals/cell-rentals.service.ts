@@ -503,7 +503,7 @@ export class CellRentalsService {
           ? new Date(updateCellRentalDto.closedAt)
           : undefined,
       };
-  
+
       // Автоматическая синхронизация isActive с rentalStatus
       if (updateCellRentalDto.rentalStatus !== undefined) {
         if (updateCellRentalDto.rentalStatus === CellRentalStatus.CLOSED) {
@@ -524,7 +524,7 @@ export class CellRentalsService {
           updateData.closedAt = undefined;
         }
       }
-  
+
       const updatedRental = await this.prisma.cellRental.update({
         where: { id },
         data: updateData,
@@ -1013,59 +1013,109 @@ export class CellRentalsService {
     try {
       const { startDate, endDate, limit = 1000 } = query;
 
-      // Базовые условия фильтрации
-      let where: Prisma.CellRentalWhereInput = {};
-
-      // Фильтрация по датам
-      if (startDate || endDate) {
-        where.OR = [
-          // Аренды, которые начинаются в указанном периоде
-          {
-            startDate: {
-              gte: startDate ? new Date(startDate) : undefined,
-              lte: endDate ? new Date(endDate) : undefined
+      const cells = await this.prisma.cells.findMany({
+        select: {
+          id: true,
+          name: true,
+          container: {
+            select: {
+              name: true,
             }
           },
-          // Аренды, которые заканчиваются в указанном периоде
-          {
-            endDate: {
-              gte: startDate ? new Date(startDate) : undefined,
-              lte: endDate ? new Date(endDate) : undefined
-            }
-          },
-          // Аренды, которые охватывают весь период
-          {
-            AND: [
-              { startDate: { lte: startDate ? new Date(startDate) : undefined } },
-              { endDate: { gte: endDate ? new Date(endDate) : undefined } }
-            ]
+          rentals: {
+            select: {
+              id: true,
+              startDate: true,
+              endDate: true,
+              isActive: true,
+              rentalStatus: true,
+              status: {
+                select: {
+                  name: true,
+                  color: true
+                }
+              }
+            },
+            where: startDate || endDate ? {
+              OR: [
+                {
+                  startDate: {
+                    gte: startDate ? new Date(startDate) : undefined,
+                    lte: endDate ? new Date(endDate) : undefined
+                  }
+                },
+                {
+                  endDate: {
+                    gte: startDate ? new Date(startDate) : undefined,
+                    lte: endDate ? new Date(endDate) : undefined
+                  }
+                },
+                {
+                  AND: [
+                    { startDate: { lte: startDate ? new Date(startDate) : undefined } },
+                    { endDate: { gte: endDate ? new Date(endDate) : undefined } }
+                  ]
+                }
+              ]
+            } : undefined,
+            orderBy: [
+              { startDate: 'asc' },
+              { createdAt: 'asc' }
+            ],
           }
-        ];
-      }
-
-      // Получаем аренды с включением всех необходимых связей
-      const rentals = await this.prisma.cellRental.findMany({
-        where,
-        take: limit,
-        orderBy: [
-          { startDate: 'asc' },
-          { createdAt: 'asc' }
-        ],
-        include: {
-          cell: {
-            include: {
-              container: true,
-              status: true,
-            }
-          },
-          status: true
+        },
+        where: {
+          rentals: {
+            some: startDate || endDate ? {
+              OR: [
+                {
+                  startDate: {
+                    gte: startDate ? new Date(startDate) : undefined,
+                    lte: endDate ? new Date(endDate) : undefined
+                  }
+                },
+                {
+                  endDate: {
+                    gte: startDate ? new Date(startDate) : undefined,
+                    lte: endDate ? new Date(endDate) : undefined
+                  }
+                },
+                {
+                  AND: [
+                    { startDate: { lte: startDate ? new Date(startDate) : undefined } },
+                    { endDate: { gte: endDate ? new Date(endDate) : undefined } }
+                  ]
+                }
+              ]
+            } : {}
+          }
+        },
+        orderBy: {
+          name: 'asc'
         }
       });
+
+      const rentals = cells.flatMap(cell =>
+        cell.rentals.map(rental => ({
+          id: rental.id,
+          startDate: rental.startDate,
+          endDate: rental.endDate,
+          isActive: rental.isActive,
+          rentalStatus: rental.rentalStatus,
+          cell: {
+            id: cell.id,
+            name: cell.name,
+            containerName: cell.container.name
+          },
+          status: rental.status
+        }))
+      );
 
       return {
         data: rentals,
         meta: {
           count: rentals.length,
+          cellsCount: cells.length,
           startDate: startDate || null,
           endDate: endDate || null
         }
@@ -1076,4 +1126,4 @@ export class CellRentalsService {
     }
   }
 
-} 
+}

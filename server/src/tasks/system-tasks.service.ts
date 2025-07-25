@@ -21,7 +21,7 @@ export class SystemTasksService {
     return hours > 0 ? `${hours}ч ${minutes}м` : `${minutes}м`;
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async logSystemStatus() {
     const { heapUsed, rss } = process.memoryUsage();
     const uptimeSeconds = process.uptime();
