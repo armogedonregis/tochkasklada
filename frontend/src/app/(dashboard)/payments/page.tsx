@@ -299,7 +299,11 @@ const PaymentsPage = () => {
       accessorKey: 'description',
       header: 'Комментарий',
       cell: ({ getValue }) => {
-        return <div>{String(getValue())}</div>;
+        const value = String(getValue());
+        const div = document.createElement('div');
+        div.innerHTML = value;
+        const decodedValue = div.textContent || div.innerText;
+        return <div>{decodedValue}</div>;
       }
     },
     {

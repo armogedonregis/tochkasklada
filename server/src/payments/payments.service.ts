@@ -5,6 +5,7 @@ import { generateToken, PaymentParams } from './utils/generate-token';
 import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, PaymentSortField, SortDirection } from './dto';
 import { Prisma, UserRole } from '@prisma/client';
 import { LoggerService } from '../logger/logger.service';
+import { CellRentalsService } from '../cell-rentals/cell-rentals.service'; // Добавляем
 
 // Добавляем интерфейс на уровне класса
 interface CellWithRentals {
@@ -30,6 +31,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly cellRentalsService: CellRentalsService, // Добавляем
   ) {
     this.logger.debug?.('PaymentsService instantiated', PaymentsService.name);
   }
@@ -338,6 +340,12 @@ export class PaymentsService {
           }
         });
 
+        // Если платеж привязан к аренде, пересчитываем срок и статус
+        if (rental?.id) {
+          await this.cellRentalsService.recalculateRentalDuration(rental.id);
+          await this.cellRentalsService.updateRentalStatus(rental.id);
+        }
+
         this.logger.log('=== Admin payment with rental completed ===', PaymentsService.name);
         return updatedPayment;
       } catch (error) {
@@ -555,7 +563,7 @@ export class PaymentsService {
     }
 
     // Обновляем платеж
-    return this.prisma.payment.update({
+    const updatedPayment = await this.prisma.payment.update({
       where: { id },
       data: { ...paymentData, rentalDuration },
       include: {
@@ -583,6 +591,14 @@ export class PaymentsService {
         }
       }
     });
+
+    // Если платеж привязан к аренде, пересчитываем срок и статус
+    if (updatedPayment.cellRentalId) {
+      await this.cellRentalsService.recalculateRentalDuration(updatedPayment.cellRentalId);
+      await this.cellRentalsService.updateRentalStatus(updatedPayment.cellRentalId);
+    }
+
+    return updatedPayment;
   }
 
   // Установка статуса платежа
@@ -1195,111 +1211,95 @@ export class PaymentsService {
     const context = 'TildaUserCreation';
     const { email, phone, name, formname } = data;
 
-    // Поиск по всем возможным комбинациям
-    let user = await this.prisma.user.findFirst({
-        where: {
-            OR: [
-                // Поиск по email и телефону
-                {
-                    email,
-                    client: {
-                        phones: {
-                            some: { phone }
-                        }
-                    }
-                },
-                // Поиск по email и имени
-                {
-                    email,
-                    client: {
-                        name
-                    }
-                },
-                // Поиск по телефону и имени
-                {
-                    client: {
-                        AND: [
-                            { phones: { some: { phone } } },
-                            { name }
-                        ]
-                    }
-                }
-            ]
-        },
-        include: {
-            client: {
-                include: {
-                    phones: true
-                }
-            }
+    // Сначала ищем точно по email
+    let user = await this.prisma.user.findUnique({
+      where: { email },
+      include: {
+        client: {
+          include: {
+            phones: true
+          }
         }
+      }
     });
 
     if (user) {
-        this.logger.log(`Found existing user by matching fields. User ID: ${user.id}`, context);
-        
-        // Обновляем недостающие данные, если они есть
-        if (user.client) {
-            // Если есть новый телефон и его нет в списке телефонов клиента
-            if (phone && !user.client.phones.some(p => p.phone === phone)) {
-                await this.prisma.clientPhone.create({
-                    data: {
-                        phone,
-                        clientId: user.client.id
-                    }
-                });
-                this.logger.log(`Added new phone ${phone} to existing client`, context);
+      this.logger.log(`Found existing user by email: ${email}`, context);
+      
+      // Обновляем дополнительные данные если нужно
+      if (user.client) {
+        // Добавляем новый телефон, если его нет
+        if (phone && !user.client.phones.some(p => p.phone === phone)) {
+          await this.prisma.clientPhone.create({
+            data: {
+              phone,
+              clientId: user.client.id
             }
-
-            // Если email отличается, обновляем его
-            if (email && user.email !== email) {
-                await this.prisma.user.update({
-                    where: { id: user.id },
-                    data: { email }
-                });
-                this.logger.log(`Updated email for user ${user.id}`, context);
-            }
-
-            // Если имя отличается, обновляем его
-            if (name && user.client.name !== name) {
-                await this.prisma.client.update({
-                    where: { id: user.client.id },
-                    data: { name }
-                });
-                this.logger.log(`Updated name for client ${user.client.id}`, context);
-            }
+          });
+          this.logger.log(`Added new phone ${phone} to existing client`, context);
         }
+
+        // Обновляем имя, если оно отличается
+        if (name && user.client.name !== name) {
+          await this.prisma.client.update({
+            where: { id: user.client.id },
+            data: { name }
+          });
+          this.logger.log(`Updated name for client ${user.client.id}`, context);
+        }
+      }
     } else {
-        // Создаем нового пользователя, если не нашли совпадений по 2 из 3 полей
+      // Если по email не нашли, ищем по телефону и имени
+      user = await this.prisma.user.findFirst({
+        where: {
+          client: {
+            AND: [
+              { phones: { some: { phone } } },
+              { name }
+            ]
+          }
+        },
+        include: {
+          client: {
+            include: {
+              phones: true
+            }
+          }
+        }
+      });
+
+      if (!user) {
+        // Создаем нового только если вообще не нашли
         this.logger.log(`Creating new user with email: ${email}`, context);
         user = await this.prisma.user.create({
-            data: {
-                email,
-                password: uuidv4(),
-                role: UserRole.CLIENT,
-                client: {
-                    create: {
-                        name: name || 'Клиент из Tilda',
-                        isActive: formname === 'Cart',
-                        phones: {
-                            create: phone ? { phone } : undefined
-                        }
-                    }
+          data: {
+            email,
+            password: uuidv4(),
+            role: UserRole.CLIENT,
+            client: {
+              create: {
+                name: name || 'Клиент из Tilda',
+                isActive: formname === 'Cart',
+                phones: {
+                  create: phone ? { phone } : undefined
                 }
-            },
-            include: {
-                client: {
-                    include: {
-                        phones: true
-                    }
-                }
+              }
             }
+          },
+          include: {
+            client: {
+              include: {
+                phones: true
+              }
+            }
+          }
         });
         this.logger.log(`Created new user and client. User ID: ${user.id}`, context);
+      }
     }
 
     return user;
-}
+  }
 
   /**
    * Ищет доступную ячейку сначала по номеру, потом по размеру/локации.

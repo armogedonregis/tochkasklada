@@ -917,7 +917,7 @@ export class CellRentalsService {
     }
 
     // Обновляем аренду
-    return this.prisma.cellRental.update({
+    const updatedRental = await this.prisma.cellRental.update({
       where: { id: cellRentalId },
       data: updateData,
       include: {
@@ -931,11 +931,17 @@ export class CellRentalsService {
         status: true,
       },
     });
+
+    // Добавляем обновление статуса
+    await this.updateRentalStatus(cellRentalId, CellRentalStatus.EXTENDED);
+
+    return updatedRental;
   }
 
   // Привязка существующего платежа к аренде
   async attachPaymentToRental(paymentId: string, rentalId: string) {
     this.logger.log(`Attaching payment ${paymentId} to rental ${rentalId}`, 'CellRentalsService');
+    
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
     });
@@ -955,26 +961,13 @@ export class CellRentalsService {
       },
     });
 
-    // Обновляем дату окончания аренды, используя срок из платежа или 30 дней по умолчанию
-    const daysToAdd = payment.rentalDuration || 30;
-    const newEndDate = new Date(rental.endDate);
-    newEndDate.setDate(newEndDate.getDate() + daysToAdd);
+    // Вместо ручного расчета используем общий метод пересчета
+    await this.recalculateRentalDuration(rentalId);
 
-    this.logger.log(`Extending rental ${rentalId} after attaching payment`, 'CellRentalsService');
-    // Обновляем аренду
-    return this.prisma.cellRental.update({
-      where: { id: rentalId },
-      data: {
-        endDate: newEndDate,
-        lastExtendedAt: new Date(),
-        extensionCount: { increment: 1 },
-      },
-      include: {
-        cell: true,
-        client: true,
-        status: true,
-      },
-    });
+    // Обновляем статус
+    await this.updateRentalStatus(rentalId);
+
+    return this.findOne(rentalId);
   }
 
   // Методы для управления статусами ячеек в контексте аренды
@@ -1157,6 +1150,48 @@ export class CellRentalsService {
       this.logger.error(`Failed to fetch Gantt rentals: ${error.message}`, error.stack, 'CellRentalsService');
       throw new InternalServerErrorException(`Ошибка при получении данных для диаграммы Ганта: ${error.message}`);
     }
+  }
+
+  // Добавим новый метод для пересчета срока аренды
+  async recalculateRentalDuration(rentalId: string) {
+    this.logger.log(`Recalculating rental duration for rental ${rentalId}`, 'CellRentalsService');
+    
+    const rental = await this.findOne(rentalId);
+    
+    // Получаем все успешные платежи аренды
+    const allPayments = await this.prisma.payment.findMany({
+      where: { 
+        cellRentalId: rentalId,
+        status: true // только успешные платежи
+      },
+    });
+
+    // Считаем общий срок аренды из всех платежей
+    const totalDays = allPayments.reduce((sum, payment) => sum + (payment.rentalDuration || 30), 0);
+
+    // Рассчитываем новую дату окончания от начальной даты аренды
+    const newEndDate = new Date(rental.startDate);
+    newEndDate.setDate(newEndDate.getDate() + totalDays);
+
+    this.logger.log(`New end date for rental ${rentalId}: ${newEndDate}, total days: ${totalDays}`, 'CellRentalsService');
+
+    // Обновляем аренду
+    const updatedRental = await this.prisma.cellRental.update({
+      where: { id: rentalId },
+      data: {
+        endDate: newEndDate,
+      },
+      include: {
+        cell: true,
+        client: true,
+        status: true,
+      },
+    });
+
+    // Добавляем пересчет статуса
+    await this.updateRentalStatus(rentalId);
+
+    return updatedRental;
   }
 
 }
