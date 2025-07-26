@@ -1059,14 +1059,25 @@ export class PaymentsService {
     const { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays, systranid } = data;
     
     try {
-        // Находим или создаем пользователя
+        // Находим или создаем пользователя (делаем всегда, независимо от типа формы)
         const user = await this._findOrCreateUserWithClient({ email, phone, name, formname: payload.formname });
         if (!user || !user.client) {
             throw new InternalServerErrorException('Не удалось создать или найти пользователя');
         }
 
-        // Пытаемся найти ячейку
-        let cell: CellWithRentals | null = null;  // Исправляем тип переменной
+        // Если форма не Cart, возвращаем только данные пользователя
+        if (payload.formname !== 'Cart') {
+            this.logger.log(`Skipping payment creation for form: ${payload.formname}`, PaymentsService.name);
+            return {
+                success: true,
+                message: 'Пользователь создан/обновлен',
+                payment: null,
+                error: null
+            };
+        }
+
+        // Дальше обрабатываем только платежи из Cart формы
+        let cell: CellWithRentals | null = null;
         let errorMessage = null;
         try {
             cell = await this._findAvailableCell(cellNumber, sizeform, email);
@@ -1094,13 +1105,12 @@ export class PaymentsService {
             paymentDetails.description = `ПРОБЛЕМНЫЙ ПЛАТЕЖ: ${paymentDetails.description} - ${errorMessage}`;
         }
 
-        // Создаем платеж в любом случае
+        // Создаем платеж
         const payment = await this.createPaymentByAdmin(paymentDetails);
 
         return {
             success: !errorMessage,
             message: errorMessage || 'Платеж успешно создан',
-            isActive: !errorMessage,
             payment,
             error: errorMessage
         };
