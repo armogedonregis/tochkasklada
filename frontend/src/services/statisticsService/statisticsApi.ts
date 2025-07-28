@@ -1,6 +1,11 @@
 import { api } from '../api';
-import { PaginatedStatisticsResponse, StatisticsFilters, StatisticsPayments } from './statistics.types';
-
+import { 
+  PaginatedStatisticsResponse, 
+  StatisticsFilters, 
+  StatisticsPayments,
+  PaginatedLocationPaymentsResponse,
+  LocationPaymentFilters
+} from './statistics.types';
 
 export const statisticsApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -19,6 +24,17 @@ export const statisticsApi = api.injectEndpoints({
           : [{ type: 'Statistics', id: 'LIST' }],
     }),
 
+    // получение детальных платежей по локации
+    getLocationPayments: builder.query<PaginatedLocationPaymentsResponse, { locationId: string } & LocationPaymentFilters>({
+      query: ({ locationId, ...params }) => ({
+        url: `/statistics/locations/${locationId}/payments`,
+        params
+      }),
+      providesTags: (result, error, { locationId }) => [
+        { type: 'Statistics', id: `LOCATION_PAYMENTS_${locationId}` },
+      ],
+    }),
+
     getStatisticByLocId: builder.query<StatisticsPayments, string>({
       query: (orderId) => `/payments/${orderId}`,
       providesTags: (result, error, orderId) => [{ type: 'Payments', id: orderId }],
@@ -30,4 +46,5 @@ export const statisticsApi = api.injectEndpoints({
 
 export const {
   useGetStatisticsPaymentsQuery,
+  useGetLocationPaymentsQuery,
 } = statisticsApi; 

@@ -42,21 +42,25 @@ import {
     }
   
     /**
-     * Детальная статистика по конкретной локации
+     * Получение детальных платежей по локации
      */
-    @Get('/locations/:locationId')
-    getLocationDetails(
+    @Get('/locations/:locationId/payments')
+    getLocationPayments(
       @Param('locationId') locationId: string,
       @Query('page') page?: number,
       @Query('limit') limit?: number,
-      @Query('startDate') startDate?: Date,
-      @Query('endDate') endDate?: Date,
+      @Query('startDate') startDate?: string,
+      @Query('endDate') endDate?: string,
+      @Query('sortBy') sortBy?: string,
+      @Query('sortDirection') sortDirection?: 'asc' | 'desc',
     ) {
-      return this.statisticsService.getLocationDetails(locationId, {
+      return this.statisticsService.getLocationPayments(locationId, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         startDate,
         endDate,
+        sortBy,
+        sortDirection,
       });
     }
   }

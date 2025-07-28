@@ -25,24 +25,10 @@ export class StatisticsService {
       } = query;
 
       const startDate = query.startDate ? new Date(query.startDate) : undefined;
-      const endDate = query.endDate ? new Date(query.endDate) : undefined;
+      // Для endDate добавляем 23:59:59 чтобы включить весь день
+      const endDate = query.endDate ? new Date(new Date(query.endDate).setHours(23, 59, 59, 999)) : undefined;
 
       const skip = (page - 1) * limit;
-
-      // Базовые условия для фильтрации платежей
-      const paymentWhere: Prisma.PaymentWhereInput = {
-        status: true, // Только успешные платежи
-        cellRental: {
-          isActive: true, // Только активные аренды
-        },
-      };
-
-      // Добавляем фильтр по датам, если они указаны
-      if (startDate || endDate) {
-        paymentWhere.createdAt = {};
-        if (startDate) paymentWhere.createdAt.gte = startDate;
-        if (endDate) paymentWhere.createdAt.lte = endDate;
-      }
 
       // Условия для фильтрации по локации
       const locationWhere: Prisma.LocationWhereInput = {};
@@ -68,12 +54,19 @@ export class StatisticsService {
               cells: {
                 select: {
                   rentals: {
-                    where: {
-                      isActive: true,
-                    },
                     select: {
+                      isActive: true,
+                      rentalStatus: true,
                       payments: {
-                        where: paymentWhere,
+                        where: {
+                          status: true, // Только успешные платежи
+                          ...(startDate || endDate ? {
+                            createdAt: {
+                              ...(startDate ? { gte: startDate } : {}),
+                              ...(endDate ? { lte: endDate } : {}),
+                            }
+                          } : {})
+                        },
                         select: {
                           amount: true,
                           createdAt: true,
@@ -96,11 +89,20 @@ export class StatisticsService {
         let totalAmount = 0;
         let lastPaymentDate: Date | null = null;
         let activeRentals = 0;
+        let totalRentals = 0;
 
         location.containers.forEach((container) => {
           container.cells.forEach((cell) => {
             cell.rentals.forEach((rental) => {
-              activeRentals++;
+              // Считаем все аренды
+              totalRentals++;
+              
+              // Считаем активными аренды, которые НЕ в статусе CLOSED
+              if (rental.rentalStatus !== 'CLOSED') {
+                activeRentals++;
+              }
+              
+              // Считаем все платежи (независимо от статуса аренды)
               rental.payments.forEach((payment) => {
                 totalPayments++;
                 totalAmount += payment.amount;
@@ -121,9 +123,10 @@ export class StatisticsService {
           totalPayments,
           totalAmount,
           activeRentals,
+          totalRentals, // Общее количество аренд
           averagePayment: totalPayments > 0 ? totalAmount / totalPayments : 0,
           lastPaymentDate,
-          revenuePerRental: activeRentals > 0 ? totalAmount / activeRentals : 0,
+          revenuePerRental: totalRentals > 0 ? totalAmount / totalRentals : 0, // Доход на общее количество аренд
         };
       });
 
@@ -154,37 +157,32 @@ export class StatisticsService {
     }
   }
 
-  // Детальная статистика по конкретной локации
-  async getLocationDetails(locationId: string, query: {
+  // Получение детальных платежей по локации
+  async getLocationPayments(locationId: string, query: {
     page?: number;
     limit?: number;
-    startDate?: Date;
-    endDate?: Date;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortDirection?: 'asc' | 'desc';
   }) {
     try {
-      const { page = 1, limit = 10, startDate, endDate } = query;
+      const { 
+        page = 1, 
+        limit = 20, 
+        sortBy = 'createdAt', 
+        sortDirection = 'desc' 
+      } = query;
+
+      const startDate = query.startDate ? new Date(query.startDate) : undefined;
+      // Для endDate добавляем 23:59:59 чтобы включить весь день
+      const endDate = query.endDate ? new Date(new Date(query.endDate).setHours(23, 59, 59, 999)) : undefined;
       const skip = (page - 1) * limit;
-
-      // Получаем информацию о локации
-      const location = await this.prisma.location.findUnique({
-        where: { id: locationId },
-        select: {
-          id: true,
-          name: true,
-          short_name: true,
-          city: true,
-        },
-      });
-
-      if (!location) {
-        throw new Error('Локация не найдена');
-      }
 
       // Условия для фильтрации платежей
       const paymentWhere: Prisma.PaymentWhereInput = {
         status: true,
         cellRental: {
-          isActive: true,
           cell: {
             container: {
               locId: locationId,
@@ -205,12 +203,34 @@ export class StatisticsService {
         select: {
           id: true,
           amount: true,
+          description: true,
           createdAt: true,
+          orderId: true,
+          bankPaymentId: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  phones: {
+                    select: {
+                      phone: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
           cellRental: {
             select: {
               id: true,
               startDate: true,
               endDate: true,
+              isActive: true,
+              rentalStatus: true,
               cell: {
                 select: {
                   id: true,
@@ -223,23 +243,11 @@ export class StatisticsService {
                   },
                 },
               },
-              client: {
-                select: {
-                  id: true,
-                  name: true,
-                  user: {
-                    select: {
-                      id: true,
-                      email: true,
-                    },
-                  },
-                },
-              },
             },
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          [sortBy]: sortDirection,
         },
         skip,
         take: limit,
@@ -250,22 +258,8 @@ export class StatisticsService {
         where: paymentWhere,
       });
 
-      // Агрегированные данные
-      const aggregated = await this.prisma.payment.aggregate({
-        where: paymentWhere,
-        _sum: {
-          amount: true,
-        },
-        _count: {
-          id: true,
-        },
-      });
-
       return {
-        location,
-        payments,
-        totalAmount: aggregated._sum.amount || 0,
-        totalPayments: aggregated._count.id || 0,
+        data: payments,
         meta: {
           totalCount,
           page,
@@ -275,7 +269,7 @@ export class StatisticsService {
       };
     } catch (error) {
       throw new InternalServerErrorException(
-        `Ошибка при получении детальной статистики: ${error.message}`,
+        `Ошибка при получении платежей локации: ${error.message}`,
       );
     }
   }
