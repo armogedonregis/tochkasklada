@@ -49,7 +49,10 @@ export class ClientsService {
           userId: newUser.id,
           isActive: data.isActive ?? false,
           phones: data.phones && data.phones.length > 0 ? {
-            create: data.phones.map(phone => ({ phone }))
+            create: data.phones.map(phone => ({ 
+              phone: phone.phone,
+              comment: phone.comment 
+            }))
           } : undefined
         },
         include: {
@@ -406,7 +409,8 @@ export class ClientsService {
           if (phones.length > 0) {
             await tx.clientPhone.createMany({
               data: phones.map(phone => ({
-                phone: phone.toString(),
+                phone: phone.phone,
+                comment: phone.comment,
                 clientId: id
               }))
             });
@@ -442,12 +446,13 @@ export class ClientsService {
     }
   }
 
-  async addPhone(clientId: string, phone: string) {
+  async addPhone(clientId: string, phone: string, comment?: string) {
     this.logger.log(`Adding phone to client id: ${clientId}`, 'ClientsService');
     return this.prisma.clientPhone.create({
       data: {
         clientId,
         phone,
+        comment,
       },
     });
   }

@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ArrowLeft, User, Phone, Mail, FileText, Box, Calendar, AlertTriangle, Banknote } from 'lucide-react';
-import { CellRental } from '@/services/cellRentalsService/cellRentals.types';
+import { CellRental, CellRentalStatus } from '@/services/cellRentalsService/cellRentals.types';
 import { Payment } from '@/services/paymentsService/payments.types';
 import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStatusesApi';
 
@@ -120,7 +120,7 @@ const ClientDetailsPage = () => {
     );
   }
 
-  const activeRentals = clientRentals?.filter(rental => rental.isActive) || [];
+  const activeRentals = clientRentals?.filter(rental => rental.status?.statusType !== CellRentalStatus.CLOSED) || [];
   const totalSpent = calculateTotalSpent();
   const allPayments = getAllPayments();
 
@@ -163,7 +163,12 @@ const ClientDetailsPage = () => {
                     client.phones.map((phone: any, index: number) => (
                       <div key={index} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-1 rounded">
                         <Phone className="h-4 w-4 text-muted-foreground" />
-                        {typeof phone === 'object' ? phone.phone || phone.number : phone}
+                        <div className="flex flex-col">
+                          <span>{phone.phone}</span>
+                          {phone.comment && (
+                            <span className="text-xs text-gray-500">{phone.comment}</span>
+                          )}
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -280,7 +285,7 @@ const ClientDetailsPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clientRentals && clientRentals.length > 0 ? (
+                {clientRentals && clientRentals.length > 0 && clientRentals.filter(rental => rental.status?.statusType === CellRentalStatus.CLOSED).length > 0 ? (
                   clientRentals.map((rental) => {
                     const duration = differenceInDays(parseISO(rental.endDate), parseISO(rental.startDate)) + 1;
                     return (

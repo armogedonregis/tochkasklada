@@ -5,7 +5,8 @@ import { generateToken, PaymentParams } from './utils/generate-token';
 import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, PaymentSortField, SortDirection } from './dto';
 import { Prisma, UserRole } from '@prisma/client';
 import { LoggerService } from '../logger/logger.service';
-import { CellRentalsService } from '../cell-rentals/cell-rentals.service'; // Добавляем
+import { CellRentalsService } from '../cell-rentals/cell-rentals.service';
+import { ListService } from '../list/list.service';
 
 // Добавляем интерфейс на уровне класса
 interface CellWithRentals {
@@ -31,7 +32,8 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
-    private readonly cellRentalsService: CellRentalsService, // Добавляем
+    private readonly cellRentalsService: CellRentalsService,
+    private readonly listService: ListService,
   ) {
     this.logger.debug?.('PaymentsService instantiated', PaymentsService.name);
   }
@@ -1059,21 +1061,31 @@ export class PaymentsService {
     const { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays, systranid } = data;
     
     try {
-        // Находим или создаем пользователя (делаем всегда, независимо от типа формы)
-        const user = await this._findOrCreateUserWithClient({ email, phone, name, formname: payload.formname });
-        if (!user || !user.client) {
-            throw new InternalServerErrorException('Не удалось создать или найти пользователя');
-        }
-
-        // Если форма не Cart, возвращаем только данные пользователя
+        // Если форма не Cart, создаем заявку в листе ожидания
         if (payload.formname !== 'Cart') {
-            this.logger.log(`Skipping payment creation for form: ${payload.formname}`, PaymentsService.name);
+            this.logger.log(`Creating list entry for form: ${payload.formname}`, PaymentsService.name);
+            
+            const listEntry = await this.listService.createList({
+                email,
+                phone,
+                name,
+                source: `Tilda-${payload.formname}`,
+                description: description
+            });
+            
             return {
                 success: true,
-                message: 'Пользователь создан/обновлен',
+                message: 'Заявка создана в листе ожидания',
+                listEntry,
                 payment: null,
                 error: null
             };
+        }
+
+        // Для Cart формы - создаем пользователя и клиента как раньше
+        const user = await this._findOrCreateUserWithClient({ email, phone, name, formname: payload.formname });
+        if (!user || !user.client) {
+            throw new InternalServerErrorException('Не удалось создать или найти пользователя');
         }
 
         // Дальше обрабатываем только платежи из Cart формы
@@ -1194,6 +1206,7 @@ export class PaymentsService {
                 const [value, unit] = rentalString.split(' ');
                 const numValue = parseInt(value, 10);
 
+                //** переработать логику а то вместо 365дн получается 360 */
                 if (!isNaN(numValue)) {
                     if (unit.startsWith('мес')) {
                         rentalDurationDays = numValue * 30;

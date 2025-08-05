@@ -53,7 +53,8 @@ export class ClientsController {
   ) {
     return await this.clientsService.addPhone(
       id, 
-      addPhoneDto.phone
+      addPhoneDto.phone,
+      addPhoneDto.comment
     );
   }
 

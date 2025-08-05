@@ -59,4 +59,8 @@ export class FindCellRentalsDto {
   @IsOptional()
   @IsUUID()
   statusId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  locationId?: string;
 } 

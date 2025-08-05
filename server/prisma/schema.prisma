@@ -20,6 +20,8 @@ model User {
   client   Client?
   payments Payment[]
 
+  closedLists List[]
+
   @@map("users")
 }
 
@@ -50,8 +52,9 @@ model Client {
 
 // Телефоны клиентов
 model ClientPhone {
-  id    String @id @default(uuid())
-  phone String
+  id      String  @id @default(uuid())
+  phone   String
+  comment String?
 
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -62,18 +65,46 @@ model ClientPhone {
   @@map("client_phones")
 }
 
+// Лист ожиданий
+model List {
+  id          String     @id @default(uuid())
+  email       String
+  phone       String?
+  name        String
+  description String?
+  source      String // "Tilda-Cart", "Tilda-Contact", "Manual"
+  status      ListStatus @default(WAITING)
+  comment     String? // Причина закрытия
+
+  // Кто закрыл заявку (через Admin)
+  closedById String?
+  closedBy   User?   @relation(fields: [closedById], references: [id])
+
+  closedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("lists")
+}
+
+enum ListStatus {
+  WAITING
+  CLOSED
+}
+
 // Платежи
 model Payment {
-  id               String  @id @default(uuid())
-  amount           Int
-  orderId          String? @unique
-  description      String?
-  userId           String
-  user             User    @relation(fields: [userId], references: [id])
-  status           Boolean @default(false)
-  bankPaymentId    String?
-  paymentUrl       String?
-  rentalDuration   Int?    // Срок аренды в днях, который покрывает этот платеж
+  id             String  @id @default(uuid())
+  amount         Int
+  orderId        String? @unique
+  description    String?
+  userId         String
+  user           User    @relation(fields: [userId], references: [id])
+  status         Boolean @default(false)
+  bankPaymentId  String?
+  paymentUrl     String?
+  rentalDuration Int? // Срок аренды в днях, который покрывает этот платеж
 
   cellRentalId String?
   cellRental   CellRental? @relation(fields: [cellRentalId], references: [id], onDelete: Cascade)

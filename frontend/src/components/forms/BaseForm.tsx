@@ -58,7 +58,7 @@ const BaseForm = <T extends FieldValues>({
       } else if (field.type === 'datePicker') {
         values[field.fieldName] = null;
       } else if (field.type === 'phoneInput') {
-        values[field.fieldName] = field.multiplePhones ? [] : '';
+        values[field.fieldName] = field.multiplePhones ? [] : { phone: '', comment: '' };
       } else if (field.type === 'checkboxWithSelect') {
         values[field.fieldName] = false; 
         if (field.selectField) {

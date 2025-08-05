@@ -5,7 +5,8 @@ import {
   CreateClientDto, 
   UpdateClientDto, 
   ClientFilters,
-  PaginatedClientResponse
+  PaginatedClientResponse,
+  AddPhoneDto
 } from '../clientsService/clients.types';
 
 
@@ -44,11 +45,11 @@ export const clientsApi = api.injectEndpoints({
     }),
     
     // Добавление телефона клиенту
-    addPhone: builder.mutation<ClientPhone, { clientId: string, phone: string }>({
-      query: ({ clientId, phone }) => ({
+    addPhone: builder.mutation<ClientPhone, { clientId: string } & AddPhoneDto>({
+      query: ({ clientId, ...phoneData }) => ({
         url: `/clients/${clientId}/phones`,
         method: 'POST',
-        body: { phone },
+        body: phoneData,
       }),
       invalidatesTags: (result, error, { clientId }) => [{ type: 'Clients', id: clientId }],
     }),

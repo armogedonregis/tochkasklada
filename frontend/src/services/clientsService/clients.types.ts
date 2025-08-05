@@ -12,6 +12,13 @@ export enum ClientSortField {
 export interface ClientPhone {
   id: string;
   phone: string;
+  comment?: string;
+}
+
+// Тип для создания/обновления телефона
+export interface PhoneData {
+  phone: string;
+  comment?: string;
 }
 
 // Объединенный тип для телефона
@@ -21,7 +28,7 @@ export interface Client {
   id: string;
   userId: string;
   name: string;
-  phones: any[];
+  phones: ClientPhone[];
   user?: User;
   isActive: boolean;
   createdAt: string;
@@ -32,18 +39,19 @@ export interface CreateClientDto {
   name: string;
   email: string;
   isActive: boolean;
-  phones?: any[];
+  phones?: PhoneData[];
 }
 
 export interface UpdateClientDto {
   name?: string;
   email?: string;
-  phones?: any[];
+  phones?: PhoneData[];
   isActive?: boolean;
 }
 
 export interface AddPhoneDto {
   phone: string;
+  comment?: string;
 }
 
 export interface ClientFilters extends FilterParams {

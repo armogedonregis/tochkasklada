@@ -28,9 +28,13 @@ const clientValidationSchema = yup.object({
   phones: yup
     .array()
     .of(
-      yup
-        .string()
-        .matches(/^\+7\d{10}$/, 'Телефон должен быть в формате +7XXXXXXXXXX')
+      yup.object({
+        phone: yup
+          .string()
+          .matches(/^\+7\d{10}$/, 'Телефон должен быть в формате +7XXXXXXXXXX')
+          .required('Телефон обязателен'),
+        comment: yup.string().optional()
+      })
     )
     .min(1, 'Введите хотя бы один номер телефона'),
   isActive: yup.boolean()
@@ -40,7 +44,7 @@ const clientValidationSchema = yup.object({
 interface ClientFormFields {
   name: string;
   email: string;
-  phones: string[];
+  phones: { phone: string; comment?: string }[];
   isActive: boolean;
 }
 
@@ -144,7 +148,16 @@ export default function ClientsPage() {
       header: 'Телефоны',
       cell: ({ row }) => {
         const phones = row.original.phones;
-        return <div>{Array.isArray(phones) ? phones.map((p: any) => p.phone).join(', ') : ''}</div>;
+        return (
+          <div>
+            {Array.isArray(phones) ? phones.map((p: any) => (
+              <div key={p.id} className="text-sm">
+                <span>{p.phone}</span>
+                {p.comment && <span className="text-gray-500 ml-1">({p.comment})</span>}
+              </div>
+            )) : ''}
+          </div>
+        );
       }
     },
     {
@@ -267,7 +280,10 @@ export default function ClientsPage() {
         defaultValues={modal.editItem ? {
           name: modal.editItem.name,
           email: modal.editItem.user?.email || '',
-          phones: Array.isArray(modal.editItem.phones) ? modal.editItem.phones.map((p: any) => p.phone) : [],
+          phones: Array.isArray(modal.editItem.phones) ? modal.editItem.phones.map((p: any) => ({ 
+            phone: p.phone, 
+            comment: p.comment || '' 
+          })) : [],
           isActive: modal.editItem.isActive
         } : {
           name: '',

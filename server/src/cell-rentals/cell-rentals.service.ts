@@ -29,7 +29,8 @@ export class CellRentalsService {
         rentalStatus,
         cellId,
         clientId,
-        statusId
+        statusId,
+        locationId
       } = queryParams;
 
       // Базовые условия фильтрации
@@ -55,10 +56,17 @@ export class CellRentalsService {
         where.clientId = clientId;
       }
 
-      // Фильтр по ID статуса ячейки
-      if (statusId) {
+      // Фильтр по ID статуса ячейки и локации
+      if (statusId || locationId) {
         where.cell = {
-          statusId
+          ...(statusId && { statusId }),
+          ...(locationId && {
+            container: {
+              location: {
+                id: locationId
+              }
+            }
+          })
         };
       }
 
@@ -109,7 +117,15 @@ export class CellRentalsService {
         include: {
           cell: {
             include: {
-              container: true,
+              container: {
+                include: {
+                  location: {
+                    include: {
+                      city: true
+                    }
+                  }
+                }
+              },
               size: true,
               status: true,
             },
@@ -768,16 +784,16 @@ export class CellRentalsService {
         new Date(rental.lastExtendedAt).getTime() > now.getTime() - 1000 * 60 * 60 * 24 * 7; // Продлен в течение последней недели
 
       // Проверяем скорую оплату (от 7 до 14 дней до окончания)
-      const paymentDueSoon = daysLeft > 7 && daysLeft <= 14;
+      const paymentDueSoon = daysLeft < 7 && daysLeft > 4;
 
       // Проверяем, является ли аренда бронью (начало в будущем)
       const isReservation = new Date(rental.startDate).getTime() > now.getTime();
-
+/** TODO ЗАМЕНИТЬ ОТ 4 до 7 и ЗАМЕНИТЬ МЕНЬШЕ 3 до 2 дн. */
       if (isReservation) {
         newStatus = CellRentalStatus.RESERVATION; // Бронь
-      } else if (daysLeft < 0) {
+      } else if (daysLeft < 1) {
         newStatus = CellRentalStatus.EXPIRED; // Просрочена
-      } else if (daysLeft <= 7) {
+      } else if (daysLeft <= 7 && daysLeft > 4) {
         newStatus = CellRentalStatus.EXPIRING_SOON; // Скоро истекает
       } else if (paymentDueSoon) {
         newStatus = CellRentalStatus.PAYMENT_SOON; // Скоро оплата

@@ -1,4 +1,26 @@
-import { IsArray, IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsBoolean } from 'class-validator';
+import { IsArray, IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsBoolean, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+/**
+ * DTO для телефона с комментарием
+ */
+export class PhoneDto {
+  /**
+   * Номер телефона
+   * @example "79001234567"
+   */
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
+  /**
+   * Комментарий к телефону
+   * @example "Рабочий номер"
+   */
+  @IsString()
+  @IsOptional()
+  comment?: string;
+}
 
 /**
  * DTO для создания клиента администратором
@@ -31,12 +53,13 @@ export class CreateClientDto {
 
   /**
    * Телефоны клиента
-   * @example ["79001234567", "79007654321"]
+   * @example [{"phone": "79001234567", "comment": "Рабочий номер"}]
    */
   @IsArray()
-  @IsString({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => PhoneDto)
   @IsOptional()
-  phones?: string[];
+  phones?: PhoneDto[];
 
   /**
    * Активность клиента

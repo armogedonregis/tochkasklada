@@ -5,8 +5,14 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/comp
 import { UseFormReturn, FieldValues, Path } from 'react-hook-form';
 import { IMaskInput } from 'react-imask';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PlusCircle, Trash } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+interface PhoneData {
+  phone: string;
+  comment?: string;
+}
 
 interface FormPhoneInputProps<T extends FieldValues> {
   form: UseFormReturn<T>;
@@ -16,7 +22,7 @@ interface FormPhoneInputProps<T extends FieldValues> {
   placeholder?: string;
   className?: string;
   multiplePhones?: boolean;
-  onChange?: (value: string | string[]) => void;
+  onChange?: (value: PhoneData | PhoneData[]) => void;
 }
 
 const FormPhoneInput = <T extends FieldValues>({
@@ -29,7 +35,7 @@ const FormPhoneInput = <T extends FieldValues>({
   multiplePhones = false,
   onChange
 }: FormPhoneInputProps<T>) => {
-  const [phones, setPhones] = useState<string[]>([]);
+  const [phones, setPhones] = useState<PhoneData[]>([]);
   const initialized = React.useRef(false);
 
   // Инициализация только при первом рендере или смене клиента
@@ -38,12 +44,20 @@ const FormPhoneInput = <T extends FieldValues>({
       const value = form.getValues(name);
       if (value) {
         if (multiplePhones && Array.isArray(value)) {
-          setPhones(value);
+          // Если это массив объектов с phone и comment
+          if (value.length > 0 && typeof value[0] === 'object' && 'phone' in value[0]) {
+            setPhones(value as PhoneData[]);
+          } else {
+            // Если это массив строк, конвертируем в объекты
+            setPhones(value.map((phone: string) => ({ phone })));
+          }
         } else if (typeof value === 'string') {
-          setPhones([value]);
+          setPhones([{ phone: value }]);
+        } else if (typeof value === 'object' && 'phone' in value) {
+          setPhones([value as PhoneData]);
         }
       } else {
-        setPhones(multiplePhones ? [] : ['']);
+        setPhones(multiplePhones ? [] : [{ phone: '' }]);
       }
       initialized.current = true;
     }
@@ -60,7 +74,7 @@ const FormPhoneInput = <T extends FieldValues>({
         form.setValue(name, phones[0] as any, { shouldValidate: true });
       }
     } else {
-      form.setValue(name, (multiplePhones ? [] : '') as any, { shouldValidate: true });
+      form.setValue(name, (multiplePhones ? [] : { phone: '' }) as any, { shouldValidate: true });
     }
     // eslint-disable-next-line
   }, [phones]);
@@ -74,7 +88,18 @@ const FormPhoneInput = <T extends FieldValues>({
   // Обработчик изменения значений телефонных номеров
   const handlePhoneChange = (index: number, value: string) => {
     const newPhones = [...phones];
-    newPhones[index] = value;
+    newPhones[index] = { ...newPhones[index], phone: value };
+    setPhones(newPhones);
+    
+    if (onChange) {
+      onChange(multiplePhones ? newPhones : newPhones[0]);
+    }
+  };
+
+  // Обработчик изменения комментариев
+  const handleCommentChange = (index: number, value: string) => {
+    const newPhones = [...phones];
+    newPhones[index] = { ...newPhones[index], comment: value };
     setPhones(newPhones);
     
     if (onChange) {
@@ -84,7 +109,7 @@ const FormPhoneInput = <T extends FieldValues>({
 
   // Обработчик добавления нового телефонного номера
   const handleAddPhone = () => {
-    setPhones([...phones, '']);
+    setPhones([...phones, { phone: '', comment: '' }]);
   };
 
   // Обработчик удаления телефонного номера
@@ -104,40 +129,52 @@ const FormPhoneInput = <T extends FieldValues>({
             <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
           )}
           
-          <div className="space-y-2">
-            {phones.map((phone, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <FormControl>
-                  <div className={cn(
-                    "flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm transition-colors",
-                    "focus-within:border-[#F62D40] focus-within:ring-1 focus-within:ring-[#F62D40] dark:focus-within:border-[#F8888F] dark:focus-within:ring-[#F8888F]"
-                  )}>
-                    <IMaskInput
-                      {...maskOptions}
-                      value={phone}
-                      onAccept={(value) => {
-                        // Сохраняем только цифры и +
-                        const cleanValue = value.replace(/[^\d+]/g, '');
-                        handlePhoneChange(index, cleanValue);
-                      }}
-                      placeholder={placeholder}
-                      type="tel"
-                      className="flex-1 h-full px-3 py-2 text-sm bg-transparent focus:outline-none"
-                    />
-                  </div>
-                </FormControl>
+          <div className="space-y-3">
+            {phones.map((phoneData, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <FormControl>
+                    <div className={cn(
+                      "flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm transition-colors",
+                      "focus-within:border-[#F62D40] focus-within:ring-1 focus-within:ring-[#F62D40] dark:focus-within:border-[#F8888F] dark:focus-within:ring-[#F8888F]"
+                    )}>
+                      <IMaskInput
+                        {...maskOptions}
+                        value={phoneData.phone}
+                        onAccept={(value) => {
+                          // Сохраняем только цифры и +
+                          const cleanValue = value.replace(/[^\d+]/g, '');
+                          handlePhoneChange(index, cleanValue);
+                        }}
+                        placeholder={placeholder}
+                        type="tel"
+                        className="flex-1 h-full px-3 py-2 text-sm bg-transparent focus:outline-none"
+                      />
+                    </div>
+                  </FormControl>
+                  
+                  {multiplePhones && phones.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemovePhone(index)}
+                      className="h-8 w-8 text-gray-500 hover:text-red-500"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
                 
-                {multiplePhones && phones.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemovePhone(index)}
-                    className="h-8 w-8 text-gray-500 hover:text-red-500"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                )}
+                {/* Поле для комментария */}
+                <FormControl>
+                  <Input
+                    value={phoneData.comment || ''}
+                    onChange={(e) => handleCommentChange(index, e.target.value)}
+                    placeholder="Комментарий к номеру (необязательно)"
+                    className="h-8 text-sm"
+                  />
+                </FormControl>
               </div>
             ))}
             

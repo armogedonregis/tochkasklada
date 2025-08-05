@@ -21,6 +21,7 @@ import { LogsModule } from './logs/logs.module';
 import { LoggerModule } from './logger/logger.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
+import { ListModule } from './list/list.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { TasksModule } from './tasks/tasks.module';
     RelaysModule,
     RelayAccessModule,
     CellRentalsModule,
+    ListModule,
     StatisticsModule,
     LogsModule,
     SwaggerDocModule.forRoot(),

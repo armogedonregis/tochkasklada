@@ -28,6 +28,7 @@ import { useTableControls } from '@/hooks/useTableControls';
 import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStatusesApi';
 import { useLazyGetClientsQuery } from '@/services/clientsService/clientsApi';
 import { useLazyGetAdminCellsQuery } from '@/services/cellService/cellsApi';
+import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
 import { differenceInDays, addDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
@@ -44,6 +45,7 @@ const cellRentalValidationSchema = yup.object({
 export default function CellRentalsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<CellRentalStatusType>('ALL');
+  const [locationFilter, setLocationFilter] = useState<string>('ALL');
 
   const tableControls = useTableControls<CellRentalSortField>({
     defaultPageSize: 10,
@@ -58,6 +60,8 @@ export default function CellRentalsPage() {
   const [getCells, { data: cellsData = { data: [] } }] = useLazyGetAdminCellsQuery();
   const [getClients, { data: clientsData = { data: [] } }] = useLazyGetClientsQuery()
 
+  // Получение локаций для фильтра
+  const { data: locationsData = { data: [] } } = useGetLocationsQuery();
 
   // Функция для поиска ячеек
   const handleCellsSearch = (query: string) => {
@@ -83,7 +87,8 @@ export default function CellRentalsPage() {
     search: tableControls.queryParams.search,
     sortBy: tableControls.queryParams.sortBy,
     sortDirection: tableControls.queryParams.sortDirection,
-    rentalStatus: statusFilter === 'ALL' ? undefined : statusFilter
+    rentalStatus: statusFilter === 'ALL' ? undefined : statusFilter,
+    locationId: locationFilter === 'ALL' ? undefined : locationFilter
   });
 
 
@@ -441,7 +446,7 @@ export default function CellRentalsPage() {
       </div>
 
       {/* Фильтры */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 px-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 px-4">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
@@ -461,6 +466,20 @@ export default function CellRentalsPage() {
             {statusList?.map((status) => (
               <SelectItem key={status.statusType} value={status.statusType as string}>
                 {status.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={locationFilter} onValueChange={(value) => setLocationFilter(value)}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Фильтр по локации" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Все локации</SelectItem>
+            {locationsData?.data?.map((location) => (
+              <SelectItem key={location.id} value={location.id}>
+                {location.name} ({location.city?.short_name})
               </SelectItem>
             ))}
           </SelectContent>

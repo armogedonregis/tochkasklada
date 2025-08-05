@@ -1,6 +1,6 @@
-import { IsArray, IsEmail, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { IsArray, IsEmail, IsOptional, IsString, IsBoolean, ValidateNested } from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateClientDto } from './create-client.dto';
+import { CreateClientDto, PhoneDto } from './create-client.dto';
 
 /**
  * DTO для обновления клиента
@@ -24,12 +24,12 @@ export class UpdateClientDto extends PartialType(CreateClientDto) {
 
   /**
    * Телефоны клиента
-   * @example ["79001234567", "79007654321"]
+   * @example [{"phone": "79001234567", "comment": "Рабочий номер"}]
    */
   @IsArray()
-  @IsString({ each: true })
+  @ValidateNested({ each: true })
   @IsOptional()
-  phones?: string[];
+  phones?: PhoneDto[];
 
   /**
    * Активность клиента
