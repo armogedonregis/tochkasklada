@@ -279,7 +279,7 @@ export class PaymentsService {
             });
             this.logger.log('Payment linked to extended rental', PaymentsService.name);
           } else {
-            this.logger.error(`Cell ${cell.name} already rented by another client`, '', PaymentsService.name);
+            this.logger.error(`Cell ${cell.name} already rented by another client (clientId: ${existingRental.clientId}, current clientId: ${user.client.id})`, '', PaymentsService.name);
             // Ячейка арендована другим клиентом
             throw new BadRequestException(`Ячейка ${cell.name} уже арендована другим клиентом`);
           }
@@ -1091,8 +1091,16 @@ export class PaymentsService {
         // Дальше обрабатываем только платежи из Cart формы
         let cell: CellWithRentals | null = null;
         let errorMessage = null;
+        let isExtension = false;
+        
         try {
             cell = await this._findAvailableCell(cellNumber, sizeform, email);
+            
+            // Проверяем, является ли это продлением аренды
+            if (cell && cell.rentals && cell.rentals.length > 0) {
+                isExtension = true;
+                this.logger.log(`This is a rental extension for cell ${cellNumber}`, PaymentsService.name);
+            }
         } catch (cellError) {
             errorMessage = cellError.message;
             this.logger.error(`Cell error: ${cellError.message}`, cellError.stack, PaymentsService.name);
@@ -1115,6 +1123,9 @@ export class PaymentsService {
         // Если была ошибка с ячейкой, добавляем пометку в описание
         if (errorMessage) {
             paymentDetails.description = `ПРОБЛЕМНЫЙ ПЛАТЕЖ: ${paymentDetails.description} - ${errorMessage}`;
+        } else if (isExtension) {
+            // Если это продление аренды, добавляем соответствующую пометку
+            paymentDetails.description = `ПРОДЛЕНИЕ АРЕНДЫ: ${paymentDetails.description}`;
         }
 
         // Создаем платеж
@@ -1333,26 +1344,7 @@ export class PaymentsService {
     if (cellNumber) {
         this.logger.log(`Searching for cell by number: ${cellNumber}`, context);
         
-        // Сначала ищем свободную ячейку
-        const cell = await this.prisma.cells.findFirst({
-            where: {
-                name: { equals: cellNumber, mode: 'insensitive' },
-                rentals: { none: { isActive: true } },
-            },
-            include: {
-                status: true,
-                rentals: {
-                    where: { isActive: true }
-                }
-            }
-        }) as CellWithRentals | null;
-
-        if (cell) {
-            this.logger.log(`Cell found by number: ${cell.name} (ID: ${cell.id})`, context);
-            return cell;
-        }
-
-        // Проверяем, существует ли ячейка вообще
+        // Ищем ячейку по номеру
         const existingCell = await this.prisma.cells.findFirst({
             where: {
                 name: { equals: cellNumber, mode: 'insensitive' }
@@ -1373,16 +1365,22 @@ export class PaymentsService {
         }) as CellWithRentals | null;
 
         if (existingCell) {
-            // Ячейка существует, но может быть занята
+            // Ячейка существует
             if (existingCell.rentals && existingCell.rentals.length > 0) {
-                // Проверяем, принадлежит ли аренда текущему клиенту
-                if (email && existingCell.rentals[0].client?.user?.email === email) {
+                // Ячейка уже арендована - проверяем, принадлежит ли аренда текущему клиенту
+                const rentalClientEmail = existingCell.rentals[0].client?.user?.email;
+                this.logger.log(`Cell ${cellNumber} is rented. Rental client email: ${rentalClientEmail}, current email: ${email}`, context);
+                
+                if (email && rentalClientEmail === email) {
                     this.logger.log(`Cell ${cellNumber} already rented by the same client (email: ${email}). Will extend rental.`, context);
                     return existingCell;
                 }
                 throw new BadRequestException(`Ячейка ${cellNumber} уже арендована другим клиентом`);
+            } else {
+                // Ячейка свободна
+                this.logger.log(`Cell found by number: ${existingCell.name} (ID: ${existingCell.id}) - available`, context);
+                return existingCell;
             }
-            throw new BadRequestException(`Ячейка ${cellNumber} недоступна для аренды (статус: ${existingCell.status?.name || 'неизвестен'})`);
         }
         
         this.logger.warn(`Cell not found by number: ${cellNumber}`, context);
