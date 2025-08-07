@@ -492,16 +492,23 @@ export class PaymentsService {
           throw new BadRequestException(`Ячейка с ID ${cellId} не найдена`);
         }
 
-        // Проверяем, не арендована ли уже ячейка
+        // Проверяем, не арендована ли уже ячейка другим клиентом
         const existingRental = await this.prisma.cellRental.findFirst({
           where: {
             cellId,
             isActive: true
+          },
+          include: {
+            client: true
           }
         });
 
         if (existingRental) {
-          throw new BadRequestException(`Ячейка ${cell.name} уже арендована`);
+          // Если аренда принадлежит другому клиенту, запрещаем
+          if (existingRental.clientId !== payment.user.client.id) {
+            throw new BadRequestException(`Ячейка ${cell.name} уже арендована другим клиентом`);
+          }
+          // Если аренда принадлежит тому же клиенту, разрешаем создание новой аренды
         }
 
         // Определяем даты начала и окончания аренды

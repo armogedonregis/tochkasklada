@@ -490,17 +490,30 @@ export class CellRentalsService {
           throw new NotFoundException(`Ячейка с ID ${updateCellRentalDto.cellId} не найдена`);
         }
 
-        // Проверяем, нет ли уже активной аренды для этой ячейки
+        // Проверяем, нет ли уже активной аренды для этой ячейки другим клиентом
         const activeRental = await this.prisma.cellRental.findFirst({
           where: {
             cellId: updateCellRentalDto.cellId,
             isActive: true,
             id: { not: id }, // Исключаем текущую аренду
           },
+          include: {
+            client: true
+          }
         });
 
         if (activeRental) {
-          throw new BadRequestException(`Ячейка с ID ${updateCellRentalDto.cellId} уже арендована`);
+          // Получаем текущую аренду для сравнения клиентов
+          const currentRental = await this.prisma.cellRental.findUnique({
+            where: { id },
+            include: { client: true }
+          });
+
+          // Если аренда принадлежит другому клиенту, запрещаем
+          if (currentRental && activeRental.clientId !== currentRental.clientId) {
+            throw new BadRequestException(`Ячейка с ID ${updateCellRentalDto.cellId} уже арендована другим клиентом`);
+          }
+          // Если аренда принадлежит тому же клиенту, разрешаем обновление
         }
       }
 
