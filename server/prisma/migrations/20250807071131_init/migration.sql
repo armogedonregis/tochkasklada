@@ -6,7 +6,7 @@
 */
 -- DropForeignKey
 ALTER TABLE "lists" DROP CONSTRAINT "lists_closedById_fkey";
-DELETE FROM "lists";
+
 -- AlterTable
 ALTER TABLE "lists" DROP COLUMN "source";
 
