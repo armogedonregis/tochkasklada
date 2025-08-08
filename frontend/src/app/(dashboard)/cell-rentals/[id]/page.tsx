@@ -139,8 +139,9 @@ const CellRentalDetailsPage = () => {
 
   const daysLeft = differenceInDays(parseISO(rental.endDate), new Date());
   const client = rental.client;
-  const cell = rental.cell;
-  const location = cell?.container?.location;
+  const cells = rental.cell || [];
+  const mainCell = Array.isArray(cells) ? cells[0] : undefined;
+  const location = mainCell?.container?.location;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -235,14 +236,35 @@ const CellRentalDetailsPage = () => {
               <CardTitle className="flex items-center gap-2"><Box />Ячейка</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p><strong>{location?.name || 'Локация'} – {cell?.name || 'Номер'}</strong></p>
+              <p>
+                <strong>
+                  {(Array.from(new Set(cells.map(c => c.container?.location?.name).filter(Boolean))).length === 1
+                    ? (location?.name || 'Локация')
+                    : 'Несколько локаций')}
+                  {' '}
+                  – {' '}
+                  {cells.length === 0
+                    ? 'Номер'
+                    : (cells.length === 1 ? (cells[0].name || 'Номер') : `${cells.length} ячеек: ${cells.map(c => c.name).join(', ')}`)}
+                </strong>
+              </p>
               <p className="flex items-center gap-2 text-muted-foreground">
                 <Tag className="h-4 w-4" />
-                Размер: {cell?.size?.name} ({cell?.size?.short_name})
+                Размер: {
+                  cells.length === 0
+                    ? '—'
+                    : Array.from(new Set(
+                        cells.map(c => c.size ? `${c.size.name} (${c.size.short_name})` : null).filter(Boolean)
+                      )).join(', ')
+                }
               </p>
               <p className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                Адрес: {location?.address || 'Не указан'}
+                Адрес: {
+                  (Array.from(new Set(cells.map(c => c.container?.location?.address).filter(Boolean))).length === 1
+                    ? (location?.address || 'Не указан')
+                    : (cells.length > 1 ? 'Несколько адресов' : (location?.address || 'Не указан')))
+                }
               </p>
             </CardContent>
           </Card>
