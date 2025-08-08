@@ -21,16 +21,16 @@ export enum CellFreeSortField {
 
 export interface CellRental {
   id: string;
-  cellId: string;
+  cellId?: string; // Для обратной совместимости, deprecated
   clientId: string;
   startDate: string;
   endDate: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  cell?: Cell & {
+  cell: (Cell & {
     container?: Container;
-  };
+  })[]; // Теперь массив ячеек
   status?: CellStatus;
   client?: Client;
   rentalStatus: CellRentalStatus;
@@ -56,7 +56,8 @@ export enum CellRentalStatus {
 export type CellRentalStatusType = "ALL" | "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "CLOSED" | "RESERVATION" | "EXTENDED" | "PAYMENT_SOON"
 
 export interface CreateCellRentalDto {
-  cellId: string;
+  cellId?: string; // Для обратной совместимости
+  cellIds?: string[]; // Массив ID ячеек
   clientId: string;
   startDate: string;
   endDate: string;
@@ -65,7 +66,8 @@ export interface CreateCellRentalDto {
 }
 
 export interface UpdateCellRentalDto {
-  cellId?: string;
+  cellId?: string; // Для обратной совместимости
+  cellIds?: string[]; // Массив ID ячеек
   clientId?: string;
   startDate?: string;
   endDate?: string;
@@ -73,8 +75,13 @@ export interface UpdateCellRentalDto {
   rentalStatus: CellRentalStatusType;
 }
 
+export interface UpdateRentalStatusDto {
+  rentalStatus: CellRentalStatus;
+}
+
 export interface CellRentalFilters extends FilterParams, DateRangeParams {
-  cellId?: string;
+  cellId?: string; // Для обратной совместимости
+  cellIds?: string[]; // Массив ID ячеек для фильтрации
   clientId?: string;
   isActive?: boolean;
   locationId?: string;

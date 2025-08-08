@@ -52,7 +52,7 @@ const BaseForm = <T extends FieldValues>({
       } else if (field.type === 'checkbox') {
         values[field.fieldName] = false;
       } else if (field.type === 'searchSelect') {
-        values[field.fieldName] = null;
+        values[field.fieldName] = (field as any).isMulti ? [] : null;
       } else if (field.type === 'colorPicker') {
         values[field.fieldName] = field.defaultValue || '#000000';
       } else if (field.type === 'datePicker') {

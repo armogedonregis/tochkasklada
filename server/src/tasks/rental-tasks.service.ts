@@ -12,7 +12,7 @@ export class RentalTasksService {
     this.logger.log('RentalTasksService instantiated', 'RentalTasksService');
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleAutomaticStatusUpdates() {
     try {
       // Обновляем статусы аренды

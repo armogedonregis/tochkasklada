@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, Min, IsString, IsEnum, IsBoolean, IsUUID } from 'class-validator';
+import { IsOptional, IsInt, Min, IsString, IsEnum, IsBoolean, IsUUID, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CellRentalStatus } from '@prisma/client';
 
@@ -51,6 +51,12 @@ export class FindCellRentalsDto {
   @IsOptional()
   @IsUUID()
   cellId?: string;
+
+  // Массив ID ячеек для фильтрации
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  cellIds?: string[];
 
   @IsOptional()
   @IsUUID()

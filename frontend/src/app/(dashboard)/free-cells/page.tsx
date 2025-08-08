@@ -1,8 +1,9 @@
 "use client";
 
-import {
-  useGetFreeCellsQuery
-} from '@/services/cellRentalsService/cellRentalsApi';
+import { useState } from 'react';
+import { useGetFreeCellsQuery } from '@/services/cellRentalsService/cellRentalsApi';
+import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BaseTable } from '@/components/table/BaseTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { CellFreeRental, CellFreeSortField } from '@/services/cellRentalsService/cellRentals.types';
@@ -16,12 +17,17 @@ export default function CellRentalsPage() {
   });
 
   // Получение данных об арендах
+  const [locationFilter, setLocationFilter] = useState<string>('ALL');
+
+  const { data: locationsData = { data: [] } } = useGetLocationsQuery();
+
   const { data, error, isLoading, refetch } = useGetFreeCellsQuery({
     page: tableControls.queryParams.page,
     limit: tableControls.queryParams.limit,
     search: tableControls.queryParams.search,
     sortBy: tableControls.queryParams.sortBy,
     sortDirection: tableControls.queryParams.sortDirection,
+    locationId: locationFilter === 'ALL' ? undefined : locationFilter,
   });
 
   // Данные аренд
@@ -64,6 +70,21 @@ export default function CellRentalsPage() {
           <p className="text-sm text-muted-foreground">
             Просмотр свободных ячеек
           </p>
+        </div>
+        <div className="w-64">
+          <Select value={locationFilter} onValueChange={(value) => setLocationFilter(value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Фильтр по локации" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Все локации</SelectItem>
+              {locationsData?.data?.map((location: any) => (
+                <SelectItem key={location.id} value={location.id}>
+                  {location.name} ({location.city?.short_name})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

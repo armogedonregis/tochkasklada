@@ -50,50 +50,106 @@ const TimelineGantt = ({ tasks }: TimelineGanttProps) => {
         return Math.round((passedDuration / totalDuration) * 100);
     }, []);
 
-    // Создаем группы
+    // Создаем группы по ячейкам, но переупорядочиваем так, чтобы ячейки из одной аренды шли подряд
     const groups = useMemo(() => {
         if (!tasks.length) return new DataSet([]);
 
-        const uniqueGroups = new Map();
-        tasks.forEach(rental => {
-            if (!uniqueGroups.has(rental.cell?.id || '')) {
-                uniqueGroups.set(rental.cell?.id || '', {
-                    id: rental.cell?.id || '',
-                    content: `
-                        <div class="group-content">
-                            <div class="group-name">${rental.cell?.name || ''}</div>
-                            <div class="group-dates">
-                                ${new Date(rental.startDate).toLocaleDateString('ru-RU')} - 
-                                ${new Date(rental.endDate).toLocaleDateString('ru-RU')}
-                            </div>
-                        </div>
-                    `,
-                    order: rental.cell?.name || ''
-                });
+        type CellInfo = {
+            id: string;
+            name: string;
+            locationName: string;
+            locationShort: string;
+            containerName: string;
+            baseKey: string;
+        };
+
+        // 1) Собираем все уникальные ячейки из всех аренд
+        const cellMap = new Map<string, CellInfo>();
+        for (const rental of tasks) {
+            const cellsArray = Array.isArray(rental.cell) ? rental.cell : (rental.cell ? [rental.cell as any] : []);
+            for (const cell of cellsArray) {
+                if (!cell?.id) continue;
+                if (!cellMap.has(cell.id)) {
+                    const locationName = cell?.container?.location?.name || '';
+                    const locationShort = cell?.container?.location?.short_name || '';
+                    const containerName = typeof cell?.container?.name === 'number' ? String(cell.container.name) : (cell?.container?.name || '');
+                    const name = cell?.name || '';
+                    const baseKey = `${locationShort}::${containerName}::${name}`;
+                    cellMap.set(cell.id, { id: cell.id, name, locationName, locationShort, containerName, baseKey });
+                }
             }
+        }
+
+        // 2) Строим кластеры для аренд с несколькими ячейками (ячейки должны идти подряд)
+        type ClusterEntry = { cellId: string; seq: number };
+        const cellClusterKey = new Map<string, string>(); // cellId -> clusterKey
+        const cellClusterSeq = new Map<string, number>(); // cellId -> sequence inside cluster
+
+        for (const rental of tasks) {
+            const cellsArray = Array.isArray(rental.cell) ? rental.cell : (rental.cell ? [rental.cell as any] : []);
+            if (cellsArray.length <= 1) continue;
+
+            // Сортируем ячейки внутри аренды по их базовому ключу, чтобы получить детерминированный порядок
+            const enriched = cellsArray
+                .filter((c: any) => c?.id && cellMap.has(c.id))
+                .map((c: any) => cellMap.get(c.id)!)
+                .sort((a, b) => a.baseKey.localeCompare(b.baseKey, 'ru'));
+
+            if (enriched.length === 0) continue;
+
+            const clusterBase = enriched[0].baseKey;
+            const clusterKey = `${clusterBase}__cluster_${rental.id}`;
+
+            enriched.forEach((ci, idx) => {
+                if (!cellClusterKey.has(ci.id)) {
+                    cellClusterKey.set(ci.id, clusterKey);
+                    cellClusterSeq.set(ci.id, idx);
+                }
+            });
+        }
+
+        // 3) Формируем итоговый порядок групп
+        const groupsArr = Array.from(cellMap.values()).map((ci) => {
+            const clusterKey = cellClusterKey.get(ci.id);
+            const seq = cellClusterSeq.get(ci.id) ?? 0;
+            const order = clusterKey ? `${clusterKey}__${String(seq).padStart(3, '0')}` : `${ci.baseKey}__single`;
+            const content = `
+                <div class="group-content">
+                    <div class="group-name">${ci.name}</div>
+                    <div class="group-dates">${ci.locationName ? `${ci.locationName} (${ci.locationShort})` : ''}</div>
+                </div>
+            `;
+            return { id: ci.id, content, order };
         });
 
-        return new DataSet(Array.from(uniqueGroups.values()));
+        groupsArr.sort((a, b) => a.order.localeCompare(b.order, 'ru'));
+        return new DataSet(groupsArr);
     }, [tasks]);
 
-    // Создаем элементы timeline
+    // Создаем элементы timeline: для каждой аренды — элементы на строках всех её ячеек
     const items = useMemo(() => {
         if (!tasks.length) return new DataSet<TimelineItem>([]);
 
-        const timelineItems = tasks.map(rental => {
+        const timelineItems: TimelineItem[] = [];
+
+        for (const rental of tasks) {
             const progress = calculateProgress(rental);
             const statusColor = rental.status?.color || '#3B82F6';
+            const cellsArray = Array.isArray(rental.cell) ? rental.cell : (rental.cell ? [rental.cell as any] : []);
 
-            return {
-                id: rental.id,
-                content: rental.cell?.name || '',
-                start: rental.startDate,
-                end: rental.endDate,
-                group: rental.cell?.id || '',
-                style: `background-color: ${statusColor}; border-color: ${statusColor};`,
-                title: `${rental.cell?.name || ''} (${progress}%)`
-            };
-        });
+            for (const cell of cellsArray) {
+                if (!cell?.id) continue;
+                timelineItems.push({
+                    id: `${rental.id}_${cell.id}`,
+                    content: cell?.name || '',
+                    start: rental.startDate,
+                    end: rental.endDate,
+                    group: cell.id,
+                    style: `background-color: ${statusColor}; border-color: ${statusColor};`,
+                    title: `${cell?.name || ''} (${progress}%)`
+                });
+            }
+        }
 
         return new DataSet<TimelineItem>(timelineItems);
     }, [tasks, calculateProgress]);

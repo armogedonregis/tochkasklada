@@ -42,27 +42,27 @@ const FormSearchSelect = <T extends FieldValues>({
     }
   }, [onSearch]);
 
-  // При монтировании и изменении field.value ищем соответствующую опцию
+  // Следим за значением поля и опциями, чтобы корректно отрисовать дефолт
   useEffect(() => {
-    if (!options?.length) return;
+    const currentValue: any = form.getValues(name);
 
-    const value = form.getValues(name);
-    if (value) {
-      if (isMulti && Array.isArray(value)) {
-        // Для множественного выбора
-        const selectedOptions = value
-          .map((val: string | number) => options.find(opt => String(opt.value) === String(val)))
+    if (currentValue) {
+      if (isMulti && Array.isArray(currentValue)) {
+        const selectedOptions = currentValue
+          .map((val: string | number) =>
+            options.find(opt => String(opt.value) === String(val)) || ({ value: val, label: String(val) } as SelectOption)
+          )
           .filter(Boolean) as SelectOption[];
         setSelectedOption(selectedOptions.length ? selectedOptions : null);
       } else {
-        // Для одиночного выбора
-        const option = options.find(opt => String(opt.value) === String(value));
+        const option = options.find(opt => String(opt.value) === String(currentValue))
+          || ({ value: currentValue, label: String(currentValue) } as SelectOption);
         setSelectedOption(option || null);
       }
     } else {
       setSelectedOption(null);
     }
-  }, [options, form, name, isMulti]);
+  }, [options, form, name, isMulti, form.watch(name)]);
 
   // Функция загрузки опций для AsyncSelect
   const loadOptions = useCallback((
@@ -77,10 +77,8 @@ const FormSearchSelect = <T extends FieldValues>({
     }
     
     // Возвращаем текущие опции (они будут обновлены через props после RTK Query)
-    setTimeout(() => {
-      callback(options || []);
-      setIsLoading(false);
-    }, 100); // Увеличиваем таймаут до 100мс
+    callback(options || []);
+    setIsLoading(false);
   }, [onSearch, options]);
 
   return (
@@ -123,7 +121,7 @@ const FormSearchSelect = <T extends FieldValues>({
                 inputId={String(name)}
                 name={String(name)}
                 loadOptions={loadOptions}
-                defaultOptions={true}
+                defaultOptions={options && options.length ? options : true}
                 value={selectedOption}
                 onChange={handleChange}
                 onBlur={field.onBlur}

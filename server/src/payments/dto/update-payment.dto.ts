@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, IsString, IsBoolean, IsUUID, Min, IsDateString } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsBoolean, IsUUID, Min, IsDateString, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdatePaymentDto {
@@ -23,7 +23,12 @@ export class UpdatePaymentDto {
 
   @IsOptional()
   @IsUUID()
-  cellId?: string;          // ID ячейки (для создания новой аренды)
+  cellId?: string;          // ID ячейки (для создания новой аренды, обратная совместимость)
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID(4, { each: true })
+  cellIds?: string[];       // Массив ID ячеек (для создания новой аренды)
 
   @IsOptional()
   @IsBoolean()

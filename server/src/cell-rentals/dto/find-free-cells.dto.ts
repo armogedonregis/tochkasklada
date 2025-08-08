@@ -18,6 +18,11 @@ export class FindFreeCellRentalsDto {
     @IsString()
     search?: string;
 
+    // Фильтр по локации
+    @IsOptional()
+    @IsString()
+    locationId?: string;
+
     @IsOptional()
     @Type(() => Number)
     @IsInt()

@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, ParseUUIDPipe, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { CellRentalsService } from './cell-rentals.service';
-import { UpdateCellRentalDto, FindCellRentalsDto, ExtendCellRentalDto } from './dto';
+import { UpdateCellRentalDto, FindCellRentalsDto, ExtendCellRentalDto, UpdateRentalStatusDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -66,11 +66,20 @@ export class CellRentalsAdminController {
   }
 
   /**
-   * Обновление статуса аренды
+   * Обновление статуса аренды (новый упрощенный endpoint)
+   */
+  @Patch(':id/status')
+  @HttpCode(HttpStatus.OK)
+  updateRentalStatus(@Param('id', ParseUUIDPipe) id: string, @Body() updateRentalStatusDto: UpdateRentalStatusDto) {
+    return this.cellRentalsService.updateRentalStatus(id, updateRentalStatusDto);
+  }
+
+  /**
+   * Обновление статуса аренды (старый endpoint для обратной совместимости)
    */
   @Post(':id/update-status')
   @HttpCode(HttpStatus.OK)
-  updateRentalStatus(@Param('id', ParseUUIDPipe) id: string, @Body() { rentalStatus }: { rentalStatus: CellRentalStatus }) {
+  updateRentalStatusLegacy(@Param('id', ParseUUIDPipe) id: string, @Body() { rentalStatus }: { rentalStatus: CellRentalStatus }) {
     return this.cellRentalsService.forceRentalStatus(id, rentalStatus);
   }
 

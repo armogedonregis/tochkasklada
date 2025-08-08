@@ -1,11 +1,18 @@
 import { CellRentalStatus } from '@prisma/client';
-import { IsNotEmpty, IsUUID, IsDateString, IsOptional, IsBoolean, IsInt, Min, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsUUID, IsDateString, IsOptional, IsBoolean, IsInt, Min, IsEnum, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateCellRentalDto {
-  @IsNotEmpty()
+  // Для обратной совместимости - если передан cellId, он будет добавлен к cellIds
+  @IsOptional()
   @IsUUID()
-  cellId: string;
+  cellId?: string;
+
+  // Массив ID ячеек для множественной аренды
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  cellIds?: string[];
 
   @IsNotEmpty()
   @IsUUID()

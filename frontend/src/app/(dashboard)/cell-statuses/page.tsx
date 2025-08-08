@@ -27,12 +27,12 @@ const cellStatusValidationSchema = yup.object({
 
 const StatusMap = {
   [CellRentalStatus.ACTIVE]: 'Активная аренда',
-  [CellRentalStatus.EXPIRING_SOON]: 'Осталось ≤ 7 дней',
+  [CellRentalStatus.EXPIRING_SOON]: 'Осталось ≤ 2 дней',
   [CellRentalStatus.EXPIRED]: 'Просрочена',
   [CellRentalStatus.CLOSED]: 'Договор закрыт администратором',
   [CellRentalStatus.RESERVATION]: 'Бронь',
   [CellRentalStatus.EXTENDED]: 'Продлен',
-  [CellRentalStatus.PAYMENT_SOON]: 'Осталось 8-14 дней'
+  [CellRentalStatus.PAYMENT_SOON]: 'Осталось 3-7 дней'
 }
 
 export default function CellStatuses() {

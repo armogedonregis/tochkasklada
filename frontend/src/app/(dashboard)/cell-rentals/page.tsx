@@ -171,6 +171,36 @@ export default function CellRentalsPage() {
   };
 
   // Поля формы для модального окна
+  const preselectedCellOption = useMemo(() => {
+    if (!modal.editItem) return null as null | { label: string; value: string };
+    const cells = (modal.editItem as any)?.cell;
+    if (Array.isArray(cells) && cells.length) {
+      const cell = cells[0];
+      return {
+        label: cell?.container?.location?.short_name ? `${cell.container.location.short_name}-${cell.name}` : cell?.name,
+        value: cell?.id,
+      };
+    }
+    if ((modal.editItem as any)?.cellId) {
+      const id = (modal.editItem as any).cellId as string;
+      return { label: `Ячейка ${id}`, value: id };
+    }
+    return null;
+  }, [modal.editItem]);
+
+  const preselectedClientOption = useMemo(() => {
+    if (!modal.editItem) return null as null | { label: string; value: string };
+    const client = (modal.editItem as any)?.client;
+    if (client) {
+      return { label: `${client.name} (${client.user?.email || 'Нет email'})`, value: client.id };
+    }
+    if ((modal.editItem as any)?.clientId) {
+      const id = (modal.editItem as any).clientId as string;
+      return { label: `Клиент ${id}`, value: id };
+    }
+    return null;
+  }, [modal.editItem]);
+
   const modalFields = [
     {
       type: 'searchSelect' as const,
@@ -178,10 +208,16 @@ export default function CellRentalsPage() {
       label: 'Ячейка',
       placeholder: 'Введите ID ячейки',
       onSearch: handleCellsSearch,
-      options: cellsData?.data.map((cell) => ({
-        label: cell.container?.location?.short_name + '-' + cell.name,
-        value: cell.id
-      }))
+      options: (() => {
+        const dynamicOptions = (cellsData?.data || []).map((cell: any) => ({
+          label: (cell.container?.location?.short_name ? `${cell.container.location.short_name}-` : '') + cell.name,
+          value: cell.id,
+        }));
+        const pre = preselectedCellOption ? [preselectedCellOption] : [];
+        const all = [...pre, ...dynamicOptions];
+        const uniq = Array.from(new Map(all.map(o => [String(o.value), o])).values());
+        return uniq;
+      })()
     },
     {
       type: 'searchSelect' as const,
@@ -189,10 +225,16 @@ export default function CellRentalsPage() {
       label: 'Клиент',
       placeholder: 'Выберите клиента',
       onSearch: handleClientsSearch,
-      options: clientsData?.data.map((client) => ({
-        label: `${client.name} (${client.user?.email || 'Нет email'})`,
-        value: client.id
-      }))
+      options: (() => {
+        const dynamicOptions = (clientsData?.data || []).map((client: any) => ({
+          label: `${client.name} (${client.user?.email || 'Нет email'})`,
+          value: client.id,
+        }));
+        const pre = preselectedClientOption ? [preselectedClientOption] : [];
+        const all = [...pre, ...dynamicOptions];
+        const uniq = Array.from(new Map(all.map(o => [String(o.value), o])).values());
+        return uniq;
+      })()
     },
     {
       type: 'input' as const,
@@ -321,12 +363,21 @@ export default function CellRentalsPage() {
     },
     {
       accessorKey: 'cell',
-      header: 'Номер ячейки',
-      cell: ({ row }) => (
-        <div className="font-mono text-base truncate max-w-[140px]" title={row.original?.cell?.name}>
-          {row.original?.cell?.name}
-        </div>
-      ),
+      header: 'Ячейки',
+      cell: ({ row }) => {
+        const cells = row.original?.cell;
+        if (!cells) return '-';
+        
+        // Если cell является массивом, показываем все ячейки
+        if (Array.isArray(cells)) {
+          const cellNames = cells.map(c => c.name).join(', ');
+          return (
+            <div className="font-mono text-base truncate max-w-[140px]" title={cellNames}>
+              {cellNames}
+            </div>
+          );
+        }
+      },
     },
     {
       accessorKey: 'rentalStatus',
@@ -345,7 +396,7 @@ export default function CellRentalsPage() {
               minWidth: '100px',
               maxWidth: '140px'
             }}
-            title={row.original?.cell?.name}
+            title={row.original?.cell?.map(c => c.name).join(', ')}
           >
             <span
               style={{
@@ -381,12 +432,21 @@ export default function CellRentalsPage() {
     },
     {
       accessorKey: 'cell.size',
-      header: 'Размер ячейки',
-      cell: ({ row }) => (
-        <div className="font-mono text-base truncate max-w-[140px]" title={row.original?.cell?.size?.short_name}>
-          {row.original?.cell?.size?.short_name}
-        </div>
-      ),
+      header: 'Размеры ячеек',
+      cell: ({ row }) => {
+        const cells = row.original?.cell;
+        if (!cells) return '-';
+        
+        if (Array.isArray(cells)) {
+          const uniqueSizes = [...new Set(cells.map(c => c.size?.short_name).filter(Boolean))];
+          const sizesText = uniqueSizes.join(', ');
+          return (
+            <div className="font-mono text-base truncate max-w-[140px]" title={sizesText}>
+              {sizesText}
+            </div>
+          );
+        }
+      },
     },
     {
       accessorKey: 'startDate',
@@ -526,8 +586,8 @@ export default function CellRentalsPage() {
           rentalStatus: modal.editItem.rentalStatus,
           days: differenceInDays(new Date(modal.editItem.endDate), new Date(modal.editItem.startDate))
         } : {
-          cellId: '',
-          clientId: '',
+          cellId: null as any,
+          clientId: null as any,
           startDate: '',
           endDate: '',
           rentalStatus: 'ACTIVE',

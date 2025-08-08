@@ -1,11 +1,18 @@
 import { CellRentalStatus } from '@prisma/client';
-import { IsOptional, IsUUID, IsDateString, IsBoolean, IsInt, Min, IsEnum } from 'class-validator';
+import { IsOptional, IsUUID, IsDateString, IsBoolean, IsInt, Min, IsEnum, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateCellRentalDto {
+  // Для обратной совместимости
   @IsOptional()
   @IsUUID()
   cellId?: string;
+
+  // Массив ID ячеек для множественной аренды
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  cellIds?: string[];
 
   @IsOptional()
   @IsUUID()

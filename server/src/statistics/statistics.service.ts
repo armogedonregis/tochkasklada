@@ -184,8 +184,10 @@ export class StatisticsService {
         status: true,
         cellRental: {
           cell: {
-            container: {
-              locId: locationId,
+            some: {
+              container: {
+                locId: locationId,
+              },
             },
           },
         },

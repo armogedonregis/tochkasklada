@@ -34,6 +34,7 @@ const getPaymentValidationSchema = (isEdit: boolean) => yup.object({
   description: yup.string().optional(),
   status: yup.boolean().default(false),
   cellId: yup.string().optional(),
+  cellIds: yup.array().of(yup.string()).optional(),
   rentalDuration: yup.number().optional().min(1, 'Срок аренды должен быть > 0').nullable(),
 });
 
@@ -43,7 +44,8 @@ interface PaymentFormFields {
   amount: number;
   description: string;
   status: boolean;
-  cellId: string;
+  cellId?: string;          // Для обратной совместимости
+  cellIds?: string[];       // Массив ID ячеек
   rentalDuration?: number;
 }
 
@@ -85,14 +87,23 @@ const PaymentsPage = () => {
   const modal = useFormModal<PaymentFormFields, Payment>({
     onSubmit: async (values) => {
       console.log(values);
+      
+      // Преобразуем данные формы для API
+      const apiData = {
+        ...values,
+        // Если выбраны cellIds, используем их, иначе используем cellId для обратной совместимости
+        cellIds: values.cellIds?.length ? values.cellIds : (values.cellId ? [values.cellId] : undefined),
+        cellId: undefined // Убираем cellId, чтобы не было конфликтов
+      };
+      
       if (modal.editItem) {
         await updatePayment({
           id: modal.editItem.id,
-          ...values
+          ...apiData
         }).unwrap();
         toast.success('Платеж успешно обновлен');
       } else {
-        await adminCreatePayment(values as any).unwrap();
+        await adminCreatePayment(apiData as any).unwrap();
         toast.success('Платеж создан успешно');
       }
     },
@@ -104,22 +115,21 @@ const PaymentsPage = () => {
   // Схема валидации зависит от режима (создание/редактирование)
   const validationSchema = useMemo(() => getPaymentValidationSchema(!!modal.editItem), [modal.editItem]);
 
-  // Опция текущей ячейки для селекта при редактировании
-  const currentCellOption = useMemo(() => {
-    if (!modal.editItem) return null;
-    const cell: Cell | undefined = (modal.editItem as any).cellRental?.cell;
-    console.log(modal.editItem)
-    if (cell) {
-      const locShort = cell.container?.location?.short_name;
-      return {
-        label: locShort ? `${locShort}-${cell.name}` : cell.name,
-        value: cell.id
-      };
+  // Предзагруженные опции выбранных ячеек при редактировании
+  const preselectedCellOptions = useMemo(() => {
+    if (!modal.editItem) return [] as { label: string; value: string }[];
+    const cells = (modal.editItem as any)?.cellRental?.cell;
+    if (Array.isArray(cells) && cells.length) {
+      return cells.map((cell: Cell) => ({
+        label: cell.container?.location?.short_name ? `${cell.container.location.short_name}-${cell.name}` : cell.name,
+        value: cell.id,
+      }));
     }
-    if ((modal.editItem as any).cellId) {
-      return { label: `Ячейка ${(modal.editItem as any).cellId}`, value: (modal.editItem as any).cellId };
+    if ((modal.editItem as any)?.cellId) {
+      const id = (modal.editItem as any).cellId as string;
+      return [{ label: `Ячейка ${id}`, value: id }];
     }
-    return null;
+    return [] as { label: string; value: string }[];
   }, [modal.editItem]);
 
   // Функция для поиска ячеек
@@ -285,9 +295,14 @@ const PaymentsPage = () => {
     },
     {
       id: 'cellRental',
-      header: "Ячейка",
+      header: "Ячейки",
       cell: ({ row }) => {
-        return row.original.cellRental?.cell?.name;
+        const cells = row.original.cellRental?.cell;
+        if (!cells || !Array.isArray(cells)) return '-';
+        if (cells.length === 1) {
+          return cells[0].name;
+        }
+        return `${cells.length} ячеек: ${cells.map(c => c.name).join(', ')}`;
       }
     },
     {
@@ -382,18 +397,20 @@ const PaymentsPage = () => {
     },
     {
       type: 'searchSelect' as const,
-      fieldName: 'cellId' as const,
-      label: 'Ячейка',
-      placeholder: 'Введите ID ячейки',
+      fieldName: 'cellIds' as const,
+      label: 'Ячейки',
+      placeholder: 'Выберите ячейки для аренды',
       onSearch: handleCellsSearch,
-      options: [
-        ...cellsData?.data.map((cell: any) => ({
-          label: cell.container?.location?.short_name 
-            ? `${cell.container.location.short_name}-${cell.name}`
-            : cell.name,
-          value: cell.id
-        }))
-      ]
+      isMulti: true,
+      options: (() => {
+        const dynamicOptions = (cellsData?.data || []).map((cell: any) => ({
+          label: cell.container?.location?.short_name ? `${cell.container.location.short_name}-${cell.name}` : cell.name,
+          value: cell.id,
+        }));
+        const all = [...preselectedCellOptions, ...dynamicOptions];
+        const uniq = Array.from(new Map(all.map(o => [String(o.value), o])).values());
+        return uniq;
+      })()
     }
   ];
 
@@ -450,19 +467,26 @@ const PaymentsPage = () => {
         validationSchema={validationSchema}
         onSubmit={modal.handleSubmit}
         submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
-        defaultValues={modal.editItem ? {
-          amount: modal.editItem.amount,
-          description: modal.editItem.description,
-          status: modal.editItem.status,
-          cellId: modal.editItem.cellRental?.cell?.id || '',
-          rentalDuration: modal.editItem.rentalDuration
-        } : {
-          userId: '',
+        defaultValues={modal.editItem ? (() => {
+          const cells = (modal.editItem as any)?.cellRental?.cell;
+          const cellIds = Array.isArray(cells) && cells.length
+            ? cells.map((c: any) => c.id)
+            : ((modal.editItem as any)?.cellId ? [(modal.editItem as any).cellId] : []);
+          return {
+            amount: modal.editItem.amount,
+            description: modal.editItem.description,
+            status: modal.editItem.status,
+            rentalDuration: modal.editItem.rentalDuration,
+            cellIds,
+          };
+        })() : {
+          userId: null as any,
           amount: undefined,
           description: '',
           status: false,
           cellId: '',
-          rentalDuration: undefined
+          rentalDuration: undefined,
+          cellIds: [] as any,
         }}
       />
     </div>

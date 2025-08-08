@@ -47,7 +47,8 @@ export interface CreateAdminPaymentDto {
   amount: number; // Сумма в рублях
   description?: string;
   status?: boolean;
-  cellId?: string;
+  cellId?: string;        // Для обратной совместимости
+  cellIds?: string[];     // Массив ID ячеек
   statusId?: string;
   rentalDuration?: number;
 }
@@ -57,7 +58,8 @@ export interface UpdatePaymentDto {
   amount?: number;
   description?: string;
   status?: boolean;
-  cellId?: string;
+  cellId?: string;        // Для обратной совместимости
+  cellIds?: string[];     // Массив ID ячеек
   statusId?: string;
   rentalDuration?: number;
 }

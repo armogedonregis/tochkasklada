@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsUUID, Min, IsBoolean, IsUrl } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional, IsUUID, Min, IsBoolean, IsUrl, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateAdminPaymentDto {
@@ -32,7 +32,12 @@ export class CreateAdminPaymentDto {
   // Поля для аренды ячейки
   @IsOptional()
   @IsUUID()
-  cellId?: string;        // ID ячейки для аренды
+  cellId?: string;        // ID ячейки для аренды (для обратной совместимости)
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID(4, { each: true })
+  cellIds?: string[];     // Массив ID ячеек для аренды
 
   @IsOptional()
   @IsUUID()
