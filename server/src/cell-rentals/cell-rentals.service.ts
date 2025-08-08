@@ -1233,34 +1233,85 @@ export class CellRentalsService {
     }
   }
 
-  // Добавим новый метод для пересчета срока аренды
+  /**
+   * Правильно рассчитывает дату окончания аренды с использованием календарных периодов
+   */
+  private _calculateRentalEndDate(startDate: Date, value: number, unit: string): Date {
+    const endDate = new Date(startDate);
+    
+    if (unit.startsWith('мес')) {
+      // Добавляем месяцы - точно календарные месяцы
+      endDate.setMonth(endDate.getMonth() + value);
+      endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
+    } else if (unit.startsWith('дн') || unit.startsWith('day')) {
+      // Добавляем дни
+      endDate.setDate(endDate.getDate() + value - 1); // Вычитаем 1 день для корректной даты окончания
+    } else if (unit.startsWith('год') || unit.startsWith('year')) {
+      // Добавляем годы - точно календарные годы
+      endDate.setFullYear(endDate.getFullYear() + value);
+      endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
+    }
+    
+    return endDate;
+  }
+
+  /**
+   * Извлекает информацию о периоде аренды из описания платежа
+   */
+  private _extractRentalPeriodFromDescription(description: string): { value: number; unit: string } {
+    // Пытаемся найти информацию о периоде в описании
+    const durationMatch = description.match(/(\d+)\s*(мес|дн|день|месяц|год)/i);
+    if (durationMatch) {
+      const value = parseInt(durationMatch[1], 10);
+      const unit = durationMatch[2].toLowerCase();
+      if (!isNaN(value)) {
+        return { value, unit };
+      }
+    }
+    
+    // По умолчанию 1 месяц
+    return { value: 1, unit: 'мес' };
+  }
+
+  // Добавим новый метод для пересчета срока аренды с использованием календарных дат
   async recalculateRentalDuration(rentalId: string) {
     this.logger.log(`Recalculating rental duration for rental ${rentalId}`, 'CellRentalsService');
     
     const rental = await this.findOne(rentalId);
     
-    // Получаем все успешные платежи аренды
+    // Получаем все успешные платежи аренды отсортированные по дате создания
     const allPayments = await this.prisma.payment.findMany({
       where: { 
         cellRentalId: rentalId,
         status: true // только успешные платежи
       },
+      orderBy: {
+        createdAt: 'asc'
+      }
     });
 
-    // Считаем общий срок аренды из всех платежей
-    const totalDays = allPayments.reduce((sum, payment) => sum + (payment.rentalDuration || 30), 0);
+    this.logger.log(`Found ${allPayments.length} successful payments for rental ${rentalId}`, 'CellRentalsService');
 
-    // Рассчитываем новую дату окончания от начальной даты аренды
-    const newEndDate = new Date(rental.startDate);
-    newEndDate.setDate(newEndDate.getDate() + totalDays);
+    // Рассчитываем новую дату окончания поэтапно
+    let currentEndDate = new Date(rental.startDate);
+    
+    for (const payment of allPayments) {
+      const period = this._extractRentalPeriodFromDescription(payment.description || '');
+      currentEndDate = this._calculateRentalEndDate(currentEndDate, period.value, period.unit);
+      
+      this.logger.log(
+        `Payment ${payment.id}: +${period.value} ${period.unit}, new end date: ${currentEndDate.toISOString()}`,
+        'CellRentalsService'
+      );
+    }
 
-    this.logger.log(`New end date for rental ${rentalId}: ${newEndDate}, total days: ${totalDays}`, 'CellRentalsService');
+    this.logger.log(`Final calculated end date for rental ${rentalId}: ${currentEndDate}`, 'CellRentalsService');
 
     // Обновляем аренду
     const updatedRental = await this.prisma.cellRental.update({
       where: { id: rentalId },
       data: {
-        endDate: newEndDate,
+        endDate: currentEndDate,
       },
       include: {
         cell: true,

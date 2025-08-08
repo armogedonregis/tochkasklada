@@ -245,9 +245,22 @@ export class PaymentsService {
           }
         });
 
-        // Длительность аренды из платежа или по умолчанию 30 дней
-        const rentalDurationDays = data.rentalDuration || 30;
-        this.logger.log(`Rental duration: ${rentalDurationDays} days`, PaymentsService.name);
+        // Извлекаем информацию о периоде аренды из описания платежа
+        let rentalDuration = { value: 1, unit: 'мес' }; // По умолчанию 1 месяц
+        
+        // Пытаемся извлечь информацию о периоде из описания
+        if (data.description) {
+          const durationMatch = data.description.match(/(\d+)\s*(мес|дн|день|месяц|год)/i);
+          if (durationMatch) {
+            const value = parseInt(durationMatch[1], 10);
+            const unit = durationMatch[2].toLowerCase();
+            if (!isNaN(value)) {
+              rentalDuration = { value, unit };
+            }
+          }
+        }
+        
+        this.logger.log(`Rental duration: ${rentalDuration.value} ${rentalDuration.unit}`, PaymentsService.name);
 
         let rental;
 
@@ -257,8 +270,11 @@ export class PaymentsService {
           if (existingRental.clientId === user.client.id) {
             this.logger.log('Extending existing rental for same client...', PaymentsService.name);
             // Аренда принадлежит этому же клиенту - продлеваем ее
-            const newEndDate = new Date(existingRental.endDate);
-            newEndDate.setDate(newEndDate.getDate() + rentalDurationDays);
+            const newEndDate = this._calculateRentalEndDate(
+              new Date(existingRental.endDate), 
+              rentalDuration.value, 
+              rentalDuration.unit
+            );
 
             // Обновляем аренду
             rental = await this.prisma.cellRental.update({
@@ -276,7 +292,7 @@ export class PaymentsService {
               where: { id: payment.id },
               data: {
                 cellRentalId: rental.id,
-                description: description || `Продление аренды ячейки №${cell.name} на ${rentalDurationDays} дн.`
+                description: description || `Продление аренды ячейки №${cell.name} на ${rentalDuration.value} ${rentalDuration.unit}`
               }
             });
             this.logger.log('Payment linked to extended rental', PaymentsService.name);
@@ -289,8 +305,7 @@ export class PaymentsService {
           this.logger.log('Creating new rental...', PaymentsService.name);
           // Создаем новую аренду
           const startDate = new Date();
-          const endDate = new Date(startDate);
-          endDate.setDate(endDate.getDate() + rentalDurationDays);
+          const endDate = this._calculateRentalEndDate(startDate, rentalDuration.value, rentalDuration.unit);
 
           // Проверка cellId перед созданием аренды
           if (!data.cellId) {
@@ -324,7 +339,7 @@ export class PaymentsService {
             where: { id: payment.id },
             data: {
               cellRentalId: rental.id,
-              description: description || `Аренда ячейки #${cell.name} на ${rentalDurationDays} дн.`
+              description: description || `Аренда ячейки #${cell.name} на ${rentalDuration.value} ${rentalDuration.unit}`
             }
           });
           this.logger.log('Payment linked to new rental', PaymentsService.name);
@@ -1067,7 +1082,7 @@ export class PaymentsService {
     this.logger.log(`=== Processing Tilda payment ===`, PaymentsService.name);
     
     const data = this._normalizeTildaPayload(payload);
-    const { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays, systranid } = data;
+    const { email, phone, name, cellNumber, sizeform, amount, description, rentalDuration, systranid } = data;
     
     try {
         // Если форма не Cart, создаем заявку (Request)
@@ -1078,7 +1093,7 @@ export class PaymentsService {
                 email,
                 phone,
                 name,
-                description: description + 'размер ячейки:' + sizeform + 'срок аренды:' + rentalDurationDays,
+                description: description + 'размер ячейки:' + sizeform + 'срок аренды:' + (rentalDuration ? `${rentalDuration.value} ${rentalDuration.unit}` : 'не указан'),
             });
 
             return {
@@ -1123,7 +1138,7 @@ export class PaymentsService {
             {
                 cellNumber,
                 sizeform,
-                rentalDurationDays,
+                rentalDuration,
                 systranid
             }
         );
@@ -1151,6 +1166,29 @@ export class PaymentsService {
         throw error;
     }
 }
+
+  /**
+   * Правильно рассчитывает дату окончания аренды с использованием календарных периодов
+   */
+  private _calculateRentalEndDate(startDate: Date, value: number, unit: string): Date {
+    const endDate = new Date(startDate);
+    
+    if (unit.startsWith('мес')) {
+      // Добавляем месяцы - точно календарные месяцы
+      // Если оплатили 28.07, то до 27.08 (ровно месяц)
+      endDate.setMonth(endDate.getMonth() + value);
+      endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
+    } else if (unit.startsWith('дн') || unit.startsWith('day')) {
+      // Добавляем дни
+      endDate.setDate(endDate.getDate() + value - 1); // Вычитаем 1 день для корректной даты окончания
+    } else if (unit.startsWith('год') || unit.startsWith('year')) {
+      // Добавляем годы - точно календарные годы
+      endDate.setFullYear(endDate.getFullYear() + value);
+      endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
+    }
+    
+    return endDate;
+  }
 
   /**
    * Нормализует ключи в payload от Tilda и извлекает основные данные.
@@ -1202,7 +1240,7 @@ export class PaymentsService {
 
     // Размер (sizeform) и срок аренды
     let sizeform = p.sizeform;
-    let rentalDurationDays: number | undefined;
+    let rentalDuration: { value: number; unit: string } | undefined;
     let description = '';
 
     if (Array.isArray(paymentJson.products) && paymentJson.products.length > 0) {
@@ -1225,15 +1263,10 @@ export class PaymentsService {
                 const [value, unit] = rentalString.split(' ');
                 const numValue = parseInt(value, 10);
 
-                //** переработать логику а то вместо 365дн получается 360 */
+                // Теперь сохраняем структурированную информацию для календарного расчета
                 if (!isNaN(numValue)) {
-                    if (unit.startsWith('мес')) {
-                        rentalDurationDays = numValue * 30;
-                    } else if (unit.startsWith('дн') || unit.startsWith('day')) {
-                        rentalDurationDays = numValue;
-                    } else if (unit.startsWith('год') || unit.startsWith('year')) {
-                        rentalDurationDays = numValue * 365;
-                    }
+                    rentalDuration = { value: numValue, unit: unit || 'мес' };
+                    this.logger.log(`Parsed rental duration: ${numValue} ${unit}`, context);
                 }
             }
         }
@@ -1243,7 +1276,7 @@ export class PaymentsService {
     const systranid = paymentJson.systranid;
     this.logger.log(`Payment systranid: ${systranid}`, context);
 
-    return { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays, systranid };
+    return { email, phone, name, cellNumber, sizeform, amount, description, rentalDuration, systranid };
   }
 
   /**
@@ -1405,7 +1438,7 @@ export class PaymentsService {
     cell: any,
     amount: number,
     tildaDescription: string,
-    tildaInfo: { cellNumber?: string; sizeform?: string; rentalDurationDays?: number; systranid?: string },
+    tildaInfo: { cellNumber?: string; sizeform?: string; rentalDuration?: { value: number; unit: string }; systranid?: string },
   ): Promise<CreateAdminPaymentDto> {
     // Находим активный статус
     const activeStatus = await this.prisma.cellStatus.findFirst({
@@ -1416,11 +1449,26 @@ export class PaymentsService {
 
     this.logger.log(`Found active status for Tilda payment: ${activeStatus?.id || 'not found'}`, PaymentsService.name);
 
+    // Конвертируем структурированную информацию о периоде в дни для совместимости (временно)
+    let rentalDurationDays: number | undefined;
+    if (tildaInfo.rentalDuration) {
+        const { value, unit } = tildaInfo.rentalDuration;
+        // Для совместимости с существующим API пока оставляем дни
+        // Но сохраняем структурированную информацию для правильного календарного расчета
+        if (unit.startsWith('мес')) {
+            rentalDurationDays = value * 30; // Временно, будет использоваться только для логирования
+        } else if (unit.startsWith('дн') || unit.startsWith('day')) {
+            rentalDurationDays = value;
+        } else if (unit.startsWith('год') || unit.startsWith('year')) {
+            rentalDurationDays = value * 365; // Временно, будет использоваться только для логирования
+        }
+    }
+
     const paymentPayload: Partial<CreateAdminPaymentDto> = {
         userId: userId,
         amount: amount > 0 ? amount : 0,
         status: true,
-        rentalDuration: tildaInfo.rentalDurationDays,
+        rentalDuration: rentalDurationDays,
         bankPaymentId: tildaInfo.systranid,
         statusId: activeStatus?.id
     };
