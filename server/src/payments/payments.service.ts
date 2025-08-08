@@ -7,6 +7,7 @@ import { Prisma, UserRole } from '@prisma/client';
 import { LoggerService } from '../logger/logger.service';
 import { CellRentalsService } from '../cell-rentals/cell-rentals.service';
 import { ListService } from '../list/list.service';
+import { RequestsService } from '../requests/requests.service';
 
 // Добавляем интерфейс на уровне класса
 interface CellWithRentals {
@@ -34,6 +35,7 @@ export class PaymentsService {
     private readonly logger: LoggerService,
     private readonly cellRentalsService: CellRentalsService,
     private readonly listService: ListService,
+    private readonly requestsService: RequestsService,
   ) {
     this.logger.debug?.('PaymentsService instantiated', PaymentsService.name);
   }
@@ -1068,22 +1070,21 @@ export class PaymentsService {
     const { email, phone, name, cellNumber, sizeform, amount, description, rentalDurationDays, systranid } = data;
     
     try {
-        // Если форма не Cart, создаем заявку в листе ожидания
+        // Если форма не Cart, создаем заявку (Request)
         if (payload.formname !== 'Cart') {
-            this.logger.log(`Creating list entry for form: ${payload.formname}`, PaymentsService.name);
-            
-            const listEntry = await this.listService.createList({
+            this.logger.log(`Creating Request for non-Cart form: ${payload.formname}`, PaymentsService.name);
+
+            const request = await this.requestsService.createRequest({
                 email,
                 phone,
                 name,
-                source: `Tilda-${payload.formname}`,
-                description: description
+                description: description + 'размер ячейки:' + sizeform + 'срок аренды:' + rentalDurationDays,
             });
-            
+
             return {
                 success: true,
-                message: 'Заявка создана в листе ожидания',
-                listEntry,
+                message: 'Заявка создана',
+                request,
                 payment: null,
                 error: null
             };

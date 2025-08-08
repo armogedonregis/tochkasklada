@@ -14,25 +14,41 @@ async function main() {
   });
 
   if (!superAdminExists) {
-    await prisma.user.create({
+    const superAdminUser = await prisma.user.create({
       data: {
         email: 'superadmin@admin.com',
         password: await hashPassword('ZT2NHzji9s'),
         role: 'SUPERADMIN',
       }
     });
-    console.log('✅ Супер Администратор создан');
+
+    // Создаем профиль администратора
+    await prisma.admin.create({
+      data: {
+        userId: superAdminUser.id,
+      }
+    });
+    
+    console.log('✅ Супер Администратор и профиль созданы');
   }
 
   if(!adminExists) {
-    await prisma.user.create({
+    const adminUser = await prisma.user.create({
       data: {
         email: 'admin@admin.com',
         password: await hashPassword('admin123'),
         role: 'ADMIN',
       }
     });
-    console.log('✅ Администратор создан');
+
+    // Создаем профиль администратора
+    await prisma.admin.create({
+      data: {
+        userId: adminUser.id,
+      }
+    });
+    
+    console.log('✅ Администратор и профиль созданы');
   }
 
   console.log('🌱 Сидер выполнен успешно');

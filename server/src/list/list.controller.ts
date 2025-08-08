@@ -22,8 +22,9 @@ import { UserRole } from '@prisma/client';
 export class ListController {
   constructor(private readonly listService: ListService) {}
 
-  // Создание заявки (доступно всем аутентифицированным пользователям)
+  // Создание заявки (только для админов, т.к. записи создаются из requests)
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   async createList(@Body() createListDto: CreateListDto) {
     return this.listService.createList(createListDto);
   }
@@ -53,7 +54,7 @@ export class ListController {
     return this.listService.closeList(id, req.user.id, closeListDto);
   }
 
-  // Получение статистики по заявкам
+  // Статистика по листу ожидания (упрощенная)
   @Get('stats/overview')
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   async getListStats() {

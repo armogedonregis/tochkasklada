@@ -6,6 +6,7 @@ import { MenuItem, Pages } from './MenuItem';
 import { useTheme } from '@/lib/theme-provider';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
+import { useGetRequestsStatsQuery } from '@/services/requestsService/requestsApi';
 
 // Компоненты SVG иконок
 const ChevronLeftIcon = () => (
@@ -159,6 +160,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   // Получаем роль пользователя из Redux store
   const { user } = useSelector((state: RootState) => state.user);
   const userRole = user?.role || 'ADMIN';
+  
+  // Получаем статистику по заявкам для отображения счетчика
+  const { data: requestsStats } = useGetRequestsStatsQuery();
 
   // Имитация сохранения состояния
   useEffect(() => {
@@ -276,6 +280,17 @@ export const Navigation: React.FC<NavigationProps> = ({
           isNavOpened={isNavOpened}
           currentPage={currentPage}
           onClick={() => navigateTo(Pages.list, '/list')}
+        />
+
+        <MenuItem
+          icon={<ListIcon className="text-gray-500" />}
+          activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+          pageName="Заявки"
+          page={Pages.requests}
+          isNavOpened={isNavOpened}
+          currentPage={currentPage}
+          onClick={() => navigateTo(Pages.requests, '/requests')}
+          newItems={requestsStats?.byStatus?.WAITING || 0}
         />
 
         <MenuItem

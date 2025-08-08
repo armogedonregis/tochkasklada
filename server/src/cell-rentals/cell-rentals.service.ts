@@ -890,6 +890,47 @@ export class CellRentalsService {
     return { updatedCount };
   }
 
+  // Синхронизация визуальных статусов со статусами аренды
+  async syncAllRentalVisualStatuses() {
+    this.logger.log('Syncing visual statuses for all rentals', 'CellRentalsService');
+    
+    const rentals = await this.prisma.cellRental.findMany({
+      include: {
+        status: true
+      }
+    });
+
+    let syncedCount = 0;
+    for (const rental of rentals) {
+      try {
+        // Найти правильный визуальный статус для текущего rentalStatus
+        const correctStatus = await this.prisma.cellStatus.findFirst({
+          where: {
+            statusType: rental.rentalStatus
+          }
+        });
+
+        // Если статус найден и отличается от текущего
+        if (correctStatus && rental.statusId !== correctStatus.id) {
+          await this.prisma.cellRental.update({
+            where: { id: rental.id },
+            data: {
+              statusId: correctStatus.id
+            }
+          });
+          
+          this.logger.log(`Synced visual status for rental ${rental.id}: ${rental.rentalStatus} -> ${correctStatus.name}`, 'CellRentalsService');
+          syncedCount++;
+        }
+      } catch (error) {
+        this.logger.error(`Failed to sync visual status for rental ${rental.id}: ${error.message}`, error.stack, 'CellRentalsService');
+      }
+    }
+
+    this.logger.log(`Synced visual statuses for ${syncedCount} rentals.`, 'CellRentalsService');
+    return { syncedCount };
+  }
+
   // Продление аренды (с созданием платежа)
   async extendRental(extendCellRentalDto: ExtendCellRentalDto) {
     const { cellRentalId, amount, description, rentalDuration } = extendCellRentalDto;
@@ -1087,7 +1128,8 @@ export class CellRentalsService {
               status: {
                 select: {
                   name: true,
-                  color: true
+                  color: true,
+                  statusType: true
                 }
               }
             },
@@ -1151,19 +1193,29 @@ export class CellRentalsService {
       });
 
       const rentals = cells.flatMap(cell =>
-        cell.rentals.map(rental => ({
-          id: rental.id,
-          startDate: rental.startDate,
-          endDate: rental.endDate,
-          isActive: rental.isActive,
-          rentalStatus: rental.rentalStatus,
-          cell: {
-            id: cell.id,
-            name: cell.name,
-            containerName: cell.container.name
-          },
-          status: rental.status
-        }))
+        cell.rentals.map(rental => {
+          // Логируем проблемные случаи
+          if (rental.rentalStatus && rental.status && rental.status.statusType !== rental.rentalStatus) {
+            this.logger.warn(
+              `Mismatch for rental ${rental.id}: rentalStatus=${rental.rentalStatus}, status.statusType=${rental.status.statusType}`,
+              'CellRentalsService'
+            );
+          }
+
+          return {
+            id: rental.id,
+            startDate: rental.startDate,
+            endDate: rental.endDate,
+            isActive: rental.isActive,
+            rentalStatus: rental.rentalStatus,
+            cell: {
+              id: cell.id,
+              name: cell.name,
+              containerName: cell.container.name
+            },
+            status: rental.status
+          };
+        })
       );
 
       return {

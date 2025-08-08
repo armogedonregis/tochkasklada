@@ -1,16 +1,10 @@
 import { FilterParams, PaginatedResponse, SortDirection } from '../services.types';
 
-// Перечисление полей сортировки для заявок
+// Поля сортировки для листа ожидания
 export enum ListSortField {
   CREATED_AT = 'createdAt',
   NAME = 'name',
   EMAIL = 'email'
-}
-
-// Статусы заявок
-export enum ListStatus {
-  WAITING = 'WAITING',
-  CLOSED = 'CLOSED'
 }
 
 export interface List {
@@ -19,8 +13,6 @@ export interface List {
   phone?: string;
   name: string;
   description?: string;
-  source: string;
-  status: ListStatus;
   comment?: string;
   closedById?: string;
   closedBy?: {
@@ -28,6 +20,12 @@ export interface List {
     email: string;
   };
   closedAt?: string;
+  locationId?: string;
+  location?: {
+    id: string;
+    name: string;
+    short_name: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -36,8 +34,8 @@ export interface CreateListDto {
   email: string;
   phone?: string;
   name: string;
-  source: string;
   description?: string;
+  locationId?: string;
 }
 
 export interface CloseListDto {
@@ -45,7 +43,7 @@ export interface CloseListDto {
 }
 
 export interface ListFilters extends FilterParams {
-  status?: ListStatus;
+  locationId?: string;
   sortBy?: ListSortField;
   sortDirection?: SortDirection;
 }

@@ -1,10 +1,16 @@
-import { IsEnum, IsOptional, IsString, IsInt, Min, Max, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsNumber, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export enum ListSortField {
+export enum RequestStatus {
+  WAITING = 'WAITING',
+  CLOSED = 'CLOSED'
+}
+
+export enum RequestSortField {
   CREATED_AT = 'createdAt',
   NAME = 'name',
-  EMAIL = 'email'
+  EMAIL = 'email',
+  STATUS = 'status'
 }
 
 export enum SortDirection {
@@ -12,36 +18,31 @@ export enum SortDirection {
   DESC = 'desc'
 }
 
-export class FindListsDto {
+export class FindRequestsDto {
   @IsOptional()
   @IsString()
   search?: string;
 
   @IsOptional()
-  @IsString()
-  locationId?: string;
-
-  // @IsOptional()
-  // @Type(() => Boolean)
-  // @IsBoolean()
-  // closed?: boolean;
+  @IsEnum(RequestStatus)
+  status?: RequestStatus;
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
+  @IsNumber()
   @Min(1)
   page?: number = 1;
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
+  @IsNumber()
   @Min(1)
   @Max(100)
   limit?: number = 10;
 
   @IsOptional()
-  @IsEnum(ListSortField)
-  sortBy?: ListSortField = ListSortField.CREATED_AT;
+  @IsEnum(RequestSortField)
+  sortBy?: RequestSortField = RequestSortField.CREATED_AT;
 
   @IsOptional()
   @IsEnum(SortDirection)

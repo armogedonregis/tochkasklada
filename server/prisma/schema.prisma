@@ -12,15 +12,15 @@ model User {
   id       String   @id @default(uuid())
   email    String   @unique
   password String
-  role     UserRole @default(CLIENT)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  role     UserRole @default(CLIENT)
+  
   client   Client?
+  admin    Admin?
   payments Payment[]
-
-  closedLists List[]
 
   @@map("users")
 }
@@ -50,6 +50,21 @@ model Client {
   @@map("clients")
 }
 
+// Подмодель для админов
+model Admin {
+  id     String @id @default(uuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
+
+  closedLists List[]
+  closedRequests Request[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
 // Телефоны клиентов
 model ClientPhone {
   id      String  @id @default(uuid())
@@ -65,20 +80,45 @@ model ClientPhone {
   @@map("client_phones")
 }
 
+// Заявки от клиентов
+model Request {
+  id      String  @id @default(uuid())
+  email       String
+  phone       String?
+  name        String
+  description String?
+  comment     String?
+
+  status      ListStatus @default(WAITING)
+  
+  closedById String?
+  closedBy   Admin?   @relation(fields: [closedById], references: [id])
+
+  closedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("requests")
+}
+
 // Лист ожиданий
+// перенос в клиенты
 model List {
   id          String     @id @default(uuid())
   email       String
   phone       String?
   name        String
   description String?
-  source      String // "Tilda-Cart", "Tilda-Contact", "Manual"
-  status      ListStatus @default(WAITING)
-  comment     String? // Причина закрытия
+  comment     String?
 
-  // Кто закрыл заявку (через Admin)
+  // Привязка к локации
+  locationId String?
+  location   Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  // Кто лист ожидания (через Admin)
   closedById String?
-  closedBy   User?   @relation(fields: [closedById], references: [id])
+  closedBy   Admin?   @relation(fields: [closedById], references: [id])
 
   closedAt DateTime?
 
@@ -139,6 +179,7 @@ model Location {
   cityId     String
   city       City         @relation(fields: [cityId], references: [id], onDelete: Cascade)
   containers Containers[]
+  lists List[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

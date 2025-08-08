@@ -20,7 +20,8 @@ export enum Pages {
   statistics = 'statistics',
   logs = 'logs',
   gantt = 'gantt',
-  list = 'list'
+  list = 'list',
+  requests = 'requests'
   // Добавьте другие необходимые страницы из вашего Flutter-проекта
 }
 

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateListDto, FindListsDto, CloseListDto, ListSortField, SortDirection, ListStatus } from './dto';
+import { CreateListDto, FindListsDto, CloseListDto, ListSortField, SortDirection } from './dto';
 import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class ListService {
     this.logger.debug?.('ListService instantiated', ListService.name);
   }
 
-  // Создание заявки
+  // Создание записи листа ожидания
   async createList(data: CreateListDto) {
     this.logger.log(`Creating list entry for ${data.email}`, ListService.name);
 
@@ -22,8 +22,8 @@ export class ListService {
           email: data.email,
           phone: data.phone,
           name: data.name,
-          source: data.source,
-          status: 'WAITING'
+          description: data.description,
+          locationId: data.locationId,
         }
       });
 
@@ -35,16 +35,20 @@ export class ListService {
     }
   }
 
-  // Получение заявки по ID
+  // Получение записи по ID
   async getListById(id: string) {
     const list = await this.prisma.list.findUnique({
       where: { id },
       include: {
         closedBy: {
-          select: {
-            id: true,
-            email: true
+          include: {
+            user: {
+              select: { id: true, email: true }
+            }
           }
+        },
+        location: {
+          select: { id: true, name: true, short_name: true }
         }
       }
     });
@@ -56,25 +60,30 @@ export class ListService {
     return list;
   }
 
-  // Получение всех заявок с фильтрацией и пагинацией
+  // Получение всех записей с фильтрацией и пагинацией
   async getAllLists(queryParams: FindListsDto) {
     try {
       const {
         search,
+        locationId,
         page = 1,
         limit = 10,
         sortBy = ListSortField.CREATED_AT,
         sortDirection = SortDirection.DESC,
-        status
       } = queryParams;
 
       // Базовые условия фильтрации
       let where: any = {};
 
-      // Фильтр по статусу
-      if (status) {
-        where.status = status;
+      // Фильтр по локации
+      if (locationId) {
+        where.locationId = locationId;
       }
+
+      // Убираем фильтрацию по статусу - показываем все записи
+      // if (typeof closed === 'boolean') {
+      //   where.closedAt = closed ? { not: null } : null;
+      // }
 
       // Поисковая строка
       if (search) {
@@ -82,7 +91,7 @@ export class ListService {
           { email: { contains: search, mode: 'insensitive' } },
           { name: { contains: search, mode: 'insensitive' } },
           { phone: { contains: search, mode: 'insensitive' } },
-          { source: { contains: search, mode: 'insensitive' } }
+          { description: { contains: search, mode: 'insensitive' } }
         ];
       }
 
@@ -116,16 +125,22 @@ export class ListService {
         orderBy,
         include: {
           closedBy: {
-            select: {
-              id: true,
-              email: true
+            include: {
+              user: {
+                select: { id: true, email: true }
+              }
             }
+          },
+          location: {
+            select: { id: true, name: true, short_name: true }
           }
         }
       });
 
       // Рассчитываем количество страниц
       const totalPages = Math.ceil(totalCount / limit);
+
+      this.logger.log(`Found ${lists.length} lists (total: ${totalCount}) with filters: ${JSON.stringify(where)}`, ListService.name);
 
       return {
         data: lists,
@@ -141,37 +156,43 @@ export class ListService {
     }
   }
 
-  // Закрытие заявки
-  async closeList(id: string, adminId: string, data: CloseListDto) {
-    this.logger.log(`Closing list ${id} by admin ${adminId}`, ListService.name);
+  // Закрытие записи (без статуса)
+  async closeList(id: string, userId: string, data: CloseListDto) {
+    this.logger.log(`Closing list ${id} by user ${userId}`, ListService.name);
+
+    // Находим админа по userId
+    const admin = await this.prisma.admin.findUnique({
+      where: { userId },
+      include: { user: true }
+    });
+
+    if (!admin) {
+      throw new BadRequestException('Админ не найден');
+    }
 
     // Проверяем, существует ли заявка
     const existingList = await this.getListById(id);
-
-    if (existingList.status === 'CLOSED') {
-      throw new BadRequestException('Заявка уже закрыта');
-    }
 
     try {
       const updatedList = await this.prisma.list.update({
         where: { id },
         data: {
-          status: 'CLOSED',
           comment: data.comment,
-          closedById: adminId,
+          closedById: admin.id, // Используем ID админа из таблицы admins
           closedAt: new Date()
         },
         include: {
           closedBy: {
-            select: {
-              id: true,
-              email: true
+            include: {
+              user: {
+                select: { id: true, email: true }
+              }
             }
           }
         }
       });
 
-      this.logger.log(`List ${id} closed successfully`, ListService.name);
+      this.logger.log(`List ${id} closed successfully by admin ${admin.id}`, ListService.name);
       return updatedList;
     } catch (error) {
       this.logger.error(`Failed to close list: ${error.message}`, error.stack, ListService.name);
@@ -182,16 +203,12 @@ export class ListService {
   // Получение статистики по заявкам
   async getListStats() {
     try {
-      const [waitingCount, closedCount, totalCount] = await Promise.all([
-        this.prisma.list.count({ where: { status: 'WAITING' } }),
-        this.prisma.list.count({ where: { status: 'CLOSED' } }),
+      const [waitingCount] = await Promise.all([
         this.prisma.list.count()
       ]);
 
       return {
         waiting: waitingCount,
-        closed: closedCount,
-        total: totalCount
       };
     } catch (error) {
       throw new InternalServerErrorException(`Ошибка при получении статистики: ${error.message}`);

@@ -1,102 +1,63 @@
 'use client';
 
-import { useState, MouseEvent } from 'react';
-import { useGetListsQuery, useCloseListMutation, useDeleteListMutation } from '@/services/listService/listApi';
-import { List, ListFilters, ListSortField, ListStatus } from '@/services/listService/list.types';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { useGetListsQuery, useDeleteListMutation } from '@/services/listService/listApi';
+import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
+import { List, ListFilters, ListSortField } from '@/services/listService/list.types';
 import { useTableControls } from '@/hooks/useTableControls';
-import { useFormModal } from '@/hooks/useFormModal';
-import { useDeleteModal } from '@/hooks/useDeleteModal';
 import { ColumnDef } from '@tanstack/react-table';
-import * as yup from 'yup';
 import { ToastService } from '@/components/toast/ToastService';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
-import { BaseFormModal } from '@/components/modals/BaseFormModal';
-import { ConfirmDeleteModal } from '@/components/modals/ConfirmDeleteModal';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-
-// Схема валидации для закрытия заявки
-const closeListValidationSchema = yup.object({
-  comment: yup.string().required('Комментарий обязателен')
-});
+import { Eye, MapPin, List as ListIcon, Users, Trash2 } from 'lucide-react';
+import { useAppSelector } from '@/store/hooks';
 
 export default function ListPage() {
-  // Состояние для активной вкладки
-  const [activeTab, setActiveTab] = useState<ListStatus>(ListStatus.WAITING);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
+  const router = useRouter();
+  const { user } = useAppSelector((state) => state.user);
 
-  // ====== ХУКИ ДЛЯ ДАННЫХ И ТАБЛИЦЫ ======
   const tableControls = useTableControls<ListSortField>({
     defaultPageSize: 10,
     searchDebounceMs: 300
   });
   
-  // Преобразуем параметры запроса из useTableControls в формат для listApi
   const listFilters: ListFilters = {
     ...tableControls.queryParams,
-    status: activeTab // Добавляем фильтр по статусу в зависимости от активной вкладки
+    locationId: selectedLocationId && selectedLocationId !== 'all' ? selectedLocationId : undefined,
   };
   
   const { data, error, isLoading, refetch } = useGetListsQuery(listFilters);
-  
-  // Данные заявок теперь находятся в свойстве data пагинированного ответа
-  const lists = data?.data || [];
-  // Используем мета-информацию из ответа
-  const totalCount = data?.meta?.totalCount || 0;
-  const pageCount = data?.meta?.totalPages || 1;
-  
-  // Мутации для операций с заявками
-  const [closeList] = useCloseListMutation();
+  const { data: locations } = useGetLocationsQuery();
   const [deleteList] = useDeleteListMutation();
 
-  // ====== ХУКИ ДЛЯ МОДАЛЬНЫХ ОКОН ======
-  const deleteModal = useDeleteModal();
+  const isSuperAdmin = user?.role === 'SUPERADMIN';
 
-  const closeModal = useFormModal<{ comment: string }, List>({
-    itemToFormData: () => ({ comment: '' }),
-    onSubmit: async (values) => {
-      try {
-        if (closeModal.editItem) {
-          await closeList({ 
-            id: closeModal.editItem.id,
-            data: { comment: values.comment }
-          }).unwrap();
-          ToastService.success('Заявка успешно закрыта');
-        }
-      } catch (error) {
-        ToastService.error('Ошибка при закрытии заявки');
-      }
+  const handleDeleteList = async (id: string) => {
+    if (!window.confirm('Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить.')) {
+      return;
     }
-  });
 
-  // ====== ОБРАБОТЧИКИ СОБЫТИЙ ======
-  const handleClose = (list: List) => {
-    closeModal.openEdit(list);
-  };
-
-  const handleDelete = async (list: List) => {
-    if (window.confirm('Вы уверены, что хотите удалить эту заявку?')) {
-      try {
-        await deleteList(list.id).unwrap();
-        ToastService.success('Заявка успешно удалена');
-      } catch (error) {
-        ToastService.error('Ошибка при удалении заявки');
-      }
+    try {
+      await deleteList(id).unwrap();
+      ToastService.success('Запись успешно удалена');
+      refetch();
+    } catch (error) {
+      ToastService.error('Ошибка при удалении записи');
     }
   };
-
-  // ====== ОПРЕДЕЛЕНИЯ UI КОМПОНЕНТОВ ======
-  // Поля формы для модального окна закрытия
-  const closeModalFields = [
-    {
-      type: 'input' as const,
-      fieldName: 'comment' as const,
-      label: 'Причина закрытия',
-      placeholder: 'Укажите причину закрытия заявки...'
-    }
-  ];
+  
+  const lists = data?.data || [];
+  const totalCount = data?.meta?.totalCount || 0;
+  const pageCount = data?.meta?.totalPages || 1;
 
   // Определение колонок таблицы
   const columns: ColumnDef<List>[] = [
@@ -114,29 +75,22 @@ export default function ListPage() {
       cell: ({ row }) => row.original.phone || '-',
     },
     {
-      accessorKey: 'source',
-      header: 'Источник',
+      accessorKey: 'location',
+      header: 'Локация',
       cell: ({ row }) => {
-        const source = row.original.source;
-        return source.replace('Tilda-', '');
+        const location = row.original.location;
+        return location ? (
+          <div className="flex items-center gap-1">
+            <MapPin className="h-3 w-3 text-muted-foreground" />
+            <span>{location.name}</span>
+          </div>
+        ) : '-';
       },
     },
     {
       accessorKey: 'description',
       header: 'Описание',
       cell: ({ row }) => row.original.description || '-',
-    },
-    {
-      accessorKey: 'status',
-      header: 'Статус',
-      cell: ({ row }) => {
-        const status = row.original.status;
-        return (
-          <Badge variant={status === 'WAITING' ? 'default' : 'secondary'}>
-            {status === 'WAITING' ? 'Ожидает' : 'Закрыта'}
-          </Badge>
-        );
-      },
     },
     {
       accessorKey: 'createdAt',
@@ -165,96 +119,134 @@ export default function ListPage() {
       header: 'Комментарий',
       cell: ({ row }) => row.original.comment || '-',
     },
+    {
+      id: 'actions',
+      header: 'Действия',
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/list/${row.original.id}`)}
+            className="h-8 w-8 p-0"
+            title="Просмотр записи"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          {isSuperAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteList(row.original.id)}
+              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+              title="Удалить запись"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
   ];
 
-  // ====== РЕНДЕР СТРАНИЦЫ ======
   return (
-    <>
-      {/* Заголовок страницы */}
-      <div className="flex justify-between items-center mb-6 px-4 pt-4">
-        <h1 className="text-2xl font-bold">Лист ожидания</h1>
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Лист ожидания</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Управление очередью клиентов, ожидающих свободные ячейки
+          </p>
+        </div>
       </div>
 
-      {/* Вкладки */}
-      <div className="px-4 mb-4">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ListStatus)}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value={ListStatus.WAITING}>
-              Ожидающие ({activeTab === ListStatus.WAITING ? totalCount : '...'})
-            </TabsTrigger>
-            <TabsTrigger value={ListStatus.CLOSED}>
-              Закрытые ({activeTab === ListStatus.CLOSED ? totalCount : '...'})
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value={ListStatus.WAITING} className="mt-4">
-            {/* Таблица ожидающих заявок */}
-            <div className="rounded-md border">
-              <BaseTable
-                data={lists}
-                columns={columns}
-                searchColumn="name"
-                searchPlaceholder="Поиск по имени, email или телефону..."
-                onEdit={handleClose}
-                onDelete={handleDelete}
-                tableId="waiting-lists-table"
-                totalCount={totalCount}
-                pageCount={pageCount}
-                onPaginationChange={tableControls.handlePaginationChange}
-                onSortingChange={tableControls.handleSortingChange}
-                onSearchChange={tableControls.handleSearchChange}
-                isLoading={isLoading}
-                error={error}
-                onRetry={refetch}
-                sortableFields={ListSortField}
-                pagination={tableControls.pagination}
-                sorting={tableControls.sorting}
-                persistSettings={true}
-              />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value={ListStatus.CLOSED} className="mt-4">
-            {/* Таблица закрытых заявок */}
-            <div className="rounded-md border">
-              <BaseTable
-                data={lists}
-                columns={columns}
-                searchColumn="name"
-                searchPlaceholder="Поиск по имени, email или телефону..."
-                onDelete={handleDelete}
-                tableId="closed-lists-table"
-                totalCount={totalCount}
-                pageCount={pageCount}
-                onPaginationChange={tableControls.handlePaginationChange}
-                onSortingChange={tableControls.handleSortingChange}
-                onSearchChange={tableControls.handleSearchChange}
-                isLoading={isLoading}
-                error={error}
-                onRetry={refetch}
-                sortableFields={ListSortField}
-                pagination={tableControls.pagination}
-                sorting={tableControls.sorting}
-                persistSettings={true}
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Всего записей</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{totalCount}</div>
+            <p className="text-xs text-muted-foreground">
+              записей в листе ожидания
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">По локации</CardTitle>
+            <MapPin className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{lists.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {selectedLocationId === 'all' ? 'все локации' : 'текущая локация'}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Модальное окно закрытия заявки */}
-      <BaseFormModal
-        isOpen={closeModal.isOpen}
-        onClose={closeModal.closeModal}
-        title="Закрыть заявку"
-        fields={closeModalFields}
-        validationSchema={closeListValidationSchema}
-        onSubmit={closeModal.handleSubmit}
-        submitText="Закрыть"
-        formData={closeModal.formData}
-        isLoading={false}
-        defaultValues={closeModal.editItem ? { comment: '' } : undefined}
-      />
-    </>
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Фильтры</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label className="text-sm font-medium">Локация</label>
+              <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Все локации" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все локации</SelectItem>
+                  {locations?.data?.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3 w-3" />
+                        {location.name} ({location.short_name})
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Лист ожидания</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BaseTable
+            data={lists}
+            columns={columns}
+            searchColumn="name"
+            searchPlaceholder="Поиск по имени, email или телефону..."
+            tableId="waiting-lists-table"
+            totalCount={totalCount}
+            pageCount={pageCount}
+            onPaginationChange={tableControls.handlePaginationChange}
+            onSortingChange={tableControls.handleSortingChange}
+            onSearchChange={tableControls.handleSearchChange}
+            isLoading={isLoading}
+            error={error}
+            onRetry={refetch}
+            sortableFields={ListSortField}
+            pagination={tableControls.pagination}
+            sorting={tableControls.sorting}
+            persistSettings={true}
+          />
+        </CardContent>
+      </Card>
+    </div>
   );
 } 

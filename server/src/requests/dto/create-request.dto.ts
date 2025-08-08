@@ -1,6 +1,7 @@
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class CreateListDto {
+export class CreateRequestDto {
+  @IsNotEmpty()
   @IsEmail()
   email: string;
 
@@ -8,14 +9,11 @@ export class CreateListDto {
   @IsString()
   phone?: string;
 
+  @IsNotEmpty()
   @IsString()
   name: string;
 
   @IsOptional()
   @IsString()
   description?: string;
-
-  @IsOptional()
-  @IsString()
-  locationId?: string;
 } 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { CellRental } from '@/services/cellRentalsService/cellRentals.types';
+import { useGetCellStatusesQuery } from '@/services/cellStatusesService/cellStatusesApi';
 import { Timeline, TimelineOptions, TimelineTimeAxisOption, TimelineTimeAxisScaleType } from 'vis-timeline/standalone';
 import { DataSet } from 'vis-data';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,9 @@ const TimelineGantt = ({ tasks }: TimelineGanttProps) => {
     const [viewMode, setViewMode] = useState<ViewModeType>('month');
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+    // Получаем статусы ячеек для легенды
+    const { data: cellStatuses } = useGetCellStatusesQuery();
 
     // Вычисляем прогресс аренды
     const calculateProgress = useCallback((rental: CellRental): number => {
@@ -310,11 +314,48 @@ const TimelineGantt = ({ tasks }: TimelineGanttProps) => {
         setViewMode(mode);
     }, []);
 
+    // Статусы для легенды - показываем все доступные статусы ячеек
+    const legendStatuses = useMemo(() => {
+        if (!cellStatuses) return [];
+        
+        return cellStatuses.map(status => ({
+            name: status.name,
+            color: status.color || '#3B82F6'
+        }));
+    }, [cellStatuses]);
+
     return (
         <div className="timeline-gantt">
+            {/* Заголовок и легенда */}
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">График занятости ячеек</h1>
+                
+                {/* Легенда цветов */}
+                {legendStatuses.length > 0 && (
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Легенда:</h3>
+                        <div className="flex flex-wrap gap-4">
+                            {legendStatuses.map((status) => (
+                                <div key={status.name} className="flex items-center gap-2">
+                                    <div 
+                                        className="w-4 h-4 rounded-sm border border-gray-300"
+                                        style={{ backgroundColor: status.color }}
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                                        {status.name}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {/* Панель управления */}
             <div className="flex justify-between items-center mb-4">
-                <h1 className="text-xl font-semibold">График занятости ячеек</h1>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Всего аренд: {tasks.length}
+                </div>
 
                 <div className="flex items-center gap-4">
                     {/* Навигация */}
@@ -373,17 +414,20 @@ const TimelineGantt = ({ tasks }: TimelineGanttProps) => {
 
             <style jsx global>{`
         .timeline-gantt {
-          height: calc(100vh - 120px);
+          height: calc(100vh - 80px);
           background: white;
           border-radius: 8px;
-          padding: 20px;
+          padding: 24px;
+          width: 100%;
+          max-width: none;
         }
         
         .timeline-wrapper {
-          height: calc(100% - 60px);
+          height: calc(100% - 140px);
           border: 1px solid #e2e8f0;
-          border-radius: 6px;
+          border-radius: 8px;
           overflow: hidden;
+          width: 100%;
         }
         
         .timeline-container {

@@ -14,5 +14,7 @@ export const tagTypes = [
     'Relays',
     'RelayAccess',
     'Statistics',
-    'List'
+    'List',
+    'Requests',
+    'Admin'
 ] as const;

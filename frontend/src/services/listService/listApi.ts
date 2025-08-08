@@ -5,7 +5,6 @@ import {
   CloseListDto, 
   ListFilters,
   PaginatedListResponse,
-  ListStats
 } from './list.types';
 
 export const listApi = api.injectEndpoints({
@@ -56,10 +55,6 @@ export const listApi = api.injectEndpoints({
         { type: 'List' as const, id: 'LIST' }
       ],
     }),
-    getListStats: builder.query<ListStats, void>({
-      query: () => '/list/stats/overview',
-      providesTags: [{ type: 'List', id: 'STATS' }],
-    }),
   }),
 });
 
@@ -70,5 +65,4 @@ export const {
   useCreateListMutation,
   useCloseListMutation,
   useDeleteListMutation,
-  useGetListStatsQuery,
 } = listApi; 
