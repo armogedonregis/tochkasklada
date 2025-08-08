@@ -71,10 +71,14 @@ const ClientDetailsPage = () => {
     clientRentals.forEach(rental => {
       if (rental.payments) {
         rental.payments.forEach(payment => {
+          const cells = rental.cell || [];
+          const cellName = cells.length === 0
+            ? 'Неизвестная ячейка'
+            : (cells.length === 1 ? (cells[0].name || '—') : cells.map(c => c.name).join(', '));
           allPayments.push({
             ...payment,
             rentalInfo: {
-              cellName: rental.cell?.name || 'Неизвестная ячейка',
+              cellName,
               rentalId: rental.id
             }
           });
@@ -237,10 +241,18 @@ const ClientDetailsPage = () => {
                 <TableBody>
                   {activeRentals.map((rental) => {
                     const daysLeft = differenceInDays(parseISO(rental.endDate), new Date());
+                    const cells = rental.cell || [];
+                    const cellName = cells.length === 0 ? '—' : (cells.length === 1 ? (cells[0].name || '—') : `${cells.length} ячеек`);
+                    const locationName = (() => {
+                      const locs = Array.from(new Set(cells.map(c => c.container?.location?.name).filter(Boolean)));
+                      if (locs.length === 0) return '—';
+                      if (locs.length === 1) return locs[0] as string;
+                      return 'Несколько локаций';
+                    })();
                     return (
                       <TableRow key={rental.id}>
-                        <TableCell className="font-mono">{rental.cell?.name}</TableCell>
-                        <TableCell>{rental.cell?.container?.location?.name}</TableCell>
+                        <TableCell className="font-mono">{cellName}</TableCell>
+                        <TableCell>{locationName}</TableCell>
                         <TableCell>{getStatusBadge(rental)}</TableCell>
                         <TableCell>{formatDate(rental.startDate)}</TableCell>
                         <TableCell>{formatDate(rental.endDate)}</TableCell>
@@ -285,13 +297,21 @@ const ClientDetailsPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clientRentals && clientRentals.length > 0 && clientRentals.filter(rental => rental.status?.statusType === CellRentalStatus.CLOSED).length > 0 ? (
+                  {clientRentals && clientRentals.length > 0 && clientRentals.filter(rental => rental.status?.statusType === CellRentalStatus.CLOSED).length > 0 ? (
                   clientRentals.map((rental) => {
                     const duration = differenceInDays(parseISO(rental.endDate), parseISO(rental.startDate)) + 1;
+                    const cells = rental.cell || [];
+                    const cellName = cells.length === 0 ? '—' : (cells.length === 1 ? (cells[0].name || '—') : `${cells.length} ячеек`);
+                    const locationName = (() => {
+                      const locs = Array.from(new Set(cells.map(c => c.container?.location?.name).filter(Boolean)));
+                      if (locs.length === 0) return '—';
+                      if (locs.length === 1) return locs[0] as string;
+                      return 'Несколько локаций';
+                    })();
                     return (
                       <TableRow key={rental.id}>
-                        <TableCell className="font-mono">{rental.cell?.name}</TableCell>
-                        <TableCell>{rental.cell?.container?.location?.name}</TableCell>
+                        <TableCell className="font-mono">{cellName}</TableCell>
+                        <TableCell>{locationName}</TableCell>
                         <TableCell>{getStatusBadge(rental)}</TableCell>
                         <TableCell>
                           {formatDate(rental.startDate)} - {formatDate(rental.endDate)}
