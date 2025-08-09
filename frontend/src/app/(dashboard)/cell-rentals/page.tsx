@@ -32,9 +32,9 @@ import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
 import { differenceInDays, addDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
-// Схема валидации для аренды ячейки
+// Схема валидации для аренды ячейки (множественный выбор ячеек)
 const cellRentalValidationSchema = yup.object({
-  cellId: yup.string().required('ID ячейки обязательно'),
+  cellIds: yup.array().of(yup.string()).min(1, 'Выберите хотя бы одну ячейку'),
   clientId: yup.string().required('ID клиента обязательно'),
   startDate: yup.date(),
   endDate: yup.date(),
@@ -57,28 +57,11 @@ export default function CellRentalsPage() {
   };
 
 
-  const [getCells, { data: cellsData = { data: [] } }] = useLazyGetAdminCellsQuery();
-  const [getClients, { data: clientsData = { data: [] } }] = useLazyGetClientsQuery()
+  const [getCells] = useLazyGetAdminCellsQuery();
+  const [getClients] = useLazyGetClientsQuery()
 
   // Получение локаций для фильтра
   const { data: locationsData = { data: [] } } = useGetLocationsQuery();
-
-  // Функция для поиска ячеек
-  const handleCellsSearch = (query: string) => {
-    getCells({
-      search: query,
-      limit: 20
-    });
-  };
-
-  // Функция для поиска клиентов
-  const handleClientsSearch = (query: string) => {
-    getClients({
-      search: query,
-      limit: 20
-    });
-  };
-
 
   // Получение данных об арендах
   const { data, error, isLoading, refetch } = useGetCellRentalsQuery({
@@ -94,15 +77,6 @@ export default function CellRentalsPage() {
 
   const { data: statusList } = useGetCellStatusesQuery();
 
-  // Создаем объект с названиями статусов из полученных данных
-  const statusTitles = useMemo(() => {
-    if (!statusList) return {};
-    return statusList.reduce((acc, status) => ({
-      ...acc,
-      [status.statusType as CellRentalStatus]: status.name
-    }), {} as Record<CellRentalStatus, string>);
-  }, [statusList]);
-  
   // Данные аренд
   const cellRentals = data?.data || [];
   // Используем мета-информацию из ответа
@@ -138,6 +112,9 @@ export default function CellRentalsPage() {
 
       const payload: CreateCellRentalDto | UpdateCellRentalDto = {
         ...dto,
+        // Если выбраны несколько ячеек, используем их; иначе для обратной совместимости упакуем одиночный cellId
+        cellIds: dto?.cellIds?.length ? dto.cellIds : (dto?.cellId ? [dto.cellId] : undefined),
+        cellId: undefined,
         startDate,
         endDate: computedEnd,
       } as any;
@@ -171,21 +148,20 @@ export default function CellRentalsPage() {
   };
 
   // Поля формы для модального окна
-  const preselectedCellOption = useMemo(() => {
-    if (!modal.editItem) return null as null | { label: string; value: string };
+  const preselectedCellOptions = useMemo(() => {
+    if (!modal.editItem) return [] as { label: string; value: string }[];
     const cells = (modal.editItem as any)?.cell;
     if (Array.isArray(cells) && cells.length) {
-      const cell = cells[0];
-      return {
+      return cells.map((cell: any) => ({
         label: cell?.container?.location?.short_name ? `${cell.container.location.short_name}-${cell.name}` : cell?.name,
         value: cell?.id,
-      };
+      }));
     }
     if ((modal.editItem as any)?.cellId) {
       const id = (modal.editItem as any).cellId as string;
-      return { label: `Ячейка ${id}`, value: id };
+      return [{ label: `Ячейка ${id}`, value: id }];
     }
-    return null;
+    return [] as { label: string; value: string }[];
   }, [modal.editItem]);
 
   const preselectedClientOption = useMemo(() => {
@@ -204,37 +180,32 @@ export default function CellRentalsPage() {
   const modalFields = [
     {
       type: 'searchSelect' as const,
-      fieldName: 'cellId' as const,
-      label: 'Ячейка',
-      placeholder: 'Введите ID ячейки',
-      onSearch: handleCellsSearch,
-      options: (() => {
-        const dynamicOptions = (cellsData?.data || []).map((cell: any) => ({
-          label: (cell.container?.location?.short_name ? `${cell.container.location.short_name}-` : '') + cell.name,
-          value: cell.id,
+      fieldName: 'cellIds' as const,
+      label: 'Ячейки',
+      placeholder: 'Выберите ячейки',
+      isMulti: true,
+      onSearch: async (q: string) => {
+        const res = await getCells({ search: q, limit: 20 }).unwrap();
+        return res.data.map(c => ({
+          label: c.container?.location?.short_name ? `${c.container.location.short_name}-${c.name}` : c.name,
+          value: c.id,
         }));
-        const pre = preselectedCellOption ? [preselectedCellOption] : [];
-        const all = [...pre, ...dynamicOptions];
-        const uniq = Array.from(new Map(all.map(o => [String(o.value), o])).values());
-        return uniq;
-      })()
+      },
+      options: preselectedCellOptions
     },
     {
       type: 'searchSelect' as const,
       fieldName: 'clientId' as const,
       label: 'Клиент',
       placeholder: 'Выберите клиента',
-      onSearch: handleClientsSearch,
-      options: (() => {
-        const dynamicOptions = (clientsData?.data || []).map((client: any) => ({
-          label: `${client.name} (${client.user?.email || 'Нет email'})`,
-          value: client.id,
+      onSearch: async (q: string) => {
+        const res = await getClients({ search: q, limit: 20 }).unwrap();
+        return res.data.map(c => ({
+          label: `${c.name} (${c.user?.email || 'Нет email'})`,
+          value: c.userId
         }));
-        const pre = preselectedClientOption ? [preselectedClientOption] : [];
-        const all = [...pre, ...dynamicOptions];
-        const uniq = Array.from(new Map(all.map(o => [String(o.value), o])).values());
-        return uniq;
-      })()
+      },
+      options: preselectedClientOption ? [preselectedClientOption] : []
     },
     {
       type: 'input' as const,
@@ -367,7 +338,7 @@ export default function CellRentalsPage() {
       cell: ({ row }) => {
         const cells = row.original?.cell;
         if (!cells) return '-';
-        
+
         // Если cell является массивом, показываем все ячейки
         if (Array.isArray(cells)) {
           const cellNames = cells.map(c => c.name).join(', ');
@@ -436,7 +407,7 @@ export default function CellRentalsPage() {
       cell: ({ row }) => {
         const cells = row.original?.cell;
         if (!cells) return '-';
-        
+
         if (Array.isArray(cells)) {
           const uniqueSizes = [...new Set(cells.map(c => c.size?.short_name).filter(Boolean))];
           const sizesText = uniqueSizes.join(', ');
@@ -578,16 +549,20 @@ export default function CellRentalsPage() {
         validationSchema={cellRentalValidationSchema}
         onSubmit={modal.handleSubmit}
         submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
-        defaultValues={modal.editItem ? {
-          cellId: modal.editItem.cellId,
-          clientId: modal.editItem.clientId,
-          startDate: formatDateForInput(modal.editItem.startDate),
-          endDate: formatDateForInput(modal.editItem.endDate),
-          rentalStatus: modal.editItem.rentalStatus,
-          days: differenceInDays(new Date(modal.editItem.endDate), new Date(modal.editItem.startDate))
-        } : {
-          cellId: null as any,
-          clientId: null as any,
+        defaultValues={modal.editItem ? (() => {
+          const cells = modal.editItem?.cell;
+          const cellIds = Array.isArray(cells) && cells.length ? cells.map((c) => c.id) : [];
+          return {
+            cellIds: cellIds,
+            clientId: modal.editItem.clientId,
+            startDate: formatDateForInput(modal.editItem.startDate),
+            endDate: formatDateForInput(modal.editItem.endDate),
+            rentalStatus: modal.editItem.rentalStatus,
+            days: differenceInDays(new Date(modal.editItem.endDate), new Date(modal.editItem.startDate))
+          };
+        })() : {
+          cellIds: [],
+          clientId: undefined,
           startDate: '',
           endDate: '',
           rentalStatus: 'ACTIVE',

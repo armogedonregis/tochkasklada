@@ -55,10 +55,10 @@ export default function ContainersPage() {
   // Состояние для развернутых контейнеров
 
   // Lazy запрос для поиска локаций
-  const [getLocations, { data: locationsData = { data: [] }}] = useLazyGetLocationsQuery();
+  const [getLocations] = useLazyGetLocationsQuery();
 
   // Lazy запрос для редактирования контейнера
-  const [getContainer, { data: containerId }] = useLazyGetContainerQuery();
+  const [getContainer] = useLazyGetContainerQuery();
   
   // Получаем список размеров для ячеек
   const { data: sizesData } = useGetSizesQuery();
@@ -186,14 +186,6 @@ export default function ContainersPage() {
     modal.openCreate(initialFormData);
   };
 
-  // Функция для поиска локаций
-  const handleLocationSearch = (query: string) => {
-    getLocations({
-      search: query,
-      limit: 20
-    });
-  };
-
   // Находим максимальный ID для предложения следующего номера
   const getNextId = () => {
     if (containers.length === 0) return '01';
@@ -237,11 +229,6 @@ export default function ContainersPage() {
   }));
 
   // ====== ОПРЕДЕЛЕНИЯ UI КОМПОНЕНТОВ ======
-  // Форматируем локации для селектора
-  const locationOptions = locationsData.data.map(location => ({
-    label: `${location.name} (${location.city?.short_name || 'Нет города'})`,
-    value: location.id
-  }));
 
   const modalFields = [
     {
@@ -256,8 +243,13 @@ export default function ContainersPage() {
       fieldName: 'locId' as const,
       label: 'Локация',
       placeholder: 'Выберите локацию',
-      options: locationOptions,
-      onSearch: handleLocationSearch
+      onSearch: async (q: string) => {
+        const res = await getLocations({ search: q, limit: 20 }).unwrap();
+        return res.data.map(c => ({
+          label: c.short_name ? `${c.short_name}` : c.name,
+          value: c.id,
+        }));
+      },
     },
     {
       type: 'title' as const,

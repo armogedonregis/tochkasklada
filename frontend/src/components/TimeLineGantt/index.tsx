@@ -126,7 +126,30 @@ const TimelineGantt = ({ tasks }: TimelineGanttProps) => {
         return new DataSet(groupsArr);
     }, [tasks]);
 
-    // Создаем элементы timeline: для каждой аренды — элементы на строках всех её ячеек
+    // Вспомогательная функция: разбиение аренды на сегменты по платежам
+    const splitRentalByPayments = useCallback((rental: CellRental) => {
+        const payments = (rental as any)?.payments || [];
+        if (!Array.isArray(payments) || payments.length === 0) {
+            return [{ start: rental.startDate, end: rental.endDate }];
+        }
+
+        const segments: { start: string; end: string }[] = [];
+
+        // Платежи по возрастанию времени создания
+        const sorted = [...payments].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+        for (let i = 0; i < sorted.length; i++) {
+            const start = new Date(sorted[i].createdAt);
+            const end = i < sorted.length - 1 ? new Date(sorted[i + 1].createdAt) : new Date(rental.endDate);
+            if (end > start) {
+                segments.push({ start: start.toISOString(), end: end.toISOString() });
+            }
+        }
+
+        return segments;
+    }, []);
+
+    // Создаем элементы timeline: разбиваем аренды по платежам и рисуем сегменты
     const items = useMemo(() => {
         if (!tasks.length) return new DataSet<TimelineItem>([]);
 
@@ -136,23 +159,28 @@ const TimelineGantt = ({ tasks }: TimelineGanttProps) => {
             const progress = calculateProgress(rental);
             const statusColor = rental.status?.color || '#3B82F6';
             const cellsArray = Array.isArray(rental.cell) ? rental.cell : (rental.cell ? [rental.cell as any] : []);
+            const segments = splitRentalByPayments(rental);
 
             for (const cell of cellsArray) {
                 if (!cell?.id) continue;
-                timelineItems.push({
-                    id: `${rental.id}_${cell.id}`,
-                    content: cell?.name || '',
-                    start: rental.startDate,
-                    end: rental.endDate,
-                    group: cell.id,
-                    style: `background-color: ${statusColor}; border-color: ${statusColor};`,
-                    title: `${cell?.name || ''} (${progress}%)`
+                segments.forEach((seg, idx) => {
+                    const isLast = idx === segments.length - 1;
+                    const segmentColor = isLast ? statusColor : '#9CA3AF';
+                    timelineItems.push({
+                        id: `${rental.id}_${cell.id}_${idx}`,
+                        content: cell?.name || '',
+                        start: seg.start,
+                        end: seg.end,
+                        group: cell.id,
+                        style: `background-color: ${segmentColor}; border-color: ${segmentColor};`,
+                        title: `${cell?.name || ''} (${progress}%)`
+                    });
                 });
             }
         }
 
         return new DataSet<TimelineItem>(timelineItems);
-    }, [tasks, calculateProgress]);
+    }, [tasks, calculateProgress, splitRentalByPayments]);
 
     const getViewOptions = useCallback((mode: ViewModeType): TimelineOptions => {
         const now = new Date();

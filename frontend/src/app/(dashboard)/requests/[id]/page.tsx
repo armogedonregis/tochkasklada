@@ -204,11 +204,22 @@ const RequestDetailsPage = () => {
                 </div>
               )}
               
-              {request.description && (
+              {(request.sizeform || request.location) && (
                 <div>
-                  <span className="text-muted-foreground">Описание:</span>
-                  <div className="mt-1 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
-                    {request.description}
+                  <span className="text-muted-foreground">Параметры:</span>
+                  <div className="mt-1 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm space-y-1">
+                    {request.sizeform && (
+                      <div>
+                        <span className="text-muted-foreground">Размер: </span>
+                        <span>{request.sizeform}</span>
+                      </div>
+                    )}
+                    {request.location && (
+                      <div>
+                        <span className="text-muted-foreground">Локация: </span>
+                        <span>{request.location}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

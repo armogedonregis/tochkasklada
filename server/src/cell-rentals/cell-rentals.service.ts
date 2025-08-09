@@ -891,20 +891,20 @@ export class CellRentalsService {
         rental.lastExtendedAt &&
         new Date(rental.lastExtendedAt).getTime() > now.getTime() - 1000 * 60 * 60 * 24 * 7; // Продлен в течение последней недели
 
-      // Проверяем скорую оплату (от 2 до 7 дней до окончания)
-      const paymentDueSoon = daysLeft <= 7 && daysLeft > 2;
-
       // Проверяем, является ли аренда бронью (начало в будущем)
       const isReservation = new Date(rental.startDate).getTime() > now.getTime();
 
       if (isReservation) {
         newStatus = CellRentalStatus.RESERVATION; // Бронь
-      } else if (daysLeft < 1) {
-        newStatus = CellRentalStatus.EXPIRED; // Просрочена
-      } else if (daysLeft <= 2) {
-        newStatus = CellRentalStatus.EXPIRING_SOON; // Осталось ≤ 2 дней
-      } else if (paymentDueSoon) {
-        newStatus = CellRentalStatus.PAYMENT_SOON; // Осталось 3-7 дней
+      } else if (daysLeft <= 1) {
+        // Просрочена, если осталось 1 день или меньше
+        newStatus = CellRentalStatus.EXPIRED;
+      } else if (daysLeft <= 3) {
+        // Предупреждение за 3 дня
+        newStatus = CellRentalStatus.EXPIRING_SOON;
+      } else if (daysLeft <= 7) {
+        // Уведомление за 7 дней
+        newStatus = CellRentalStatus.PAYMENT_SOON;
       } else if (wasExtended) {
         newStatus = CellRentalStatus.EXTENDED; // Недавно продлен
       } else {
@@ -1274,6 +1274,17 @@ export class CellRentalsService {
                   color: true,
                   statusType: true
                 }
+              },
+              payments: {
+                where: { status: true },
+                select: {
+                  id: true,
+                  status: true,
+                  createdAt: true,
+                  rentalDuration: true,
+                  description: true
+                },
+                orderBy: { createdAt: 'asc' }
               }
             },
             where: startDate || endDate ? {
@@ -1356,7 +1367,8 @@ export class CellRentalsService {
               name: cell.name,
               containerName: cell.container.name
             },
-            status: rental.status
+            status: rental.status,
+            payments: rental.payments
           };
         })
       );

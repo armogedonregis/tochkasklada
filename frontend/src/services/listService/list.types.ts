@@ -31,7 +31,7 @@ export interface List {
 }
 
 export interface CreateListDto {
-  email: string;
+  email?: string;
   phone?: string;
   name: string;
   description?: string;

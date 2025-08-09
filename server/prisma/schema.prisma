@@ -82,12 +82,13 @@ model ClientPhone {
 
 // Заявки от клиентов
 model Request {
-  id          String  @id @default(uuid())
-  email       String
-  phone       String?
-  name        String
-  description String?
-  comment     String?
+  id       String  @id @default(uuid())
+  email    String
+  phone    String?
+  name     String
+  sizeform String?
+  location String?
+  comment  String?
 
   status ListStatus @default(WAITING)
 
@@ -106,7 +107,7 @@ model Request {
 // перенос в клиенты
 model List {
   id          String  @id @default(uuid())
-  email       String
+  email       String?
   phone       String?
   name        String
   description String?

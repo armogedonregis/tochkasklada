@@ -13,7 +13,7 @@ DB_NAME=${POSTGRES_DB:-"postgres"}                   # имя базы данн�
 # Яндекс.Диск через REST API (OAuth токен)
 # Можно задать через /etc/backup-yadisk.env или переменные окружения окружения
 YANDEX_TOKEN=${YANDEX_TOKEN:-""}
-YANDEX_REMOTE_DIR=${YANDEX_REMOTE_DIR:-"/Backups/postgres"}  # удалённая папка на Я.Диске
+YANDEX_REMOTE_DIR=${YANDEX_REMOTE_DIR:-"/backup_tochka"}  # удалённая папка на Я.Диске
 
 # (опционально) Подхватываем секреты из /etc/backup-yadisk.env (если файл существует)
 if [ -f /etc/backup-yadisk.env ]; then
@@ -22,7 +22,7 @@ if [ -f /etc/backup-yadisk.env ]; then
   set +a
   # Переприсваиваем, если появились значения из файла
   YANDEX_TOKEN=${YANDEX_TOKEN:-""}
-  YANDEX_REMOTE_DIR=${YANDEX_REMOTE_DIR:-"/Backups/postgres"}
+  YANDEX_REMOTE_DIR=${YANDEX_REMOTE_DIR:-"/backup_tochka"}
 fi
 
 # ——— ПОДГОТОВКА ———

@@ -26,7 +26,8 @@ export class RequestsService {
           email: data.email,
           phone: data.phone,
           name: data.name,
-          description: data.description,
+          sizeform: data.sizeform,
+          location: data.location,
           status: 'WAITING'
         }
       });
@@ -288,8 +289,8 @@ export class RequestsService {
       email: request.email,
       phone: request.phone || undefined,
       name: request.name,
-      description: request.description || undefined,
-      locationId: data?.locationId || undefined, // Передаем locationId если есть
+      description: request.sizeform + ' ' + request.location || undefined,
+      locationId: data?.locationId || undefined,
     });
 
     // Закрываем оригинальную заявку

@@ -17,7 +17,8 @@ export interface RequestItem {
   email: string;
   phone?: string;
   name: string;
-  description?: string;
+  sizeform?: string;
+  location?: string;
   comment?: string;
   status: RequestStatus;
   closedBy?: {
@@ -40,7 +41,9 @@ export interface CreateRequestDto {
   email: string;
   phone?: string;
   name: string;
-  description?: string;
+  sizeform?: string;
+  location?: string;
+  comment?: string;
 }
 
 export interface RequestFilters extends FilterParams {

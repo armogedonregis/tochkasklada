@@ -213,7 +213,8 @@ export default function ClientsPage() {
       type: 'phoneInput' as const,
       fieldName: 'phones' as const,
       label: 'Телефоны',
-      multiplePhones: true
+      multiplePhones: true,
+      comment: true
     },
     {
       type: 'checkbox' as const,

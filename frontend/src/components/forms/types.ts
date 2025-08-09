@@ -53,7 +53,7 @@ export interface SearchSelectFormArea<T extends FieldValues> extends BaseFormAre
   type: 'searchSelect';
   fieldName: Path<T>;
   placeholder?: string;
-  options: SelectOption[];  // Опции для отображения
+  options?: SelectOption[];  // Опции для отображения
   onSearch?: (query: string) => void;  // Функция, которая вызывается при изменении поискового запроса
   isMulti?: boolean;  // Опция для выбора нескольких значений
 }
@@ -104,6 +104,7 @@ export interface PhoneInputFormArea<T extends FieldValues> extends BaseFormArea 
   fieldName: Path<T>;
   placeholder?: string;
   multiplePhones?: boolean; // Разрешить добавить несколько номеров (используйте для массива телефонов)
+  comment?: boolean; // Разрешить добавить комментарий к номеру
 }
 
 // Объединение всех типов

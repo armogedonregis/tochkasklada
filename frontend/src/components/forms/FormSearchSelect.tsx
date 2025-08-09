@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { UseFormReturn, FieldValues, Path } from 'react-hook-form';
 import { SelectOption } from '@/types/form';
@@ -12,11 +12,11 @@ interface FormSearchSelectProps<T extends FieldValues> {
   name: Path<T>;
   label: string;
   placeholder?: string;
-  options: SelectOption[];
+  options?: SelectOption[];
   isMulti?: boolean;
   className?: string;
-  onSearch?: (query: string) => void;
-  onChange?: (value: any) => void;
+  onSearch?: (query: string) => void | Promise<void | SelectOption[]> | Promise<SelectOption[]>;
+  onChange?: (value: string | string[] | null) => void;
 }
 
 const FormSearchSelect = <T extends FieldValues>({
@@ -31,55 +31,73 @@ const FormSearchSelect = <T extends FieldValues>({
   onChange
 }: FormSearchSelectProps<T>) => {
   const [selectedOption, setSelectedOption] = useState<SelectOption | SelectOption[] | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const initialLoadRef = useRef<boolean>(false);
-
-  // При монтировании компонента сразу загружаем начальные опции
-  useEffect(() => {
-    if (!initialLoadRef.current && onSearch) {
-      initialLoadRef.current = true;
-      onSearch('');
-    }
-  }, [onSearch]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Следим за значением поля и опциями, чтобы корректно отрисовать дефолт
   useEffect(() => {
     const currentValue: any = form.getValues(name);
+    const hasOptions = Array.isArray(options) && options.length > 0;
 
-    if (currentValue) {
-      if (isMulti && Array.isArray(currentValue)) {
-        const selectedOptions = currentValue
-          .map((val: string | number) =>
-            options.find(opt => String(opt.value) === String(val)) || ({ value: val, label: String(val) } as SelectOption)
-          )
-          .filter(Boolean) as SelectOption[];
-        setSelectedOption(selectedOptions.length ? selectedOptions : null);
-      } else {
-        const option = options.find(opt => String(opt.value) === String(currentValue))
-          || ({ value: currentValue, label: String(currentValue) } as SelectOption);
-        setSelectedOption(option || null);
-      }
-    } else {
+    // Нормализуем значения формы и выбранного состояния
+    const currentValuesArray = isMulti
+      ? (Array.isArray(currentValue) ? currentValue.map(String) : [])
+      : (currentValue != null ? [String(currentValue)] : []);
+
+    const selectedValuesArray = (() => {
+      if (!selectedOption) return [] as string[];
+      if (Array.isArray(selectedOption)) return selectedOption.map(o => String(o.value));
+      return [String(selectedOption.value)];
+    })();
+
+    // Если выбранное состояние уже соответствует значению формы, ничего не делаем
+    const isSameSelection = currentValuesArray.length === selectedValuesArray.length &&
+      currentValuesArray.every((val, idx) => val === selectedValuesArray[idx]);
+    if (isSameSelection) {
+      return;
+    }
+
+    // Если значения пустые — сбрасываем
+    if (!currentValuesArray.length) {
       setSelectedOption(null);
+      return;
     }
-  }, [options, form, name, isMulti, form.watch(name)]);
 
-  // Функция загрузки опций для AsyncSelect
-  const loadOptions = useCallback((
-    inputValue: string,
-    callback: (options: SelectOption[]) => void
-  ) => {
-    setIsLoading(true);
-    
-    // Если передана функция onSearch, вызываем её
-    if (onSearch) {
-      onSearch(inputValue);
+    // Если опций ещё нет — не затираем текущее выбранное состояние
+    if (!hasOptions) {
+      return;
     }
-    
-    // Возвращаем текущие опции (они будут обновлены через props после RTK Query)
-    callback(options || []);
-    setIsLoading(false);
+
+    // Маппим значения формы к опциям из props
+    if (isMulti) {
+      const mapped = currentValuesArray
+        .map(val => options.find(opt => String(opt.value) === String(val)))
+        .filter(Boolean) as SelectOption[];
+      if (mapped.length) setSelectedOption(mapped);
+    } else {
+      const mapped = options.find(opt => String(opt.value) === String(currentValuesArray[0])) || null;
+      setSelectedOption(mapped);
+    }
+  }, [form, name, isMulti, form.watch(name), options]);
+
+  // Реакция на внешнее обновление options – только для отображения предзагруженных/предвыбранных значений
+
+  // Функция загрузки опций: источник один – промис от onSearch
+  const loadOptions = useCallback((inputValue: string) => {
+    setIsLoading(true);
+    if (!onSearch) {
+      setIsLoading(false);
+      return Promise.resolve(options || []);
+    }
+    return Promise.resolve(onSearch(inputValue ?? '')).then((res) => {
+      // Если обработчик вернул готовые опции – используем их
+      if (Array.isArray(res)) return res;
+      // Иначе полагаемся на внешние props.options, чтобы не ломать совместимость
+      return options || [];
+    }).finally(() => setIsLoading(false));
   }, [onSearch, options]);
+
+  // Отключаем клиентскую фильтрацию — доверяем источнику options
+  const filterOption = useCallback(() => true, []);
 
   return (
     <FormField
@@ -94,7 +112,7 @@ const FormSearchSelect = <T extends FieldValues>({
             // Для множественного выбора (MultiValue - это readonly array)
             const multiOptions = option as MultiValue<SelectOption>;
             if (multiOptions.length) {
-              const values = multiOptions.map(opt => opt.value);
+              const values = multiOptions.map(opt => String(opt.value));
               field.onChange(values as any);
               if (onChange) onChange(values);
               setSelectedOption([...multiOptions]);
@@ -106,7 +124,7 @@ const FormSearchSelect = <T extends FieldValues>({
           } else {
             // Для одиночного выбора
             const singleOption = option as SingleValue<SelectOption>;
-            const value = singleOption ? singleOption.value : null;
+            const value = singleOption ? String(singleOption.value) : null;
             field.onChange(value as any);
             if (onChange) onChange(value);
             setSelectedOption(singleOption);
@@ -121,7 +139,10 @@ const FormSearchSelect = <T extends FieldValues>({
                 inputId={String(name)}
                 name={String(name)}
                 loadOptions={loadOptions}
-                defaultOptions={options && options.length ? options : true}
+                cacheOptions={false}
+                defaultOptions={true}
+                onInputChange={(val) => val}
+                filterOption={filterOption}
                 value={selectedOption}
                 onChange={handleChange}
                 onBlur={field.onBlur}
@@ -217,7 +238,6 @@ const FormSearchSelect = <T extends FieldValues>({
                     backgroundColor: '#E2E8F0',
                   }),
                 }}
-                cacheOptions
               />
             </FormControl>
             <FormMessage />

@@ -73,9 +73,14 @@ export default function RequestsPage() {
       cell: ({ row }) => row.original.phone || '-',
     },
     {
-      accessorKey: 'description',
-      header: 'Описание',
-      cell: ({ row }) => row.original.description || '-',
+      id: 'sizeform',
+      header: 'Размер',
+      cell: ({ row }) => row.original.sizeform || '-',
+    },
+    {
+      id: 'location',
+      header: 'Локация',
+      cell: ({ row }) => row.original.location || '-',
     },
     {
       accessorKey: 'status',
@@ -165,7 +170,9 @@ export default function RequestsPage() {
                   email: `test_${Date.now()}@example.com`,
                   name: 'Тестовая заявка',
                   phone: '+79990000000',
-                  description: 'Создано с кнопки для теста',
+                  sizeform: '7 м²',
+                  location: 'Кудрово',
+                  comment: 'Создано с кнопки для теста',
                 }).unwrap();
                 ToastService.success('Тестовая заявка создана');
                 refetch();

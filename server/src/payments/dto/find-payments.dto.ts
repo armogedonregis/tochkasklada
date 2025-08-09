@@ -39,7 +39,5 @@ export class FindPaymentsDto {
   sortDirection?: SortDirection;
 
   @IsOptional()
-  @IsBoolean()
-  @IsIn([true, false])
-  onlyPaid?: boolean;
+  onlyPaid?: boolean | string;
 } 

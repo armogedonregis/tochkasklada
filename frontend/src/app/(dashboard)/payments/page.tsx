@@ -19,11 +19,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronDown, ChevronRight, User, Check, X } from 'lucide-react';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { differenceInDays } from 'date-fns';
 import * as yup from 'yup';
 import { Payment, PaymentSortField } from '@/services/paymentsService/payments.types';
 import { SortDirection } from '@/services/services.types';
-import { Client } from '@/services/clientsService/clients.types';
 import { useLazyGetAdminCellsQuery } from '@/services/cellService/cellsApi';
 import { Cell } from '@/services/cellService/cell.types';
 
@@ -68,8 +66,8 @@ const PaymentsPage = () => {
     onlyPaid: activeTab === 'paid' ? true : activeTab === 'unpaid' ? false : undefined
   });
 
-  const [getCells, { data: cellsData = { data: [] } }] = useLazyGetAdminCellsQuery();
-  const [getClients, { data: clientsData = { data: [] } }] = useLazyGetClientsQuery()
+  const [getCells] = useLazyGetAdminCellsQuery();
+  const [getClients] = useLazyGetClientsQuery()
 
   // Данные платежей из пагинированного ответа
   const payments = data?.data || [];
@@ -87,7 +85,7 @@ const PaymentsPage = () => {
   const modal = useFormModal<PaymentFormFields, Payment>({
     onSubmit: async (values) => {
       console.log(values);
-      
+
       // Преобразуем данные формы для API
       const apiData = {
         ...values,
@@ -95,7 +93,7 @@ const PaymentsPage = () => {
         cellIds: values.cellIds?.length ? values.cellIds : (values.cellId ? [values.cellId] : undefined),
         cellId: undefined // Убираем cellId, чтобы не было конфликтов
       };
-      
+
       if (modal.editItem) {
         await updatePayment({
           id: modal.editItem.id,
@@ -131,23 +129,6 @@ const PaymentsPage = () => {
     }
     return [] as { label: string; value: string }[];
   }, [modal.editItem]);
-
-  // Функция для поиска ячеек
-  const handleCellsSearch = (query: string) => {
-    getCells({
-      search: query,
-      limit: 20
-    });
-  };
-
-  // Функция для поиска клиентов
-  const handleClientsSearch = (query: string) => {
-    getClients({
-      search: query,
-      limit: 20
-    });
-  };
-
 
   // Функция для переключения раскрытия информации о клиенте
   const toggleExpandPayment = (paymentId: string) => {
@@ -358,17 +339,18 @@ const PaymentsPage = () => {
 
   // Поля формы для модального окна
   const modalFields = [
-    // Показываем выбор клиента только при создании платежа
     ...(!modal.editItem ? [{
       type: 'searchSelect' as const,
       fieldName: 'userId' as const,
       label: 'Клиент',
       placeholder: 'Выберите клиента',
-      onSearch: handleClientsSearch,
-      options: clientsData.data.map((client: Client) => ({
-        label: `${client.name} (${client.user?.email || 'Нет email'})`,
-        value: client.userId
-      }))
+      onSearch: async (q: string) => {
+        const res = await getClients({ search: q, limit: 20 }).unwrap();
+        return res.data.map(c => ({
+          label: `${c.name} (${c.user?.email || 'Нет email'})`,
+          value: c.userId
+        }));
+      },
     }] : []),
     {
       type: 'input' as const,
@@ -400,17 +382,15 @@ const PaymentsPage = () => {
       fieldName: 'cellIds' as const,
       label: 'Ячейки',
       placeholder: 'Выберите ячейки для аренды',
-      onSearch: handleCellsSearch,
-      isMulti: true,
-      options: (() => {
-        const dynamicOptions = (cellsData?.data || []).map((cell: any) => ({
-          label: cell.container?.location?.short_name ? `${cell.container.location.short_name}-${cell.name}` : cell.name,
-          value: cell.id,
+      onSearch: async (q: string) => {
+        const res = await getCells({ search: q, limit: 20 }).unwrap();
+        return res.data.map(c => ({
+          label: c.container?.location?.short_name ? `${c.container.location.short_name}-${c.name}` : c.name,
+          value: c.id,
         }));
-        const all = [...preselectedCellOptions, ...dynamicOptions];
-        const uniq = Array.from(new Map(all.map(o => [String(o.value), o])).values());
-        return uniq;
-      })()
+      },
+      options: preselectedCellOptions,
+      isMulti: true
     }
   ];
 
@@ -468,25 +448,23 @@ const PaymentsPage = () => {
         onSubmit={modal.handleSubmit}
         submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
         defaultValues={modal.editItem ? (() => {
-          const cells = (modal.editItem as any)?.cellRental?.cell;
-          const cellIds = Array.isArray(cells) && cells.length
-            ? cells.map((c: any) => c.id)
-            : ((modal.editItem as any)?.cellId ? [(modal.editItem as any).cellId] : []);
+          const cells = (modal.editItem)?.cellRental?.cell;
+          const cellIds = Array.isArray(cells) && cells.length ? cells.map((c) => c.id) : [];
           return {
             amount: modal.editItem.amount,
             description: modal.editItem.description,
             status: modal.editItem.status,
             rentalDuration: modal.editItem.rentalDuration,
-            cellIds,
+            cellIds: cellIds,
           };
         })() : {
-          userId: null as any,
+          userId: undefined,
           amount: undefined,
           description: '',
           status: false,
           cellId: '',
           rentalDuration: undefined,
-          cellIds: [] as any,
+          cellIds: [],
         }}
       />
     </div>

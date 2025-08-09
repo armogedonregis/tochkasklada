@@ -23,6 +23,7 @@ interface FormPhoneInputProps<T extends FieldValues> {
   className?: string;
   multiplePhones?: boolean;
   onChange?: (value: PhoneData | PhoneData[]) => void;
+  comment?: boolean;
 }
 
 const FormPhoneInput = <T extends FieldValues>({
@@ -33,6 +34,7 @@ const FormPhoneInput = <T extends FieldValues>({
   placeholder = '+7 (___) ___-__-__',
   className = '',
   multiplePhones = false,
+  comment = false,
   onChange
 }: FormPhoneInputProps<T>) => {
   const [phones, setPhones] = useState<PhoneData[]>([]);
@@ -71,10 +73,11 @@ const FormPhoneInput = <T extends FieldValues>({
       if (multiplePhones) {
         form.setValue(name, phones as any, { shouldValidate: true });
       } else {
-        form.setValue(name, phones[0] as any, { shouldValidate: true });
+        // В режиме одного телефона пишем в форму строку, не объект
+        form.setValue(name, (phones[0]?.phone || '') as any, { shouldValidate: true });
       }
     } else {
-      form.setValue(name, (multiplePhones ? [] : { phone: '' }) as any, { shouldValidate: true });
+      form.setValue(name, (multiplePhones ? [] : '') as any, { shouldValidate: true });
     }
     // eslint-disable-next-line
   }, [phones]);
@@ -90,9 +93,9 @@ const FormPhoneInput = <T extends FieldValues>({
     const newPhones = [...phones];
     newPhones[index] = { ...newPhones[index], phone: value };
     setPhones(newPhones);
-    
+
     if (onChange) {
-      onChange(multiplePhones ? newPhones : newPhones[0]);
+      onChange(multiplePhones ? newPhones : (newPhones[0]?.phone as any));
     }
   };
 
@@ -101,9 +104,9 @@ const FormPhoneInput = <T extends FieldValues>({
     const newPhones = [...phones];
     newPhones[index] = { ...newPhones[index], comment: value };
     setPhones(newPhones);
-    
+
     if (onChange) {
-      onChange(multiplePhones ? newPhones : newPhones[0]);
+      onChange(multiplePhones ? newPhones : (newPhones[0]?.phone as any));
     }
   };
 
@@ -128,7 +131,7 @@ const FormPhoneInput = <T extends FieldValues>({
           {description && (
             <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
           )}
-          
+
           <div className="space-y-3">
             {phones.map((phoneData, index) => (
               <div key={index} className="space-y-2">
@@ -152,7 +155,7 @@ const FormPhoneInput = <T extends FieldValues>({
                       />
                     </div>
                   </FormControl>
-                  
+
                   {multiplePhones && phones.length > 1 && (
                     <Button
                       type="button"
@@ -165,19 +168,20 @@ const FormPhoneInput = <T extends FieldValues>({
                     </Button>
                   )}
                 </div>
-                
-                {/* Поле для комментария */}
-                <FormControl>
-                  <Input
-                    value={phoneData.comment || ''}
-                    onChange={(e) => handleCommentChange(index, e.target.value)}
-                    placeholder="Комментарий к номеру (необязательно)"
-                    className="h-8 text-sm"
-                  />
-                </FormControl>
+
+                {comment && (
+                  <FormControl>
+                    <Input
+                      value={phoneData.comment || ''}
+                      onChange={(e) => handleCommentChange(index, e.target.value)}
+                      placeholder="Комментарий к номеру (необязательно)"
+                      className="h-8 text-sm"
+                    />
+                  </FormControl>
+                )}
               </div>
             ))}
-            
+
             {multiplePhones && (
               <Button
                 type="button"
@@ -191,7 +195,7 @@ const FormPhoneInput = <T extends FieldValues>({
               </Button>
             )}
           </div>
-          
+
           <FormMessage />
         </FormItem>
       )}

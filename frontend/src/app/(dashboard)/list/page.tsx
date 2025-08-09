@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
-import { useGetListsQuery, useDeleteListMutation } from '@/services/listService/listApi';
+import { useGetListsQuery, useDeleteListMutation, useCreateListMutation } from '@/services/listService/listApi';
 import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
-import { List, ListFilters, ListSortField } from '@/services/listService/list.types';
+import { CreateListDto, List, ListFilters, ListSortField } from '@/services/listService/list.types';
 import { useTableControls } from '@/hooks/useTableControls';
 import { ColumnDef } from '@tanstack/react-table';
 import { ToastService } from '@/components/toast/ToastService';
@@ -14,11 +14,15 @@ import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BaseFormModal } from '@/components/modals/BaseFormModal';
+import * as yup from 'yup';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Eye, MapPin, List as ListIcon, Users, Trash2 } from 'lucide-react';
+import { Eye, MapPin, Users, Trash2 } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
+import { useFormModal } from '@/hooks/useFormModal';
+import { toast } from 'react-toastify';
 
 export default function ListPage() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
@@ -29,17 +33,41 @@ export default function ListPage() {
     defaultPageSize: 10,
     searchDebounceMs: 300
   });
-  
+
   const listFilters: ListFilters = {
     ...tableControls.queryParams,
     locationId: selectedLocationId && selectedLocationId !== 'all' ? selectedLocationId : undefined,
   };
-  
+
   const { data, error, isLoading, refetch } = useGetListsQuery(listFilters);
   const { data: locations } = useGetLocationsQuery();
   const [deleteList] = useDeleteListMutation();
+  const [createList] = useCreateListMutation();
 
   const isSuperAdmin = user?.role === 'SUPERADMIN';
+
+
+  // Хук для управления модальным окном
+  const modal = useFormModal<CreateListDto, List>({
+    onSubmit: async (values) => {
+      const normalize = (s?: string) => {
+        const v = typeof s === 'string' ? s.trim() : s;
+        return v && v.length > 0 ? v : undefined;
+      };
+
+      await createList({
+        name: values.name.trim(),
+        email: normalize(values.email) as string | undefined,
+        phone: normalize(values.phone) as string | undefined,
+        description: normalize(values.description) as string | undefined,
+        locationId: normalize(values.locationId) as string | undefined
+      }).unwrap();
+      toast.success('Запись успешно создана');
+    },
+    onError: () => {
+      toast.error('Ошибка при сохранении записи');
+    }
+  });
 
   const handleDeleteList = async (id: string) => {
     if (!window.confirm('Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить.')) {
@@ -54,10 +82,37 @@ export default function ListPage() {
       ToastService.error('Ошибка при удалении записи');
     }
   };
-  
+
   const lists = data?.data || [];
   const totalCount = data?.meta?.totalCount || 0;
   const pageCount = data?.meta?.totalPages || 1;
+
+  const createListSchema = yup.object({
+    name: yup.string().required('Имя обязательно'),
+    email: yup.string().email('Некорректный email').optional(),
+    phone: yup.string()
+      .matches(/^\+7\d{10}$/, 'Телефон должен быть в формате +7XXXXXXXXXX')
+      .required('Телефон обязателен'),
+    description: yup.string().optional(),
+    locationId: yup.string().optional(),
+  });
+
+  const createFields = [
+    { type: 'input' as const, fieldName: 'name' as const, label: 'Имя', placeholder: 'ФИО' },
+    { type: 'input' as const, fieldName: 'email' as const, label: 'Email', placeholder: 'user@example.com' },
+    { type: 'phoneInput' as const, fieldName: 'phone' as const, label: 'Телефон', placeholder: '+7...', multiplePhones: false },
+    {
+      type: 'select' as const,
+      fieldName: 'locationId' as const,
+      label: 'Локация',
+      placeholder: 'Выберите локацию (необязательно)',
+      options: (locations?.data || []).map((loc) => ({
+        label: `${loc.name} (${loc.short_name})`,
+        value: loc.id,
+      })),
+    },
+    { type: 'input' as const, fieldName: 'description' as const, label: 'Описание', placeholder: 'Кратко о запросе' },
+  ];
 
   // Определение колонок таблицы
   const columns: ColumnDef<List>[] = [
@@ -159,6 +214,9 @@ export default function ListPage() {
             Управление очередью клиентов, ожидающих свободные ячейки
           </p>
         </div>
+        <Button onClick={() => modal.openCreate()}>
+          Добавить в лист ожидания
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -175,7 +233,7 @@ export default function ListPage() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">По локации</CardTitle>
@@ -247,6 +305,17 @@ export default function ListPage() {
           />
         </CardContent>
       </Card>
+
+      <BaseFormModal
+        isOpen={modal.isOpen}
+        onClose={modal.closeModal}
+        title="Добавить в лист ожидания"
+        fields={createFields}
+        validationSchema={createListSchema}
+        onSubmit={modal.handleSubmit}
+        submitText="Добавить"
+        defaultValues={{ name: '', email: '', phone: '', description: '', locationId: '' }}
+      />
     </div>
   );
 } 

@@ -15,5 +15,13 @@ export class CreateRequestDto {
 
   @IsOptional()
   @IsString()
-  description?: string;
+  sizeform?: string;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
 } 
