@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { ArrowLeft, FileText, User, Mail, Phone, MessageSquare, Calendar, AlertTriangle, MoveRight, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, FileText, User, Mail, Phone, MessageSquare, Calendar, AlertTriangle, MoveRight, X, Trash2, MapPin, Ruler } from 'lucide-react';
 import { RequestStatus } from '@/services/requestsService/requests.types';
 import { ToastService } from '@/components/toast/ToastService';
 
@@ -204,23 +204,22 @@ const RequestDetailsPage = () => {
                 </div>
               )}
               
-              {(request.sizeform || request.location) && (
-                <div>
-                  <span className="text-muted-foreground">Параметры:</span>
-                  <div className="mt-1 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm space-y-1">
-                    {request.sizeform && (
-                      <div>
-                        <span className="text-muted-foreground">Размер: </span>
-                        <span>{request.sizeform}</span>
-                      </div>
-                    )}
-                    {request.location && (
-                      <div>
-                        <span className="text-muted-foreground">Локация: </span>
-                        <span>{request.location}</span>
-                      </div>
-                    )}
-                  </div>
+              {request.sizeform && (
+                <div className="flex justify-between items-start">
+                  <span className="text-muted-foreground">Размер:</span>
+                  <strong className="text-right flex items-center gap-2">
+                    <Ruler className="h-4 w-4" />
+                    {request.sizeform}
+                  </strong>
+                </div>
+              )}
+              {request.location && (
+                <div className="flex justify-between items-start">
+                  <span className="text-muted-foreground">Локация:</span>
+                  <strong className="text-right flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {request.location}
+                  </strong>
                 </div>
               )}
               
