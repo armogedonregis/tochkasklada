@@ -89,7 +89,9 @@ const CellRentalDetailsPage = () => {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '–';
     try {
-      return format(parseISO(dateString), 'd MMMM yyyy г.', { locale: ru });
+      const d = parseISO(dateString);
+      const utcMidnight = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      return format(utcMidnight, 'd MMMM yyyy г.', { locale: ru });
     } catch {
       return 'Неверная дата';
     }
