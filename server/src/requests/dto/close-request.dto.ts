@@ -8,4 +8,8 @@ export class CloseRequestDto {
   @IsOptional()
   @IsString()
   locationId?: string; // Для переноса в конкретную локацию
+
+  @IsOptional()
+  @IsString()
+  sizeId?: string; // Для выбора размера при переносе в лист
 } 

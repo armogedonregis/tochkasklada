@@ -291,6 +291,7 @@ export class RequestsService {
       name: request.name,
       description: request.sizeform + ' ' + request.location || undefined,
       locationId: data?.locationId || undefined,
+      sizeId: data?.sizeId || undefined,
     });
 
     // Закрываем оригинальную заявку

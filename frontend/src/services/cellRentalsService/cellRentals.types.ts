@@ -85,6 +85,7 @@ export interface CellRentalFilters extends FilterParams, DateRangeParams {
   clientId?: string;
   isActive?: boolean;
   locationId?: string;
+  sizeId?: string;
   rentalStatus?: CellRentalStatusType;
 } 
 

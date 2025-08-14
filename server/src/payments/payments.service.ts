@@ -11,21 +11,22 @@ import { RequestsService } from '../requests/requests.service';
 
 // Добавляем интерфейс на уровне класса
 interface CellWithRentals {
-    id: string;
+  id: string;
+  name: string;
+  status?: {
     name: string;
-    status?: {
-        name: string;
-        color: string;
+    color: string;
+  } | null;
+  rentals: Array<{
+    id: string;
+    isActive: boolean;
+    client?: {
+      id: string;
+      user?: {
+        email: string;
+      } | null;
     } | null;
-    rentals: Array<{
-        id: string;
-        isActive: boolean;
-        client?: {
-            user?: {
-                email: string;
-            } | null;
-        } | null;
-    }>;
+  }>;
 }
 
 @Injectable()
@@ -224,7 +225,7 @@ export class PaymentsService {
     if (isCellRental && user.client) {
       // Определяем какие ячейки нужно обработать
       const cellIdsToProcess = data.cellIds?.length ? data.cellIds : (data.cellId ? [data.cellId] : []);
-      
+
       this.logger.log(`Processing cell rental for ${cellIdsToProcess.length} cells...`, PaymentsService.name);
       try {
         const rental = await this._processMultipleCellsRental(
@@ -276,7 +277,7 @@ export class PaymentsService {
   async updatePayment(id: string, data: UpdatePaymentDto) {
     this.logger.log(`=== Updating payment ${id} ===`, PaymentsService.name);
     this.logger.log(`Input data: ${JSON.stringify(data)}`, PaymentsService.name);
-    
+
     // Проверяем, существует ли платеж
     const existingPayment = await this.getPaymentById(id);
 
@@ -361,7 +362,7 @@ export class PaymentsService {
       // Создание новой аренды (приоритет над обновлением rentalDuration)
       else if (cellId || cellIds) {
         this.logger.log(`Processing rental creation/update. cellId: ${cellId}, cellIds: ${JSON.stringify(cellIds)}`, PaymentsService.name);
-        
+
         // Получаем информацию о пользователе
         const payment = await this.prisma.payment.findUnique({
           where: { id },
@@ -384,7 +385,7 @@ export class PaymentsService {
 
         // Определяем какие ячейки нужно обработать
         const cellIdsToProcess = cellIds?.length ? cellIds : (cellId ? [cellId] : []);
-        
+
         if (cellIdsToProcess.length === 0) {
           throw new BadRequestException('Необходимо указать ID ячеек для создания аренды');
         }
@@ -670,30 +671,30 @@ export class PaymentsService {
       if (!data.OrderId || data.Status === undefined) {
         return { success: false, message: 'Некорректное уведомление' };
       }
-      
+
       // Извлекаем оригинальный orderId из Tinkoff OrderId (убираем суффикс)
       const originalOrderId = data.OrderId.split('_')[0];
-      
+
       // Получаем платеж из базы напрямую, минуя собственный метод с проверками
       const payment = await this.prisma.payment.findUnique({
         where: { orderId: originalOrderId }
       });
-      
+
       if (!payment) {
         return { success: false, message: 'Платеж не найден' };
       }
-      
+
       // Обновляем статус платежа
       const isSuccess = data.Status === 'CONFIRMED' || data.Status === 'AUTHORIZED';
-      
+
       await this.prisma.payment.update({
         where: { orderId: originalOrderId },
-        data: { 
+        data: {
           status: isSuccess,
           bankPaymentId: data.PaymentId || payment.bankPaymentId
         }
       });
-      
+
       return { success: true, message: `Статус платежа ${originalOrderId} обновлен на ${isSuccess ? 'успешный' : 'неуспешный'}` };
     } catch (error) {
       return { success: false, message: error.message || 'Внутренняя ошибка сервера' };
@@ -746,7 +747,7 @@ export class PaymentsService {
 
       // Базовые условия фильтрации
       let where: any = {};
-      
+
       // Дополнительный фильтр по статусу оплаты, если указан
       if (onlyPaid !== undefined) {
         where.status = String(onlyPaid) === 'true';
@@ -938,141 +939,141 @@ export class PaymentsService {
 
   async createTildaPayment(payload: any) {
     this.logger.log(`=== Processing Tilda payment ===`, PaymentsService.name);
-    
+
     const data = this._normalizeTildaPayload(payload);
     const { email, phone, name, cellNumber, secondCellNumber, sizeform, amount, description, rentalDuration, systranid } = data;
-    
+
     try {
-        // Если форма не Cart, создаем заявку (Request)
-        if (payload.formname !== 'Cart') {
-            this.logger.log(`Creating Request for non-Cart form: ${payload.formname}`, PaymentsService.name);
+      // Если форма не Cart, создаем заявку (Request)
+      if (payload.formname !== 'Cart') {
+        this.logger.log(`Creating Request for non-Cart form: ${payload.formname}`, PaymentsService.name);
 
-            // Разбираем sizeform вида "3.5 Шушары" → size: "3.5", location: "Шушары"
-            let parsedSize: string | undefined;
-            let parsedLocation: string | undefined;
-            if (typeof sizeform === 'string') {
-                const m = sizeform.match(/^\s*([^\s]+)\s+(.+?)\s*$/);
-                if (m) {
-                    parsedSize = m[1];
-                    parsedLocation = m[2];
-                }
-            }
-
-            const request = await this.requestsService.createRequest({
-                email,
-                phone,
-                name,
-                sizeform: parsedSize,
-                location: parsedLocation,
-                comment: rentalDuration ? `Срок аренды: ${rentalDuration.value} ${rentalDuration.unit}` : undefined,
-            });
-
-            return {
-                success: true,
-                message: 'Заявка создана',
-                request,
-                payment: null,
-                error: null
-            };
+        // Разбираем sizeform вида "3.5 Шушары" → size: "3.5", location: "Шушары"
+        let parsedSize: string | undefined;
+        let parsedLocation: string | undefined;
+        if (typeof sizeform === 'string') {
+          const m = sizeform.match(/^\s*([^\s]+)\s+(.+?)\s*$/);
+          if (m) {
+            parsedSize = m[1];
+            parsedLocation = m[2];
+          }
         }
 
-        // Для Cart формы - создаем пользователя и клиента как раньше
-        const user = await this._findOrCreateUserWithClient({ email, phone, name, formname: payload.formname });
-        if (!user || !user.client) {
-            throw new InternalServerErrorException('Не удалось создать или найти пользователя');
-        }
-
-        // Дальше обрабатываем только платежи из Cart формы
-        let cell: CellWithRentals | null = null;
-        let errorMessage = null;
-        let isExtension = false;
-        
-        try {
-            // Сначала ищем основную ячейку
-            cell = await this._findAvailableCell(cellNumber, sizeform, email);
-            
-            // Проверяем, является ли это продлением аренды
-            if (cell && cell.rentals && cell.rentals.length > 0) {
-                isExtension = true;
-                this.logger.log(`This is a rental extension for cell ${cellNumber}`, PaymentsService.name);
-            }
-        } catch (cellError) {
-            errorMessage = cellError.message;
-            this.logger.error(`Cell error: ${cellError.message}`, cellError.stack, PaymentsService.name);
-        }
-
-        // Готовим данные платежа
-        const paymentDetails = await this._preparePaymentDetails(
-            user.id,
-            cell,
-            amount,
-            description,
-            {
-                cellNumber,
-                sizeform,
-                rentalDuration,
-                systranid
-            }
-        );
-
-        // Если указана дополнительная ячейка, добавим её в описание как справочную
-        if (secondCellNumber) {
-            paymentDetails.description += `; Доп. ячейка: ${secondCellNumber}`;
-        }
-
-        // Если была ошибка с ячейкой, добавляем пометку в описание
-        if (errorMessage) {
-            paymentDetails.description = `ПРОБЛЕМНЫЙ ПЛАТЕЖ: ${paymentDetails.description} - ${errorMessage}`;
-        } else if (isExtension) {
-            // Если это продление аренды, добавляем соответствующую пометку
-            paymentDetails.description = `ПРОДЛЕНИЕ АРЕНДЫ: ${paymentDetails.description}`;
-        }
-
-        // Создаем платеж
-        const payment = await this.createPaymentByAdmin(paymentDetails);
-
-        // Если указана дополнительная ячейка, и мы нашли обе ячейки – создаем/обновляем аренду как множественную
-        if (secondCellNumber) {
-            try {
-                const secondCell = await this._findAvailableCell(secondCellNumber, sizeform, email);
-                const cellIds: string[] = [];
-                if (cell?.id) cellIds.push(cell.id);
-                if (secondCell?.id) cellIds.push(secondCell.id);
-
-                if (cellIds.length >= 2 && payment) {
-                    await this._processMultipleCellsRental(
-                        cellIds,
-                        user.client.id,
-                        payment.id,
-                        paymentDetails.description || undefined,
-                        paymentDetails.statusId,
-                        rentalDuration
-                    );
-                }
-            } catch (e) {
-                this.logger.error(`Failed to process second cell ${secondCellNumber}: ${e.message}`, e.stack, PaymentsService.name);
-            }
-        }
+        const request = await this.requestsService.createRequest({
+          email,
+          phone,
+          name,
+          sizeform: parsedSize,
+          location: parsedLocation,
+          comment: rentalDuration ? `Срок аренды: ${rentalDuration.value} ${rentalDuration.unit}` : undefined,
+        });
 
         return {
-            success: !errorMessage,
-            message: errorMessage || 'Платеж успешно создан',
-            payment,
-            error: errorMessage
+          success: true,
+          message: 'Заявка создана',
+          request,
+          payment: null,
+          error: null
         };
+      }
+
+      // Для Cart формы - создаем пользователя и клиента как раньше
+      const user = await this._findOrCreateUserWithClient({ email, phone, name, formname: payload.formname });
+      if (!user || !user.client) {
+        throw new InternalServerErrorException('Не удалось создать или найти пользователя');
+      }
+
+      // Дальше обрабатываем только платежи из Cart формы
+      let cell: CellWithRentals | null = null;
+      let errorMessage = null;
+      let isExtension = false;
+
+      try {
+        // Сначала ищем основную ячейку
+        cell = await this._findAvailableCell(cellNumber, sizeform, user.client.id);
+
+        // Проверяем, является ли это продлением аренды
+        if (cell && cell.rentals && cell.rentals.length > 0) {
+          isExtension = true;
+          this.logger.log(`This is a rental extension for cell ${cellNumber}`, PaymentsService.name);
+        }
+      } catch (cellError) {
+        errorMessage = cellError.message;
+        this.logger.error(`Cell error: ${cellError.message}`, cellError.stack, PaymentsService.name);
+      }
+
+      // Готовим данные платежа
+      const paymentDetails = await this._preparePaymentDetails(
+        user.id,
+        cell,
+        amount,
+        description,
+        {
+          cellNumber,
+          sizeform,
+          rentalDuration,
+          systranid
+        }
+      );
+
+      // Если указана дополнительная ячейка, добавим её в описание как справочную
+      if (secondCellNumber) {
+        paymentDetails.description += `; Доп. ячейка: ${secondCellNumber}`;
+      }
+
+      // Если была ошибка с ячейкой, добавляем пометку в описание
+      if (errorMessage) {
+        paymentDetails.description = `ПРОБЛЕМНЫЙ ПЛАТЕЖ: ${paymentDetails.description} - ${errorMessage}`;
+      } else if (isExtension) {
+        // Если это продление аренды, добавляем соответствующую пометку
+        paymentDetails.description = `ПРОДЛЕНИЕ АРЕНДЫ: ${paymentDetails.description}`;
+      }
+
+      // Создаем платеж
+      const payment = await this.createPaymentByAdmin(paymentDetails);
+
+      // Если указана дополнительная ячейка, и мы нашли обе ячейки – создаем/обновляем аренду как множественную
+      if (secondCellNumber) {
+        try {
+          const secondCell = await this._findAvailableCell(secondCellNumber, sizeform, user.client.id);
+          const cellIds: string[] = [];
+          if (cell?.id) cellIds.push(cell.id);
+          if (secondCell?.id) cellIds.push(secondCell.id);
+
+          if (cellIds.length >= 2 && payment) {
+            await this._processMultipleCellsRental(
+              cellIds,
+              user.client.id,
+              payment.id,
+              paymentDetails.description || undefined,
+              paymentDetails.statusId,
+              rentalDuration
+            );
+          }
+        } catch (e) {
+          this.logger.error(`Failed to process second cell ${secondCellNumber}: ${e.message}`, e.stack, PaymentsService.name);
+        }
+      }
+
+      return {
+        success: !errorMessage,
+        message: errorMessage || 'Платеж успешно создан',
+        payment,
+        error: errorMessage
+      };
 
     } catch (error) {
-        this.logger.error(`Failed to process Tilda payment: ${error.message}`, error.stack, PaymentsService.name);
-        throw error;
+      this.logger.error(`Failed to process Tilda payment: ${error.message}`, error.stack, PaymentsService.name);
+      throw error;
     }
-}
+  }
 
   /**
    * Правильно рассчитывает дату окончания аренды с использованием календарных периодов
    */
   private _calculateRentalEndDate(startDate: Date, value: number, unit: string): Date {
     const endDate = new Date(startDate);
-    
+
     if (unit.startsWith('мес')) {
       // Добавляем месяцы - точно календарные месяцы
       // Если оплатили 28.07, то до 27.08 (ровно месяц)
@@ -1086,7 +1087,7 @@ export class PaymentsService {
       endDate.setFullYear(endDate.getFullYear() + value);
       endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
     }
-    
+
     return endDate;
   }
 
@@ -1113,40 +1114,40 @@ export class PaymentsService {
 
     // Хардкод для обработки пользовательского ввода номера ячейки
     if (cellNumber) {
-        this.logger.log(`Original Tilda cellNumber: ${cellNumber}`, context);
-        cellNumber = String(cellNumber)
-            .toUpperCase()
-            .replace(/А/g, 'A')
-            .replace(/В/g, 'B')
-            .replace(/С/g, 'C')
-            .replace(/Е/g, 'E');
-        this.logger.log(`Normalized Tilda cellNumber: ${cellNumber}`, context);
+      this.logger.log(`Original Tilda cellNumber: ${cellNumber}`, context);
+      cellNumber = String(cellNumber)
+        .toUpperCase()
+        .replace(/А/g, 'A')
+        .replace(/В/g, 'B')
+        .replace(/С/g, 'C')
+        .replace(/Е/g, 'E');
+      this.logger.log(`Normalized Tilda cellNumber: ${cellNumber}`, context);
     }
     if (secondCellNumber) {
-        this.logger.log(`Original Tilda second cellNumber: ${secondCellNumber}`, context);
-        secondCellNumber = String(secondCellNumber)
-            .toUpperCase()
-            .replace(/А/g, 'A')
-            .replace(/В/g, 'B')
-            .replace(/С/g, 'C')
-            .replace(/Е/g, 'E');
-        this.logger.log(`Normalized Tilda second cellNumber: ${secondCellNumber}`, context);
+      this.logger.log(`Original Tilda second cellNumber: ${secondCellNumber}`, context);
+      secondCellNumber = String(secondCellNumber)
+        .toUpperCase()
+        .replace(/А/g, 'A')
+        .replace(/В/g, 'B')
+        .replace(/С/g, 'C')
+        .replace(/Е/g, 'E');
+      this.logger.log(`Normalized Tilda second cellNumber: ${secondCellNumber}`, context);
     }
 
     // Поля из JSON-строки 'payment'
     let paymentJson: any = {};
     if (typeof p.payment === 'string') {
-        try {
-            paymentJson = JSON.parse(p.payment);
-        } catch (e) {
-            this.logger.error(`Не удалось распарсить поле payment: ${e.message}`, e.stack, context);
-        }
+      try {
+        paymentJson = JSON.parse(p.payment);
+      } catch (e) {
+        this.logger.error(`Не удалось распарсить поле payment: ${e.message}`, e.stack, context);
+      }
     }
 
     // Сумма
     const amount = Number(paymentJson.amount || p.amount || 0);
     if (isNaN(amount) || amount < 0) {
-        this.logger.warn(`Invalid amount: ${amount}, setting to 0`, context);
+      this.logger.warn(`Invalid amount: ${amount}, setting to 0`, context);
     }
 
     // Размер (sizeform) и срок аренды
@@ -1155,32 +1156,32 @@ export class PaymentsService {
     let description = '';
 
     if (Array.isArray(paymentJson.products) && paymentJson.products.length > 0) {
-        description = paymentJson.products
-            .map((prod: string) => prod.split('=')[0])
-            .join('; ');
+      description = paymentJson.products
+        .map((prod: string) => prod.split('=')[0])
+        .join('; ');
 
-        // Парсим sizeform и срок аренды из первого продукта
-        const prod = paymentJson.products[0] as string;
-        const bracketMatch = prod.match(/\(([^)]+)\)/); // e.g. (XS-1-shu, Срок аренды: 1 месяц)
-        if (bracketMatch) {
-            const parts = bracketMatch[1].split(',').map((s) => s.trim());
-            if (!sizeform) {
-                sizeform = parts[0];
-            }
-
-            const rentalStringPart = parts.find((part) => part.toLowerCase().includes('срок аренды'));
-            if (rentalStringPart) {
-                const rentalString = rentalStringPart.replace(/срок аренды:/i, '').trim();
-                const [value, unit] = rentalString.split(' ');
-                const numValue = parseInt(value, 10);
-
-                // Теперь сохраняем структурированную информацию для календарного расчета
-                if (!isNaN(numValue)) {
-                    rentalDuration = { value: numValue, unit: unit || 'мес' };
-                    this.logger.log(`Parsed rental duration: ${numValue} ${unit}`, context);
-                }
-            }
+      // Парсим sizeform и срок аренды из первого продукта
+      const prod = paymentJson.products[0] as string;
+      const bracketMatch = prod.match(/\(([^)]+)\)/); // e.g. (XS-1-shu, Срок аренды: 1 месяц)
+      if (bracketMatch) {
+        const parts = bracketMatch[1].split(',').map((s) => s.trim());
+        if (!sizeform) {
+          sizeform = parts[0];
         }
+
+        const rentalStringPart = parts.find((part) => part.toLowerCase().includes('срок аренды'));
+        if (rentalStringPart) {
+          const rentalString = rentalStringPart.replace(/срок аренды:/i, '').trim();
+          const [value, unit] = rentalString.split(' ');
+          const numValue = parseInt(value, 10);
+
+          // Теперь сохраняем структурированную информацию для календарного расчета
+          if (!isNaN(numValue)) {
+            rentalDuration = { value: numValue, unit: unit || 'мес' };
+            this.logger.log(`Parsed rental duration: ${numValue} ${unit}`, context);
+          }
+        }
+      }
     }
 
     // Получаем systranid из объекта payment
@@ -1196,6 +1197,7 @@ export class PaymentsService {
   private async _findOrCreateUserWithClient(data: { email: string; phone?: string; name?: string; formname?: string }) {
     const context = 'TildaUserCreation';
     const { email, phone, name, formname } = data;
+    const prettyName = name ? this._normalizeName(name) : undefined;
 
     // Сначала ищем точно по email
     let user = await this.prisma.user.findUnique({
@@ -1211,7 +1213,7 @@ export class PaymentsService {
 
     if (user) {
       this.logger.log(`Found existing user by email: ${email}`, context);
-      
+
       // Обновляем дополнительные данные если нужно
       if (user.client) {
         // Добавляем новый телефон, если его нет
@@ -1225,11 +1227,11 @@ export class PaymentsService {
           this.logger.log(`Added new phone ${phone} to existing client`, context);
         }
 
-        // Обновляем имя, если оно отличается
-        if (name && user.client.name !== name) {
+        // Обновляем имя, если отличается без учета регистра
+        if (name && user.client.name?.toLocaleLowerCase('ru-RU') !== name.toLocaleLowerCase('ru-RU')) {
           await this.prisma.client.update({
             where: { id: user.client.id },
-            data: { name }
+            data: { name: prettyName || name }
           });
           this.logger.log(`Updated name for client ${user.client.id}`, context);
         }
@@ -1241,7 +1243,7 @@ export class PaymentsService {
           client: {
             AND: [
               { phones: { some: { phone } } },
-              { name }
+              { name: { equals: name || undefined, mode: 'insensitive' } }
             ]
           }
         },
@@ -1264,7 +1266,7 @@ export class PaymentsService {
             role: UserRole.CLIENT,
             client: {
               create: {
-                name: name || 'Клиент из Tilda',
+                name: prettyName || 'Клиент из Tilda',
                 isActive: formname === 'Cart',
                 phones: {
                   create: phone ? { phone } : undefined
@@ -1287,59 +1289,74 @@ export class PaymentsService {
     return user;
   }
 
+  private _normalizeName(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) return value;
+    return trimmed
+      .split(/\s+/)
+      .map((word) =>
+        word
+          .split('-')
+          .map((seg) => seg.charAt(0).toLocaleUpperCase('ru-RU') + seg.slice(1).toLocaleLowerCase('ru-RU'))
+          .join('-')
+      )
+      .join(' ');
+  }
+
   /**
    * Ищет доступную ячейку сначала по номеру, потом по размеру/локации.
    */
-  private async _findAvailableCell(cellNumber?: string, sizeform?: string, email?: string): Promise<CellWithRentals | null> {
+  private async _findAvailableCell(cellNumber?: string, sizeform?: string, clientId?: string): Promise<CellWithRentals | null> {
     const context = 'TildaCellSearch';
-    
-    if (cellNumber) {
-        this.logger.log(`Searching for cell by number: ${cellNumber}`, context);
-        
-        // Ищем ячейку по номеру
-        const existingCell = await this.prisma.cells.findFirst({
-            where: {
-                name: { equals: cellNumber, mode: 'insensitive' }
-            },
-            include: {
-                status: true,
-                rentals: {
-                    where: { isActive: true },
-                    include: {
-                        client: {
-                            include: {
-                                user: true
-                            }
-                        }
-                    }
-                }
-            }
-        }) as CellWithRentals | null;
 
-        if (existingCell) {
-            // Ячейка существует
-            if (existingCell.rentals && existingCell.rentals.length > 0) {
-                // Ячейка уже арендована - проверяем, принадлежит ли аренда текущему клиенту
-                const rentalClientEmail = existingCell.rentals[0].client?.user?.email;
-                this.logger.log(`Cell ${cellNumber} is rented. Rental client email: ${rentalClientEmail}, current email: ${email}`, context);
-                
-                if (email && rentalClientEmail === email) {
-                    this.logger.log(`Cell ${cellNumber} already rented by the same client (email: ${email}). Will extend rental.`, context);
-                    return existingCell;
+    if (cellNumber) {
+      this.logger.log(`Searching for cell by number: ${cellNumber}`, context);
+
+      // Ищем ячейку по номеру
+      const existingCell = await this.prisma.cells.findFirst({
+        where: {
+          name: { equals: cellNumber, mode: 'insensitive' }
+        },
+        include: {
+          status: true,
+          rentals: {
+            where: { isActive: true },
+            include: {
+              client: {
+                include: {
+                  user: true
                 }
-                throw new BadRequestException(`Ячейка ${cellNumber} уже арендована другим клиентом`);
-            } else {
-                // Ячейка свободна
-                this.logger.log(`Cell found by number: ${existingCell.name} (ID: ${existingCell.id}) - available`, context);
-                return existingCell;
+              }
             }
+          }
         }
-        
-        this.logger.warn(`Cell not found by number: ${cellNumber}`, context);
+      }) as CellWithRentals | null;
+
+      if (existingCell) {
+        // Ячейка существует
+        if (existingCell.rentals && existingCell.rentals.length > 0) {
+          // Ячейка уже арендована - проверяем, принадлежит ли аренда текущему клиенту
+          const rentalClientEmail = existingCell.rentals[0].client?.user?.email;
+          const rentalClientId = existingCell.rentals[0].client?.id;
+          this.logger.log(`Cell ${cellNumber} is rented. Rental client email: ${rentalClientEmail}, rental clientId: ${rentalClientId}, current clientId: ${clientId}`, context);
+
+          if (clientId && rentalClientId === clientId) {
+            this.logger.log(`Cell ${cellNumber} already rented by the same client (clientId: ${clientId}). Will extend rental.`, context);
+            return existingCell;
+          }
+          throw new BadRequestException(`Ячейка ${cellNumber} уже арендована другим клиентом`);
+        } else {
+          // Ячейка свободна
+          this.logger.log(`Cell found by number: ${existingCell.name} (ID: ${existingCell.id}) - available`, context);
+          return existingCell;
+        }
+      }
+
+      this.logger.warn(`Cell not found by number: ${cellNumber}`, context);
     }
-    
+
     return null;
-}
+  }
 
   /**
    * Готовит параметры для создания платежа.
@@ -1353,9 +1370,9 @@ export class PaymentsService {
   ): Promise<CreateAdminPaymentDto> {
     // Находим активный статус
     const activeStatus = await this.prisma.cellStatus.findFirst({
-        where: {
-            statusType: 'ACTIVE'
-        }
+      where: {
+        statusType: 'ACTIVE'
+      }
     });
 
     this.logger.log(`Found active status for Tilda payment: ${activeStatus?.id || 'not found'}`, PaymentsService.name);
@@ -1363,25 +1380,25 @@ export class PaymentsService {
     // Конвертируем структурированную информацию о периоде в дни для совместимости (временно)
     let rentalDurationDays: number | undefined;
     if (tildaInfo.rentalDuration) {
-        const { value, unit } = tildaInfo.rentalDuration;
-        // Для совместимости с существующим API пока оставляем дни
-        // Но сохраняем структурированную информацию для правильного календарного расчета
-        if (unit.startsWith('мес')) {
-            rentalDurationDays = value * 30; // Временно, будет использоваться только для логирования
-        } else if (unit.startsWith('дн') || unit.startsWith('day')) {
-            rentalDurationDays = value;
-        } else if (unit.startsWith('год') || unit.startsWith('year')) {
-            rentalDurationDays = value * 365; // Временно, будет использоваться только для логирования
-        }
+      const { value, unit } = tildaInfo.rentalDuration;
+      // Для совместимости с существующим API пока оставляем дни
+      // Но сохраняем структурированную информацию для правильного календарного расчета
+      if (unit.startsWith('мес')) {
+        rentalDurationDays = value * 30; // Временно, будет использоваться только для логирования
+      } else if (unit.startsWith('дн') || unit.startsWith('day')) {
+        rentalDurationDays = value;
+      } else if (unit.startsWith('год') || unit.startsWith('year')) {
+        rentalDurationDays = value * 365; // Временно, будет использоваться только для логирования
+      }
     }
 
     const paymentPayload: Partial<CreateAdminPaymentDto> = {
-        userId: userId,
-        amount: amount > 0 ? amount : 0,
-        status: true,
-        rentalDuration: rentalDurationDays,
-        bankPaymentId: tildaInfo.systranid,
-        statusId: activeStatus?.id
+      userId: userId,
+      amount: amount > 0 ? amount : 0,
+      status: true,
+      rentalDuration: rentalDurationDays,
+      bankPaymentId: tildaInfo.systranid,
+      statusId: activeStatus?.id
     };
 
     const { cellNumber, sizeform } = tildaInfo;
@@ -1455,7 +1472,7 @@ export class PaymentsService {
     // Проверяем конфликты и обрабатываем продления
     const conflictingRentals = activeRentals.filter(rental => rental.clientId !== clientId);
     const sameClientRentals = activeRentals.filter(rental => rental.clientId === clientId);
-    
+
     if (conflictingRentals.length > 0) {
       const conflictingCellNames = conflictingRentals
         .flatMap(rental => rental.cell?.map(c => c.name) || [])
@@ -1468,26 +1485,26 @@ export class PaymentsService {
     // Если есть активные аренды того же клиента, обрабатываем их
     if (sameClientRentals.length > 0) {
       this.logger.log(`Found ${sameClientRentals.length} existing rentals for the same client.`, PaymentsService.name);
-      
+
       // Получаем ID ячеек, которые уже арендованы этим клиентом
-      const alreadyRentedCellIds = sameClientRentals.flatMap(rental => 
+      const alreadyRentedCellIds = sameClientRentals.flatMap(rental =>
         rental.cell?.map(c => c.id) || []
       );
-      
+
       // Определяем новые ячейки, которые нужно добавить
       const newCellIds = cellIds.filter(id => !alreadyRentedCellIds.includes(id));
-      
+
       this.logger.log(`Already rented cells: ${alreadyRentedCellIds.length}, New cells to add: ${newCellIds.length}`, PaymentsService.name);
-      
+
       // Находим самую позднюю аренду для работы с ней
-      const latestRental = sameClientRentals.reduce((latest, current) => 
+      const latestRental = sameClientRentals.reduce((latest, current) =>
         new Date(current.endDate) > new Date(latest.endDate) ? current : latest
       );
 
       // Если есть новые ячейки для добавления, добавляем их к существующей аренде
       if (newCellIds.length > 0) {
         this.logger.log(`Adding ${newCellIds.length} new cells to existing rental ${latestRental.id}`, PaymentsService.name);
-        
+
         // Добавляем новые ячейки к существующей аренде
         await this.prisma.cellRental.update({
           where: { id: latestRental.id },

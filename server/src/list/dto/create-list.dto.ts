@@ -19,4 +19,8 @@ export class CreateListDto {
   @IsOptional()
   @IsString()
   locationId?: string;
+
+  @IsOptional()
+  @IsString()
+  sizeId?: string;
 } 

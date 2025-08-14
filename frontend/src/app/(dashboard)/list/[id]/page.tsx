@@ -184,13 +184,23 @@ const ListDetailsPage = () => {
                   </strong>
                 </div>
               )}
+
+              {listItem.size && (
+                <div className="flex justify-between items-start">
+                  <span className="text-muted-foreground">Размер:</span>
+                  <strong className="text-right flex items-center gap-2">
+                    {listItem.size.name} ({listItem.size.short_name})
+                  </strong>
+                </div>
+              )}
               
               {listItem.description && (
-                <div>
+                <div className="flex justify-between items-start">
                   <span className="text-muted-foreground">Описание:</span>
-                  <div className="mt-1 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
+                  <strong className="text-right flex items-start gap-2 max-w-[60%] break-words">
+                    <FileText className="h-4 w-4 mt-0.5" />
                     {listItem.description}
-                  </div>
+                  </strong>
                 </div>
               )}
               

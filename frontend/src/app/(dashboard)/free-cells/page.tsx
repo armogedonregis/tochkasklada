@@ -3,8 +3,11 @@
 import { useState } from 'react';
 import { useGetFreeCellsQuery } from '@/services/cellRentalsService/cellRentalsApi';
 import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
+import { useGetSizesQuery } from '@/services/sizesService/sizesApi';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BaseTable } from '@/components/table/BaseTable';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { CellFreeRental, CellFreeSortField } from '@/services/cellRentalsService/cellRentals.types';
 import { useTableControls } from '@/hooks/useTableControls';
@@ -17,9 +20,12 @@ export default function CellRentalsPage() {
   });
 
   // Получение данных об арендах
+  const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState<string>('ALL');
+  const [sizeFilter, setSizeFilter] = useState<string>('ALL');
 
   const { data: locationsData = { data: [] } } = useGetLocationsQuery();
+  const { data: sizes = [] } = useGetSizesQuery();
 
   const { data, error, isLoading, refetch } = useGetFreeCellsQuery({
     page: tableControls.queryParams.page,
@@ -28,7 +34,13 @@ export default function CellRentalsPage() {
     sortBy: tableControls.queryParams.sortBy,
     sortDirection: tableControls.queryParams.sortDirection,
     locationId: locationFilter === 'ALL' ? undefined : locationFilter,
+    sizeId: sizeFilter === 'ALL' ? undefined : sizeFilter,
   });
+
+  const handleSearch = (search: string) => {
+    setSearchTerm(search);
+    tableControls.handleSearchChange(search);
+  };
 
   // Данные аренд
   const cellRentals = data?.data || [];
@@ -71,7 +83,20 @@ export default function CellRentalsPage() {
             Просмотр свободных ячеек
           </p>
         </div>
-        <div className="w-64">
+      </div>
+
+      {/* Фильтры и поиск (единый grid, как на странице cell-rentals) */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 px-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по ячейке, размеру или локации..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
+        <div>
           <Select value={locationFilter} onValueChange={(value) => setLocationFilter(value)}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Фильтр по локации" />
@@ -86,6 +111,21 @@ export default function CellRentalsPage() {
             </SelectContent>
           </Select>
         </div>
+        <div>
+          <Select value={sizeFilter} onValueChange={(value) => setSizeFilter(value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Фильтр по размеру" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Все размеры</SelectItem>
+              {sizes?.map((s: any) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name} ({s.short_name})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <BaseTable
@@ -93,9 +133,6 @@ export default function CellRentalsPage() {
         columns={columns}
         disableActions={true}
         tableId="free-cells-table"
-        searchColumn="name"
-        searchPlaceholder="Поиск по названию ячейки..."
-        onSearchChange={tableControls.handleSearchChange}
         totalCount={totalCount}
         pageCount={pageCount}
         onPaginationChange={tableControls.handlePaginationChange}
@@ -108,7 +145,6 @@ export default function CellRentalsPage() {
         pagination={tableControls.pagination}
         sorting={tableControls.sorting}
       />
-
     </div>
   );
 }

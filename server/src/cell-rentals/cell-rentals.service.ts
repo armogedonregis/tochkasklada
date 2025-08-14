@@ -207,6 +207,7 @@ export class CellRentalsService {
       const {
         search,
         locationId,
+        sizeId,
         page = 1,
         limit = 10,
         // Для free-cells разумнее дефолт сортировать по локации/имени
@@ -271,6 +272,16 @@ export class CellRentalsService {
           : ((where as any).AND ? [((where as any).AND as Prisma.CellsWhereInput)] : []);
 
         andConditions.push({ container: { location: { id: locationId } } });
+        (where as any).AND = andConditions;
+      }
+
+      // Фильтр по размеру
+      if (sizeId) {
+        const andConditions: Prisma.CellsWhereInput[] = Array.isArray((where as any).AND)
+          ? ([...(where as any).AND] as Prisma.CellsWhereInput[])
+          : ((where as any).AND ? [((where as any).AND as Prisma.CellsWhereInput)] : []);
+
+        andConditions.push({ size_id: sizeId });
         (where as any).AND = andConditions;
       }
 

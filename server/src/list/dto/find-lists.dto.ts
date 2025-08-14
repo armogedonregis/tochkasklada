@@ -21,6 +21,10 @@ export class FindListsDto {
   @IsString()
   locationId?: string;
 
+  @IsOptional()
+  @IsString()
+  sizeId?: string;
+
   // @IsOptional()
   // @Type(() => Boolean)
   // @IsBoolean()

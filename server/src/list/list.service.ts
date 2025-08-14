@@ -24,6 +24,7 @@ export class ListService {
           name: data.name,
           description: data.description,
           locationId: data.locationId,
+          sizeId: data.sizeId,
         }
       });
 
@@ -49,6 +50,9 @@ export class ListService {
         },
         location: {
           select: { id: true, name: true, short_name: true }
+        },
+        size: {
+          select: { id: true, name: true, short_name: true }
         }
       }
     });
@@ -66,6 +70,7 @@ export class ListService {
       const {
         search,
         locationId,
+        sizeId,
         page = 1,
         limit = 10,
         sortBy = ListSortField.CREATED_AT,
@@ -78,6 +83,9 @@ export class ListService {
       // Фильтр по локации
       if (locationId) {
         where.locationId = locationId;
+      }
+      if (sizeId) {
+        where.sizeId = sizeId;
       }
 
       // Убираем фильтрацию по статусу - показываем все записи
@@ -132,6 +140,9 @@ export class ListService {
             }
           },
           location: {
+            select: { id: true, name: true, short_name: true }
+          },
+          size: {
             select: { id: true, name: true, short_name: true }
           }
         }

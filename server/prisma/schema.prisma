@@ -117,6 +117,10 @@ model List {
   locationId String?
   location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
+  // Привязка к размеру ячейки
+  sizeId String?
+  size   SizeCells? @relation(fields: [sizeId], references: [id], onDelete: SetNull)
+
   // Кто лист ожидания (через Admin)
   closedById String?
   closedBy   Admin?  @relation(fields: [closedById], references: [id])
@@ -255,6 +259,7 @@ model SizeCells {
   size       String
 
   cells Cells[]
+  lists List[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

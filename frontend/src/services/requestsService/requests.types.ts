@@ -35,6 +35,7 @@ export interface RequestItem {
 export interface CloseRequestDto {
   comment?: string;
   locationId?: string; // Для переноса в конкретную локацию
+  sizeId?: string; // Для выбора размера при переносе в лист
 }
 
 export interface CreateRequestDto {

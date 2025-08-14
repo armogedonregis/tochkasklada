@@ -23,9 +23,11 @@ import { Eye, MapPin, Users, Trash2 } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { useFormModal } from '@/hooks/useFormModal';
 import { toast } from 'react-toastify';
+import { useGetSizesQuery } from '@/services/sizesService/sizesApi';
 
 export default function ListPage() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
+  const [selectedSizeId, setSelectedSizeId] = useState<string>('all');
   const router = useRouter();
   const { user } = useAppSelector((state) => state.user);
 
@@ -37,10 +39,12 @@ export default function ListPage() {
   const listFilters: ListFilters = {
     ...tableControls.queryParams,
     locationId: selectedLocationId && selectedLocationId !== 'all' ? selectedLocationId : undefined,
+    sizeId: selectedSizeId && selectedSizeId !== 'all' ? selectedSizeId : undefined,
   };
 
   const { data, error, isLoading, refetch } = useGetListsQuery(listFilters);
   const { data: locations } = useGetLocationsQuery();
+  const { data: sizes = [] } = useGetSizesQuery();
   const [deleteList] = useDeleteListMutation();
   const [createList] = useCreateListMutation();
 
@@ -60,7 +64,8 @@ export default function ListPage() {
         email: normalize(values.email) as string | undefined,
         phone: normalize(values.phone) as string | undefined,
         description: normalize(values.description) as string | undefined,
-        locationId: normalize(values.locationId) as string | undefined
+        locationId: normalize(values.locationId) as string | undefined,
+        sizeId: normalize((values as any).sizeId) as string | undefined,
       }).unwrap();
       toast.success('Запись успешно создана');
     },
@@ -95,6 +100,7 @@ export default function ListPage() {
       .required('Телефон обязателен'),
     description: yup.string().optional(),
     locationId: yup.string().optional(),
+    sizeId: yup.string().optional(),
   });
 
   const createFields = [
@@ -109,6 +115,16 @@ export default function ListPage() {
       options: (locations?.data || []).map((loc) => ({
         label: `${loc.name} (${loc.short_name})`,
         value: loc.id,
+      })),
+    },
+    {
+      type: 'select' as const,
+      fieldName: 'sizeId' as const,
+      label: 'Размер',
+      placeholder: 'Выберите размер (необязательно)',
+      options: (sizes || []).map((s: any) => ({
+        label: `${s.name} (${s.short_name})`,
+        value: s.id,
       })),
     },
     { type: 'input' as const, fieldName: 'description' as const, label: 'Описание', placeholder: 'Кратко о запросе' },
@@ -141,6 +157,11 @@ export default function ListPage() {
           </div>
         ) : '-';
       },
+    },
+    {
+      id: 'size',
+      header: 'Размер',
+      cell: ({ row }) => row.original.size ? `${row.original.size.name}` : '-',
     },
     {
       accessorKey: 'description',
@@ -274,6 +295,22 @@ export default function ListPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex-1">
+              <label className="text-sm font-medium">Размер</label>
+              <Select value={selectedSizeId} onValueChange={setSelectedSizeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Все размеры" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все размеры</SelectItem>
+                  {(sizes || []).map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({s.short_name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -314,7 +351,7 @@ export default function ListPage() {
         validationSchema={createListSchema}
         onSubmit={modal.handleSubmit}
         submitText="Добавить"
-        defaultValues={{ name: '', email: '', phone: '', description: '', locationId: '' }}
+        defaultValues={{ name: '', email: '', phone: '', description: '', locationId: '', sizeId: '' } as any}
       />
     </div>
   );

@@ -26,6 +26,12 @@ export interface List {
     name: string;
     short_name: string;
   };
+  sizeId?: string;
+  size?: {
+    id: string;
+    name: string;
+    short_name: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +42,7 @@ export interface CreateListDto {
   name: string;
   description?: string;
   locationId?: string;
+  sizeId?: string;
 }
 
 export interface CloseListDto {
@@ -44,6 +51,7 @@ export interface CloseListDto {
 
 export interface ListFilters extends FilterParams {
   locationId?: string;
+  sizeId?: string;
   sortBy?: ListSortField;
   sortDirection?: SortDirection;
 }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useGetRequestQuery, useMoveToListMutation, useCloseRequestMutation, useDeleteRequestMutation } from '@/services/requestsService/requestsApi';
 import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
+import { useGetSizesQuery } from '@/services/sizesService/sizesApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -25,6 +26,7 @@ const RequestDetailsPage = () => {
 
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [comment, setComment] = useState<string>('');
+  const [selectedSizeId, setSelectedSizeId] = useState<string>('');
   const [actionComment, setActionComment] = useState<string>('');
 
   const { data: request, error: requestError, isLoading: isRequestLoading } = useGetRequestQuery(id, {
@@ -33,6 +35,7 @@ const RequestDetailsPage = () => {
   });
 
   const { data: locations } = useGetLocationsQuery();
+  const { data: sizes = [] } = useGetSizesQuery();
 
   const [moveToList, { isLoading: isMoving }] = useMoveToListMutation();
   const [closeRequest, { isLoading: isClosing }] = useCloseRequestMutation();
@@ -58,7 +61,8 @@ const RequestDetailsPage = () => {
         id,
         data: {
           locationId: selectedLocationId,
-          comment: comment || 'Перенесено в лист ожидания'
+          comment: comment || 'Перенесено в лист ожидания',
+          sizeId: selectedSizeId || undefined,
         }
       }).unwrap();
       
@@ -282,6 +286,22 @@ const RequestDetailsPage = () => {
                           {locations?.data?.map((location) => (
                             <SelectItem key={location.id} value={location.id}>
                               {location.name} ({location.short_name})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="size-select">Выберите размер</Label>
+                      <Select value={selectedSizeId} onValueChange={setSelectedSizeId}>
+                        <SelectTrigger id="size-select">
+                          <SelectValue placeholder="Выберите размер" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(sizes || []).map((s: any) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name} ({s.short_name})
                             </SelectItem>
                           ))}
                         </SelectContent>
