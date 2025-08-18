@@ -13,6 +13,10 @@ export class UpdatePaymentDto {
   description?: string;
 
   @IsOptional()
+  @IsUUID()
+  userId?: string;
+
+  @IsOptional()
   @IsBoolean()
   status?: boolean;
   

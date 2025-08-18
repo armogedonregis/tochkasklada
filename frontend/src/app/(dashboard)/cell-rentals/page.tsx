@@ -103,10 +103,13 @@ export default function CellRentalsPage() {
   const modal = useFormModal<RentalFormValues, CellRental>({
     onSubmit: async (values) => {
       const { days, startDate, endDate: initialEnd, ...dto } = values as any;
+      console.log(startDate, days)
 
       let computedEnd = initialEnd;
       if (days && startDate && !computedEnd) {
-        const startUtc = new Date(`${startDate}T00:00:00Z`);
+        // Создаем дату в UTC без сдвига часового пояса
+        const [year, month, day] = startDate.split('-').map(Number);
+        const startUtc = new Date(Date.UTC(year, month - 1, day)); // month - 1 потому что в JS месяцы начинаются с 0
         const dateEnd = addDays(startUtc, Number(days));
         computedEnd = dateEnd.toISOString().split('T')[0];
       }
@@ -116,8 +119,13 @@ export default function CellRentalsPage() {
         // Если выбраны несколько ячеек, используем их; иначе для обратной совместимости упакуем одиночный cellId
         cellIds: dto?.cellIds?.length ? dto.cellIds : (dto?.cellId ? [dto.cellId] : undefined),
         cellId: undefined,
-        startDate,
-        endDate: computedEnd,
+        // Правильно форматируем даты, извлекая компоненты из объекта Date
+        startDate: startDate ? (startDate instanceof Date ? 
+          `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}T00:00:00.000Z` : 
+          `${startDate}T00:00:00.000Z`) : undefined,
+        endDate: computedEnd ? (computedEnd instanceof Date ? 
+          `${computedEnd.getFullYear()}-${String(computedEnd.getMonth() + 1).padStart(2, '0')}-${String(computedEnd.getDate()).padStart(2, '0')}T00:00:00.000Z` : 
+          `${computedEnd}T00:00:00.000Z`) : undefined,
       } as any;
 
       if (modal.editItem) {
@@ -232,8 +240,11 @@ export default function CellRentalsPage() {
         const days = parseInt(value, 10);
         const start = form.getValues('startDate');
         if (start && !isNaN(days)) {
-          const startUtc = new Date(`${start}T00:00:00Z`);
-          const dateEnd = addDays(startUtc, days - 1);
+          // Создаем дату в UTC без сдвига часового пояса
+          const [year, month, day] = start.split('-').map(Number);
+          const startUtc = new Date(Date.UTC(year, month - 1, day)); // month - 1 потому что в JS месяцы начинаются с 0
+          // Для 1 дня: startDate = сегодня, endDate = завтра (добавляем 1 день)
+          const dateEnd = addDays(startUtc, days);
           const endString = dateEnd.toISOString().split('T')[0];
           form.setValue('endDate', endString, { shouldValidate: true });
           form.trigger('endDate');
@@ -396,7 +407,7 @@ export default function CellRentalsPage() {
         if (!startDate || !endDate) return '-';
 
         try {
-          return differenceInDays(new Date(endDate), new Date(startDate)) + 1;
+          return differenceInDays(new Date(endDate), new Date(startDate));
         } catch {
           return '-';
         }

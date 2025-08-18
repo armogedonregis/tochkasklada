@@ -339,11 +339,11 @@ const PaymentsPage = () => {
 
   // Поля формы для модального окна
   const modalFields = [
-    ...(!modal.editItem ? [{
+    {
       type: 'searchSelect' as const,
       fieldName: 'userId' as const,
-      label: 'Клиент',
-      placeholder: 'Выберите клиента',
+      label: modal.editItem ? 'Изменить клиента' : 'Клиент',
+      placeholder: modal.editItem ? 'Выберите нового клиента' : 'Выберите клиента',
       onSearch: async (q: string) => {
         const res = await getClients({ search: q, limit: 20 }).unwrap();
         return res.data.map(c => ({
@@ -351,7 +351,11 @@ const PaymentsPage = () => {
           value: c.userId
         }));
       },
-    }] : []),
+      options: modal.editItem ? [{
+        label: `${modal.editItem.user?.client?.name || 'Неизвестный клиент'} (${modal.editItem.user?.email || 'Нет email'})`,
+        value: modal.editItem.userId
+      }] : [],
+    },
     {
       type: 'input' as const,
       inputType: "number",
@@ -448,9 +452,15 @@ const PaymentsPage = () => {
         onSubmit={modal.handleSubmit}
         submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
         defaultValues={modal.editItem ? (() => {
+          console.log(modal.editItem);
           const cells = (modal.editItem)?.cellRental?.cell;
           const cellIds = Array.isArray(cells) && cells.length ? cells.map((c) => c.id) : [];
+          
+          // Если есть текущий пользователь, показываем его как выбранного
+          const currentUserId = modal.editItem.user?.id || modal.editItem.userId;
+          
           return {
+            userId: currentUserId,
             amount: modal.editItem.amount,
             description: modal.editItem.description,
             status: modal.editItem.status,

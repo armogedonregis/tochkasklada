@@ -308,6 +308,20 @@ export class PaymentsService {
             data: { cellRentalId: null }
           });
           this.logger.log(`Платеж ${id} отвязан от аренды ${existingPayment.cellRentalId}`, PaymentsService.name);
+
+          // Проверяем, есть ли еще платежи у этой аренды
+          const remainingPayments = await this.prisma.payment.count({
+            where: { cellRentalId: existingPayment.cellRentalId }
+          });
+
+          // Если это был единственный платеж, очищаем clientId в аренде
+          if (remainingPayments === 0) {
+            await this.prisma.cellRental.update({
+              where: { id: existingPayment.cellRentalId },
+              data: { clientId: null }
+            });
+            this.logger.log(`Rental ${existingPayment.cellRentalId} clientId cleared as it has no payments`, PaymentsService.name);
+          }
         }
       }
 
@@ -327,6 +341,25 @@ export class PaymentsService {
           where: { id },
           data: { cellRentalId }
         });
+
+        // Если меняется пользователь в платеже, обновляем clientId в аренде
+        if (data.userId && data.userId !== existingPayment.userId) {
+          const newUser = await this.prisma.user.findUnique({
+            where: { id: data.userId },
+            include: {
+              client: true
+            }
+          });
+
+          if (newUser && newUser.client) {
+            await this.prisma.cellRental.update({
+              where: { id: cellRentalId },
+              data: { clientId: newUser.client.id }
+            });
+            
+            this.logger.log(`Rental ${cellRentalId} clientId updated to ${newUser.client.id} when linking payment`, PaymentsService.name);
+          }
+        }
 
         // Обрабатываем корректировку дат аренды
         const updateRentalData: any = {};
@@ -363,24 +396,55 @@ export class PaymentsService {
       else if (cellId || cellIds) {
         this.logger.log(`Processing rental creation/update. cellId: ${cellId}, cellIds: ${JSON.stringify(cellIds)}`, PaymentsService.name);
 
-        // Получаем информацию о пользователе
-        const payment = await this.prisma.payment.findUnique({
-          where: { id },
-          include: {
-            user: {
-              include: {
-                client: true
+        // Определяем, какого пользователя использовать для создания аренды
+        let targetUserId = existingPayment.userId;
+        let targetClientId: string;
+
+        // Если передается новый userId, используем его
+        if (data.userId && data.userId !== existingPayment.userId) {
+          targetUserId = data.userId;
+          
+          // Получаем информацию о новом пользователе
+          const newUser = await this.prisma.user.findUnique({
+            where: { id: targetUserId },
+            include: {
+              client: true
+            }
+          });
+
+          if (!newUser) {
+            throw new NotFoundException(`Пользователь с ID ${targetUserId} не найден`);
+          }
+
+          if (!newUser.client) {
+            throw new BadRequestException(`Пользователь с ID ${targetUserId} не является клиентом`);
+          }
+
+          targetClientId = newUser.client.id;
+          this.logger.log(`Will create rental for new user ${targetUserId} (client: ${newUser.client.name})`, PaymentsService.name);
+        } else {
+          // Используем существующего пользователя
+          const payment = await this.prisma.payment.findUnique({
+            where: { id },
+            include: {
+              user: {
+                include: {
+                  client: true
+                }
               }
             }
+          });
+
+          if (!payment) {
+            throw new NotFoundException(`Платеж с ID ${id} не найден`);
           }
-        });
 
-        if (!payment) {
-          throw new NotFoundException(`Платеж с ID ${id} не найден`);
-        }
+          if (!payment.user.client) {
+            throw new BadRequestException(`Пользователь платежа не является клиентом`);
+          }
 
-        if (!payment.user.client) {
-          throw new BadRequestException(`Пользователь платежа не является клиентом`);
+          targetClientId = payment.user.client.id;
+          this.logger.log(`Will create rental for existing user ${targetUserId} (client: ${payment.user.client.name})`, PaymentsService.name);
         }
 
         // Определяем какие ячейки нужно обработать
@@ -393,8 +457,8 @@ export class PaymentsService {
         // Используем единый метод для обработки множественных ячеек
         await this._processMultipleCellsRental(
           cellIdsToProcess,
-          payment.user.client.id,
-          payment.id,
+          targetClientId,
+          id, // используем id платежа напрямую
           paymentData.description || undefined,
           undefined // statusId не поддерживается в updatePayment
         );
@@ -445,6 +509,47 @@ export class PaymentsService {
     } catch (error) {
       this.logger.error(`Ошибка при обработке аренды: ${error.message}`, error.stack, PaymentsService.name);
       // Продолжаем обновление платежа даже при ошибке с арендой
+    }
+
+    // Обрабатываем обновление пользователя в платеже
+    if (data.userId && data.userId !== existingPayment.userId) {
+      this.logger.log(`Updating user in payment ${id} from ${existingPayment.userId} to ${data.userId}`, PaymentsService.name);
+      
+      // Проверяем, существует ли новый пользователь
+      const newUser = await this.prisma.user.findUnique({
+        where: { id: data.userId },
+        include: {
+          client: true
+        }
+      });
+
+      if (!newUser) {
+        throw new NotFoundException(`Пользователь с ID ${data.userId} не найден`);
+      }
+
+      // Проверяем, что новый пользователь является клиентом
+      if (!newUser.client) {
+        throw new BadRequestException(`Пользователь с ID ${data.userId} не является клиентом`);
+      }
+
+      this.logger.log(`Payment ${id} will be updated to user ${data.userId} (client: ${newUser.client.name})`, PaymentsService.name);
+
+      // Если платеж привязан к аренде, обновляем clientId в аренде
+      if (existingPayment.cellRentalId) {
+        this.logger.log(`Payment ${id} is linked to rental ${existingPayment.cellRentalId}, updating clientId in rental`, PaymentsService.name);
+        
+        try {
+          await this.prisma.cellRental.update({
+            where: { id: existingPayment.cellRentalId },
+            data: { clientId: newUser.client.id }
+          });
+          
+          this.logger.log(`Rental ${existingPayment.cellRentalId} clientId updated to ${newUser.client.id}`, PaymentsService.name);
+        } catch (rentalError) {
+          this.logger.error(`Error updating clientId in rental ${existingPayment.cellRentalId}: ${rentalError.message}`, rentalError.stack, PaymentsService.name);
+          // Не прерываем обновление платежа из-за ошибки с арендой
+        }
+      }
     }
 
     // Обновляем платеж
