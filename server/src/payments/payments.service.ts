@@ -1131,7 +1131,7 @@ export class PaymentsService {
         paymentDetails.description = `ПРОБЛЕМНЫЙ ПЛАТЕЖ: ${paymentDetails.description} - ${errorMessage}`;
       } else if (isExtension) {
         // Если это продление аренды, добавляем соответствующую пометку
-        paymentDetails.description = `ПРОДЛЕНИЕ АРЕНДЫ: ${paymentDetails.description}`;
+        paymentDetails.description = `${paymentDetails.description}`;
       }
 
       // Создаем платеж
