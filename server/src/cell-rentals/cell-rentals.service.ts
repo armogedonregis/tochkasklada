@@ -1358,7 +1358,7 @@ export class CellRentalsService {
       });
 
       const rentals = cells.flatMap(cell =>
-        cell.rentals.flatMap(rental => {
+        cell.rentals.map(rental => {
           // Логируем проблемные случаи
           if (rental.rentalStatus && rental.status && rental.status.statusType !== rental.rentalStatus) {
             this.logger.warn(
@@ -1367,14 +1367,10 @@ export class CellRentalsService {
             );
           }
 
-          // Рассчитываем периоды для каждого платежа
-          const paymentPeriods = this._calculatePaymentPeriods(rental);
-          
-          // Возвращаем массив периодов вместо одной аренды
-          return paymentPeriods.map(period => ({
-            id: `${rental.id}_period_${period.index}`,
-            startDate: period.startDate,
-            endDate: period.endDate,
+          return {
+            id: rental.id,
+            startDate: rental.startDate,
+            endDate: rental.endDate,
             isActive: rental.isActive,
             rentalStatus: rental.rentalStatus,
             cell: {
@@ -1383,12 +1379,8 @@ export class CellRentalsService {
               containerName: cell.container.name
             },
             status: rental.status,
-            payments: [period.payment], // Только платеж для этого периода
-            // Добавляем информацию о периоде
-            periodIndex: period.index,
-            totalPeriods: paymentPeriods.length,
-            originalRentalId: rental.id
-          }));
+            payments: rental.payments
+          };
         })
       );
 
@@ -1398,10 +1390,7 @@ export class CellRentalsService {
           count: rentals.length,
           cellsCount: cells.length,
           startDate: startDate || null,
-          endDate: endDate || null,
-          // Добавляем информацию о том, что это периоды
-          isPeriods: true,
-          originalRentalsCount: cells.reduce((total, cell) => total + cell.rentals.length, 0)
+          endDate: endDate || null
         }
       };
     } catch (error) {
@@ -1448,53 +1437,6 @@ export class CellRentalsService {
     
     // По умолчанию 1 месяц
     return { value: 1, unit: 'мес' };
-  }
-
-  /**
-   * Рассчитывает периоды для каждого платежа в аренде
-   * Каждый период покрывает конкретный календарный интервал
-   */
-  private _calculatePaymentPeriods(rental: any) {
-    const periods: Array<{
-      startDate: Date;
-      endDate: Date;
-      payment: any;
-      index: number;
-    }> = [];
-    let currentStart = new Date(rental.startDate);
-    
-    // Сортируем платежи по createdAt для правильного порядка
-    const sortedPayments = rental.payments.sort((a, b) => 
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-    
-    for (let i = 0; i < sortedPayments.length; i++) {
-      const payment = sortedPayments[i];
-      const periodEnd = new Date(currentStart);
-      
-      // Определяем длительность периода
-      let duration = payment.rentalDuration;
-      
-      // Если rentalDuration не указан, используем дефолт 30 дней
-      if (!duration) {
-        duration = 30; // Дефолт: 30 дней
-      }
-      
-      periodEnd.setDate(periodEnd.getDate() + duration);
-      
-      periods.push({
-        startDate: new Date(currentStart),
-        endDate: new Date(periodEnd),
-        payment: payment,
-        index: i
-      });
-      
-      // Следующий период начинается на следующий день после окончания текущего
-      currentStart = new Date(periodEnd);
-      currentStart.setDate(currentStart.getDate() + 1);
-    }
-    
-    return periods;
   }
 
   // Добавим новый метод для пересчета срока аренды с использованием календарных дат
