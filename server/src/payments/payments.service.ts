@@ -1183,14 +1183,15 @@ export class PaymentsService {
       // Добавляем месяцы - точно календарные месяцы
       // Если оплатили 28.07, то до 27.08 (ровно месяц)
       endDate.setMonth(endDate.getMonth() + value);
-      endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
+      // НЕ вычитаем день, так как это уже правильная дата окончания
     } else if (unit.startsWith('дн') || unit.startsWith('day')) {
       // Добавляем дни
-      endDate.setDate(endDate.getDate() + value - 1); // Вычитаем 1 день для корректной даты окончания
+      endDate.setDate(endDate.getDate() + value);
+      // НЕ вычитаем день, так как это уже правильная дата окончания
     } else if (unit.startsWith('год') || unit.startsWith('year')) {
       // Добавляем годы - точно календарные годы
       endDate.setFullYear(endDate.getFullYear() + value);
-      endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
+      // НЕ вычитаем день, так как это уже правильная дата окончания
     }
 
     return endDate;
