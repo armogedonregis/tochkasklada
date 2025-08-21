@@ -24,6 +24,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { ListModule } from './list/list.module';
 import { RequestsModule } from './requests/requests.module';
 import { AdminsModule } from './admins/admins.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { AdminsModule } from './admins/admins.module';
     ListModule,
     RequestsModule,
     AdminsModule,
+    RolesModule,
     StatisticsModule,
     LogsModule,
     SwaggerDocModule.forRoot(),

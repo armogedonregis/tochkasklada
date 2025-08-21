@@ -15,8 +15,8 @@ import {
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { 
   AddPhoneDto, 
   CreateClientDto, 
@@ -44,8 +44,8 @@ export class ClientsController {
    * @returns Созданная запись телефона для RTK Query
    */
   @Post(':id/phones')
-  @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('clients:update')
   @HttpCode(HttpStatus.CREATED)
   async addPhone(
     @Param('id', ParseUUIDPipe) id: string,
@@ -63,8 +63,8 @@ export class ClientsController {
    * @returns ID удаленного телефона для RTK Query
    */
   @Delete('phones/:id')
-  @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('clients:update')
   @HttpCode(HttpStatus.OK)
   async removePhone(@Param('id', ParseUUIDPipe) id: string) {
     return await this.clientsService.removePhone(id);
@@ -73,8 +73,8 @@ export class ClientsController {
   /**
    * Получение всех клиентов с пагинацией и сортировкой (только для админа)
    */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('clients:read')
   @Get()
   async findAll(
     @Query() dto: FindClientsDto,
@@ -103,8 +103,8 @@ export class ClientsController {
   /**
    * Создание нового клиента (только для админа)
    */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('clients:create')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createClientDto: CreateClientDto) {
@@ -114,8 +114,8 @@ export class ClientsController {
   /**
    * Обновление клиента (только для админа)
    */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('clients:update')
   @Patch(':id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -127,8 +127,8 @@ export class ClientsController {
   /**
    * Удаление клиента (только для админа)
    */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('clients:delete')
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id', ParseUUIDPipe) id: string) {

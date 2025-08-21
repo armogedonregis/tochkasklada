@@ -3,40 +3,49 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2 } from 'lucide-react';
+import { PermissionGate } from '@/services/authService';
 
 interface TableActionsProps {
   onEdit: () => void;
   onDelete: () => void;
+  editPermission?: string;
+  deletePermission?: string;
 }
 
 export const TableActions: React.FC<TableActionsProps> = ({ 
   onEdit,
-  onDelete
+  onDelete,
+  editPermission,
+  deletePermission
 }) => {
   return (
     <div className="flex gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEdit();
-        }}
-        title="Редактировать"
-      >
-        <Edit className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="destructive"
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        title="Удалить"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      {/* <PermissionGate permissions={editPermission ? [editPermission] : []}> */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          title="Редактировать"
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+      {/* </PermissionGate> */}
+      {/* <PermissionGate permissions={deletePermission ? [deletePermission] : []}> */}
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="Удалить"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      {/* </PermissionGate> */}
     </div>
   );
 }; 

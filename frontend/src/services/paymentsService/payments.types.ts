@@ -54,7 +54,7 @@ export interface CreateAdminPaymentDto {
 }
 
 export interface UpdatePaymentDto {
-  userId?: string;
+  userId?: string;        // ID пользователя для изменения в платеже
   amount?: number;
   description?: string;
   status?: boolean;

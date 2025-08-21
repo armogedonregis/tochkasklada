@@ -13,39 +13,39 @@ import {
 import { ListService } from './list.service';
 import { CreateListDto, FindListsDto, CloseListDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('list')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ListController {
   constructor(private readonly listService: ListService) {}
 
   // Создание заявки (только для админов, т.к. записи создаются из requests)
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @RequirePermissions('lists:create')
   async createList(@Body() createListDto: CreateListDto) {
     return this.listService.createList(createListDto);
   }
 
   // Получение всех заявок с фильтрацией и пагинацией
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @RequirePermissions('lists:read')
   async getAllLists(@Query() queryParams: FindListsDto) {
     return this.listService.getAllLists(queryParams);
   }
 
   // Получение заявки по ID
   @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @RequirePermissions('lists:read')
   async getListById(@Param('id') id: string) {
     return this.listService.getListById(id);
   }
 
   // Закрытие заявки
   @Patch(':id/close')
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @RequirePermissions('lists:close')
   async closeList(
     @Param('id') id: string,
     @Body() closeListDto: CloseListDto,
@@ -56,14 +56,14 @@ export class ListController {
 
   // Статистика по листу ожидания (упрощенная)
   @Get('stats/overview')
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @RequirePermissions('lists:read')
   async getListStats() {
     return this.listService.getListStats();
   }
 
   // Удаление заявки
   @Delete(':id')
-  @Roles(UserRole.SUPERADMIN)
+  @RequirePermissions('system:admin')
   async deleteList(@Param('id') id: string) {
     return this.listService.deleteList(id);
   }

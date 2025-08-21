@@ -2,6 +2,7 @@ export const tagTypes = [
     'Auth',
     'Clients',
     'User',
+    'Users',
     'Cities',
     'Locations',
     'Containers',
@@ -16,5 +17,7 @@ export const tagTypes = [
     'Statistics',
     'List',
     'Requests',
-    'Admin'
+    'Admin',
+    'Roles',
+    'Permissions'
 ] as const;

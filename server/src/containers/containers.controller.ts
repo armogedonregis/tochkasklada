@@ -15,16 +15,16 @@ import {
 import { ContainersService } from './containers.service';
 import { CreateContainerDto, FindContainersDto, UpdateContainerDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireResourcePermission } from '../auth/decorators/resource-permission.decorator';
 
 /**
  * Контроллер только для администраторов
  * Управление контейнерами доступно только через административный интерфейс
  */
 @Controller('admin/containers')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'SUPERADMIN')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ContainersController {
   constructor(private readonly containersService: ContainersService) {}
 
@@ -33,6 +33,7 @@ export class ContainersController {
    * Поддерживает фильтрацию по locationId
    */
   @Get()
+  @RequirePermissions('containers:read')
   async findAll(@Query() query: FindContainersDto) {
     return await this.containersService.findContainers(query);
   }
@@ -41,6 +42,7 @@ export class ContainersController {
    * Получение контейнера по ID
    */
   @Get(':id')
+  @RequireResourcePermission('containers:read', 'Container', 'id')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return await this.containersService.findOne(id);
   }
@@ -50,6 +52,7 @@ export class ContainersController {
    * @returns Созданный контейнер для RTK Query
    */
   @Post()
+  @RequirePermissions('containers:create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createContainerDto: CreateContainerDto) {
     return await this.containersService.create(createContainerDto);
@@ -60,6 +63,7 @@ export class ContainersController {
    * @returns Обновленный контейнер для RTK Query
    */
   @Patch(':id')
+  @RequireResourcePermission('containers:update', 'Container', 'id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateContainerDto: UpdateContainerDto
@@ -72,6 +76,7 @@ export class ContainersController {
    * @returns ID удаленного контейнера для RTK Query
    */
   @Delete(':id')
+  @RequireResourcePermission('containers:delete', 'Container', 'id')
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     return await this.containersService.remove(id);

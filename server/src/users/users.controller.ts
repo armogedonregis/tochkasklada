@@ -1,21 +1,22 @@
-import { Controller, Get, Body, Patch, Param, Delete, UseGuards, Request, HttpCode, HttpStatus, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Delete, UseGuards, Request, HttpCode, HttpStatus, ParseUUIDPipe, Post, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UpdateUserDto } from './dto';
+import { CreateUserDto, UpdateUserDto } from './dto';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   /**
-   * Получить список всех пользователей (только для админов)
+   * Получить список всех пользователей (только для суперадмина)
    */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard)
   @Get()
-  async findAll() {
+  async findAll(@Request() req: { user: { role: string } }) {
+    if (req.user.role !== 'SUPERADMIN') {
+      throw new ForbiddenException('Доступ только для суперадмина');
+    }
+    
     return this.usersService.findAll();
   }
 
@@ -38,23 +39,40 @@ export class UsersController {
   }
 
   /**
-   * Обновить пользователя (только для админов)
+   * Создать нового пользователя (только для суперадмина)
    */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Body() createUserDto: CreateUserDto, @Request() req: { user: { role: string } }) {
+    if (req.user.role !== 'SUPERADMIN') {
+      throw new ForbiddenException('Доступ только для суперадмина');
+    }
+    return this.usersService.create(createUserDto);
+  }
+
+  /**
+   * Обновить пользователя (только для суперадмина)
+   */
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: { user: { role: string } }) {
+    if (req.user.role !== 'SUPERADMIN') {
+      throw new ForbiddenException('Доступ только для суперадмина');
+    }
     return this.usersService.update(id, updateUserDto);
   }
 
   /**
-   * Удалить пользователя (только для админов)
+   * Удалить пользователя (только для суперадмина)
    */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
+  async remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: { role: string } }) {
+    if (req.user.role !== 'SUPERADMIN') {
+      throw new ForbiddenException('Доступ только для суперадмина');
+    }
     await this.usersService.remove(id);
   }
 } 

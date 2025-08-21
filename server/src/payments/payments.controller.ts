@@ -17,9 +17,9 @@ import {
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireResourcePermission } from '../auth/decorators/resource-permission.decorator';
 import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, CreatePaymentDto } from './dto';
 
 @Controller('payments')
@@ -80,8 +80,8 @@ export class PaymentsController {
    * - statusId: ID статуса ячейки (опционально)
    */
   @Post('admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('payments:create')
   @HttpCode(HttpStatus.CREATED)
   createPaymentByAdmin(@Body() createPaymentDto: CreateAdminPaymentDto) {
     return this.paymentsService.createPaymentByAdmin(createPaymentDto);
@@ -100,8 +100,8 @@ export class PaymentsController {
    * - rentalEndDate: новая дата окончания аренды (формат: "YYYY-MM-DD")
    */
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequireResourcePermission('payments:update', 'Payment', 'id')
   updatePayment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePaymentDto: UpdatePaymentDto
@@ -113,8 +113,8 @@ export class PaymentsController {
    * Установка статуса платежа вручную (только для админа)
    */
   @Patch(':id/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequireResourcePermission('payments:update', 'Payment', 'id')
   setPaymentStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() data: { status: boolean }
@@ -143,8 +143,8 @@ export class PaymentsController {
    * Получение всех платежей с пагинацией и фильтрацией (только для админа)
    */
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('payments:read')
   getAllPayments(@Query() query: FindPaymentsDto) {
     return this.paymentsService.getAllPayments(query);
   }
@@ -153,8 +153,8 @@ export class PaymentsController {
  * Получение всех платежей по локациям
  */
   @Get('/statistics')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('payments:read')
   getAllPaymentsByLocation() {
     return this.paymentsService.getPaymentsByLocations();
   }
@@ -163,8 +163,8 @@ export class PaymentsController {
    * Удаление платежа (только для админа)
    */
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequireResourcePermission('payments:delete', 'Payment', 'id')
   @HttpCode(HttpStatus.NO_CONTENT)
   deletePayment(@Param('id', ParseUUIDPipe) id: string) {
     return this.paymentsService.deletePayment(id);

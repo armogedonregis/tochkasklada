@@ -15,8 +15,9 @@ import {
 import { CellsService } from './cells.service';
 import { CreateCellDto, UpdateCellDto, FindCellsDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireResourcePermission } from '../auth/decorators/resource-permission.decorator';
 
 // Контроллер для методов, доступных всем авторизованным пользователям
 @Controller('cells')
@@ -30,6 +31,8 @@ export class CellsController {
    * Для пользователей всегда возвращаются только доступные ячейки (available=true)
    */
   @Get()
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('cells:read')
   findCells(@Query() query: FindCellsDto) {
     // Принудительно устанавливаем фильтрацию только по доступным ячейкам
     return this.cellsService.findCells({
@@ -41,8 +44,7 @@ export class CellsController {
 
 // Контроллер для методов, доступных только администраторам
 @Controller('admin/cells')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'SUPERADMIN')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class CellsAdminController {
   constructor(private readonly cellsService: CellsService) {}
 
@@ -51,6 +53,7 @@ export class CellsAdminController {
    * Для администраторов доступны все ячейки (и занятые, и свободные)
    */
   @Get()
+  @RequirePermissions('cells:read')
   findCells(@Query() query: FindCellsDto) {
     return this.cellsService.findCells(query);
   }
@@ -59,6 +62,7 @@ export class CellsAdminController {
    * Получение ячейки по ID
    */
   @Get(':id')
+  @RequireResourcePermission('cells:read', 'Cell', 'id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellsService.findOne(id);
   }
@@ -67,6 +71,7 @@ export class CellsAdminController {
    * Создание новой ячейки
    */
   @Post()
+  @RequirePermissions('cells:create')
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createCellDto: CreateCellDto) {
     return this.cellsService.create(createCellDto);
@@ -76,6 +81,7 @@ export class CellsAdminController {
    * Обновление ячейки
    */
   @Patch(':id')
+  @RequireResourcePermission('cells:update', 'Cell', 'id')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() updateCellDto: UpdateCellDto) {
     return this.cellsService.update(id, updateCellDto);
   }
@@ -84,6 +90,7 @@ export class CellsAdminController {
    * Удаление ячейки
    */
   @Delete(':id')
+  @RequireResourcePermission('cells:delete', 'Cell', 'id')
   @HttpCode(HttpStatus.OK)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellsService.remove(id);

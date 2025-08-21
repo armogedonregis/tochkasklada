@@ -147,6 +147,8 @@ interface BaseTableProps<TData, TSortField extends string = string> {
   onEdit?: (row: TData) => void;
   onDelete?: (row: TData) => void;
   disableActions?: boolean;
+  editPermission?: string;
+  deletePermission?: string;
 
   // Пагинация и сортировка
   isDisabledPagination?: boolean;
@@ -189,6 +191,8 @@ export function BaseTable<TData, TSortField extends string = string>({
   onEdit,
   onDelete,
   disableActions = false,
+  editPermission,
+  deletePermission,
 
   // Пагинация и сортировка
   isDisabledPagination = false,
@@ -324,6 +328,8 @@ export function BaseTable<TData, TSortField extends string = string>({
               <TableActions
                 onEdit={() => onEdit(row.original)}
                 onDelete={() => onDelete(row.original)}
+                editPermission={editPermission}
+                deletePermission={deletePermission}
               />
             ),
           },

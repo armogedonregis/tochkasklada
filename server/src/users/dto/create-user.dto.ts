@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsArray, IsUUID, IsOptional } from 'class-validator';
 
 /**
  * DTO для создания пользователя
@@ -21,4 +21,13 @@ export class CreateUserDto {
   @IsNotEmpty()
   @MinLength(6)
   password: string;
+
+  /**
+   * ID ролей для назначения пользователю
+   * @example ["uuid1", "uuid2"]
+   */
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  roleIds?: string[];
 } 

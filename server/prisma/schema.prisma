@@ -56,6 +56,11 @@ model Admin {
   user   User   @relation(fields: [userId], references: [id])
   userId String @unique
 
+  // RBAC связи (только для админов)
+  adminRoles AdminRole[]              // Роли админа в RBAC системе
+  adminPermissions AdminPermission[]  // Прямые права админа
+  adminResourcePermissions AdminResourcePermission[] // Права на ресурсы
+
   closedLists    List[]
   closedRequests Request[]
 
@@ -64,6 +69,108 @@ model Admin {
 
   @@map("admins")
 }
+
+
+/// =============================================================
+/// RBAC / Permissions (только для админов)
+/// -------------------------------------------------------------
+
+model Role {
+  id          String @id @default(uuid())
+  name        String @unique           // "Админ Москвы", "Оператор СПб"
+  description String?
+  
+  rolePermissions RolePermission[]
+  adminRoles      AdminRole[]         // Связь с админами
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("roles")
+}
+
+model Permission {
+  id          String @id @default(uuid())
+  key         String @unique           // "cells:read", "clients:create"
+  description String?
+  
+  rolePermissions RolePermission[]
+  adminPermissions AdminPermission[]   // Связь с админами
+  adminResourcePermissions AdminResourcePermission[] // Права на ресурсы
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("permissions")
+}
+
+// Связь ролей с правами
+model RolePermission {
+  roleId       String
+  permissionId String
+  
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// Назначение ролей админам
+model AdminRole {
+  adminId String
+  roleId  String
+  
+  admin Admin @relation(fields: [adminId], references: [id])
+  role  Role  @relation(fields: [roleId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@id([adminId, roleId])
+  @@map("admin_roles")
+}
+
+// Прямые права админов (обход ролей)
+model AdminPermission {
+  adminId      String
+  permissionId String
+  
+  admin      Admin      @relation(fields: [adminId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@id([adminId, permissionId])
+  @@map("admin_permissions")
+}
+
+// Права админов на конкретные ресурсы
+model AdminResourcePermission {
+  id           String @id @default(uuid())
+  adminId      String
+  permissionId String
+  
+  // Полиморфные связи с ресурсами
+  resourceType String  // "Location", "Cell", "Container", "Panel", "Relay", "Client", "Rental", "Request", "List", "Payment"
+  resourceId   String  // ID конкретного ресурса
+  
+  admin      Admin      @relation(fields: [adminId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([adminId, permissionId, resourceType, resourceId])
+  @@index([adminId])
+  @@index([resourceType, resourceId])
+  @@map("admin_resource_permissions")
+}
+/// =============================================================
 
 // Телефоны клиентов
 model ClientPhone {
@@ -144,12 +251,13 @@ model Payment {
   amount         Int
   orderId        String? @unique
   description    String?
-  userId         String
-  user           User    @relation(fields: [userId], references: [id])
   status         Boolean @default(false)
   bankPaymentId  String?
   paymentUrl     String?
-  rentalDuration Int? // Срок аренды в днях, который покрывает этот платеж
+  rentalDuration Int?
+
+  userId         String
+  user           User    @relation(fields: [userId], references: [id])
 
   cellRentalId String?
   cellRental   CellRental? @relation(fields: [cellRentalId], references: [id], onDelete: Cascade)

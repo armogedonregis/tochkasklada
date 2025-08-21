@@ -20,6 +20,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { PermissionGate } from '@/services/authService';
+import { ProtectedPage } from '@/components/auth/ProtectedPage';
 
 // Схема валидации для клиента
 const clientValidationSchema = yup.object({
@@ -224,13 +226,15 @@ export default function ClientsPage() {
   ];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
+    <ProtectedPage pageName="clients">
       {/* Панель добавления и фильтрации */}
       <div className="flex justify-between items-center mb-4 px-4 pt-4">
         <div className="flex items-center gap-4">
-          <Button onClick={() => modal.openCreate()}>
-            Добавить клиента
-          </Button>
+          <PermissionGate permissions={['clients:create']}>
+            <Button onClick={() => modal.openCreate()}>
+              Добавить клиента
+            </Button>
+          </PermissionGate>
           <Select value={activeFilter} onValueChange={setActiveFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Фильтр по статусу" />
@@ -253,6 +257,8 @@ export default function ClientsPage() {
           searchPlaceholder="Поиск по имени клиента..."
           onEdit={modal.openEdit}
           onDelete={handleDelete}
+          editPermission="clients:update"
+          deletePermission="clients:delete"
           tableId="clients-table"
           totalCount={data?.meta?.totalCount || 0}
           pageCount={data?.meta?.totalPages || 1}
@@ -293,6 +299,6 @@ export default function ClientsPage() {
           isActive: false
         }}
       />
-    </div>
+    </ProtectedPage>
   );
 } 

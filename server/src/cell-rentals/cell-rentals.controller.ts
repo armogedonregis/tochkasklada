@@ -2,8 +2,9 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Pars
 import { CellRentalsService } from './cell-rentals.service';
 import { UpdateCellRentalDto, FindCellRentalsDto, ExtendCellRentalDto, UpdateRentalStatusDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireResourcePermission } from '../auth/decorators/resource-permission.decorator';
 import { CellRentalStatus, UserRole } from '@prisma/client';
 import { FindFreeCellRentalsDto } from './dto/find-free-cells.dto';
 import { FindGanttRentalsDto } from './dto/find-gantt-rentals.dto';
@@ -12,8 +13,7 @@ import { FindGanttRentalsDto } from './dto/find-gantt-rentals.dto';
  * Административный контроллер для управления арендами ячеек
  */
 @Controller('admin/cell-rentals')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class CellRentalsAdminController {
   constructor(private readonly cellRentalsService: CellRentalsService) {}
 
@@ -21,6 +21,7 @@ export class CellRentalsAdminController {
    * Получение всех аренд с поиском, фильтрацией и пагинацией
    */
   @Get()
+  @RequirePermissions('rentals:read')
   @HttpCode(HttpStatus.OK)
   findAll(@Query() query: FindCellRentalsDto) {
     return this.cellRentalsService.findCellRentals(query);
@@ -30,6 +31,7 @@ export class CellRentalsAdminController {
    * Получение аренды по ID
    */
   @Get(':id')
+  @RequireResourcePermission('rentals:read', 'CellRental', 'id')
   @HttpCode(HttpStatus.OK)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellRentalsService.findOne(id);
@@ -39,6 +41,7 @@ export class CellRentalsAdminController {
    * Обновление данных аренды
    */
   @Patch(':id')
+  @RequireResourcePermission('rentals:update', 'CellRental', 'id')
   @HttpCode(HttpStatus.OK)
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -51,6 +54,7 @@ export class CellRentalsAdminController {
    * Удаление аренды
    */
   @Delete(':id')
+  @RequireResourcePermission('rentals:delete', 'CellRental', 'id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellRentalsService.remove(id);
@@ -60,6 +64,7 @@ export class CellRentalsAdminController {
    * Закрытие аренды (прекращение аренды)
    */
   @Post(':id/close')
+  @RequireResourcePermission('rentals:update', 'CellRental', 'id')
   @HttpCode(HttpStatus.OK)
   closeRental(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellRentalsService.closeRental(id);
@@ -69,6 +74,7 @@ export class CellRentalsAdminController {
    * Обновление статуса аренды (новый упрощенный endpoint)
    */
   @Patch(':id/status')
+  @RequireResourcePermission('rentals:update', 'CellRental', 'id')
   @HttpCode(HttpStatus.OK)
   updateRentalStatus(@Param('id', ParseUUIDPipe) id: string, @Body() updateRentalStatusDto: UpdateRentalStatusDto) {
     return this.cellRentalsService.updateRentalStatus(id, updateRentalStatusDto);
@@ -78,6 +84,7 @@ export class CellRentalsAdminController {
    * Обновление статуса аренды (старый endpoint для обратной совместимости)
    */
   @Post(':id/update-status')
+  @RequireResourcePermission('rentals:update', 'CellRental', 'id')
   @HttpCode(HttpStatus.OK)
   updateRentalStatusLegacy(@Param('id', ParseUUIDPipe) id: string, @Body() { rentalStatus }: { rentalStatus: CellRentalStatus }) {
     return this.cellRentalsService.forceRentalStatus(id, rentalStatus);
@@ -87,6 +94,7 @@ export class CellRentalsAdminController {
    * Продление аренды (создает платеж и обновляет дату окончания)
    */
   @Post(':id/extend')
+  @RequireResourcePermission('rentals:update', 'CellRental', 'id')
   @HttpCode(HttpStatus.OK)
   extendRental(
     @Param('id', ParseUUIDPipe) id: string,
@@ -103,6 +111,7 @@ export class CellRentalsAdminController {
    * Обновление статусов всех активных аренд
    */
   @Post('update-all-statuses')
+  @RequirePermissions('rentals:update')
   @HttpCode(HttpStatus.OK)
   updateAllRentalStatuses() {
     return this.cellRentalsService.updateAllRentalStatuses();
@@ -112,6 +121,7 @@ export class CellRentalsAdminController {
    * Получение всех активных аренд для конкретного клиента
    */
   @Get('client/:clientId/active')
+  @RequirePermissions('rentals:read')
   @HttpCode(HttpStatus.OK)
   findActiveRentalsByClient(@Param('clientId', ParseUUIDPipe) clientId: string) {
     return this.cellRentalsService.findActiveRentalsByClient(clientId);
@@ -121,6 +131,7 @@ export class CellRentalsAdminController {
    * Получение всех аренд клиента (включая историю)
    */
   @Get('client/:clientId/all')
+  @RequirePermissions('rentals:read')
   @HttpCode(HttpStatus.OK)
   findAllRentalsByClient(@Param('clientId', ParseUUIDPipe) clientId: string) {
     return this.cellRentalsService.findAllRentalsByClient(clientId);
@@ -130,6 +141,7 @@ export class CellRentalsAdminController {
    * Получение истории аренд для конкретной ячейки
    */
   @Get('cell/:cellId/history')
+  @RequireResourcePermission('rentals:read', 'Cell', 'cellId')
   @HttpCode(HttpStatus.OK)
   findRentalHistoryByCell(@Param('cellId', ParseUUIDPipe) cellId: string) {
     return this.cellRentalsService.findRentalHistoryByCell(cellId);
@@ -139,6 +151,7 @@ export class CellRentalsAdminController {
    * Получение свободных ячеек
    */
   @Get('free-cells')
+  @RequirePermissions('rentals:read')
   @HttpCode(HttpStatus.OK)
   getFreeCells(@Query() query: FindFreeCellRentalsDto) {
     return this.cellRentalsService.getFreeCells(query);
@@ -148,6 +161,7 @@ export class CellRentalsAdminController {
    * Получение данных для диаграммы Ганта
    */
   @Get('gantt')
+  @RequirePermissions('rentals:read')
   @HttpCode(HttpStatus.OK)
   getGanttData(@Query() query: FindGanttRentalsDto) {
     return this.cellRentalsService.findGanttRentals(query);
@@ -158,7 +172,7 @@ export class CellRentalsAdminController {
    */
   @Post('sync-visual-statuses')
   @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.SUPERADMIN)
+  @RequirePermissions('system:admin')
   syncVisualStatuses() {
     return this.cellRentalsService.syncAllRentalVisualStatuses();
   }

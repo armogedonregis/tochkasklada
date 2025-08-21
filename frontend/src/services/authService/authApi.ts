@@ -15,10 +15,32 @@ export interface LoginResponse {
   access_token: string;
 }
 
+export interface Role {
+  id: string;
+  name: string;
+  description: string;
+  rolePermissions: Array<{
+    permission: {
+      key: string;
+      description: string;
+    };
+  }>;
+}
+
+export interface AdminRole {
+  role: Role;
+}
+
+export interface Admin {
+  id: string;
+  adminRoles: AdminRole[];
+}
+
 export interface UserData {
   id: string;
   email: string;
   role: string;
+  admin?: Admin;
 }
 
 // Расширение базового API для аутентификации

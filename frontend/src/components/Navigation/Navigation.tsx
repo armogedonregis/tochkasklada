@@ -7,6 +7,7 @@ import { useTheme } from '@/lib/theme-provider';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { useGetRequestsStatsQuery } from '@/services/requestsService/requestsApi';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 // Компоненты SVG иконок
 const ChevronLeftIcon = () => (
@@ -124,6 +125,13 @@ const GridIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
+// Добавляем иконку для ролей
+const RolesIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+);
+
 // Добавляем иконку для API документации
 const ApiDocsIcon = ({ className = "w-5 h-5" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -160,6 +168,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   // Получаем роль пользователя из Redux store
   const { user } = useSelector((state: RootState) => state.user);
   const userRole = user?.role || 'ADMIN';
+  
+  // Получаем права пользователя
+  const { canAccessPage, isSuperAdmin } = useUserPermissions();
   
   // Получаем статистику по заявкам для отображения счетчика
   const { data: requestsStats } = useGetRequestsStatsQuery();
@@ -229,114 +240,141 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
 
-        <MenuItem
-          icon={<BriefcaseIcon className="text-gray-500" />}
-          activeIcon={<BriefcaseIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Франчайзинг"
-          page={Pages.franchasing}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.franchasing, '/franchasing')}
-        />
+        {/* Франчайзинг - только для SUPERADMIN */}
+        {isSuperAdmin && (
+          <MenuItem
+            icon={<BriefcaseIcon className="text-gray-500" />}
+            activeIcon={<BriefcaseIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Франчайзинг"
+            page={Pages.franchasing}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.franchasing, '/franchasing')}
+          />
+        )}
 
-        <MenuItem
-          icon={<MapIcon className="text-gray-500" />}
-          activeIcon={<MapIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Локации"
-          page={Pages.locs}
-          // newItems={dashboardItems.freeCells}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.locs, '/locations')}
-        />
+        {/* Локации */}
+        {canAccessPage('locations') && (
+          <MenuItem
+            icon={<MapIcon className="text-gray-500" />}
+            activeIcon={<MapIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Локации"
+            page={Pages.locs}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.locs, '/locations')}
+          />
+        )}
 
-        <MenuItem
-          icon={<UsersIcon className="text-gray-500" />}
-          activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Клиенты"
-          page={Pages.clients}
-          // newItems={dashboardItems.clientsToday}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.clients, '/clients')}
-        />
+        {/* Клиенты */}
+        {canAccessPage('clients') && (
+          <MenuItem
+            icon={<UsersIcon className="text-gray-500" />}
+            activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Клиенты"
+            page={Pages.clients}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.clients, '/clients')}
+          />
+        )}
 
-        <MenuItem
-          icon={<CreditCardIcon className="text-gray-500" />}
-          activeIcon={<CreditCardIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Платежи"
-          page={Pages.payments}
-          // newItems={dashboardItems.paymentsToday}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.payments, '/payments')}
-        />
+        {/* Платежи */}
+        {canAccessPage('payments') && (
+          <MenuItem
+            icon={<CreditCardIcon className="text-gray-500" />}
+            activeIcon={<CreditCardIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Платежи"
+            page={Pages.payments}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.payments, '/payments')}
+          />
+        )}
 
-        <MenuItem
-          icon={<ListIcon className="text-gray-500" />}
-          activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Лист ожидания"
-          page={Pages.list}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.list, '/list')}
-        />
+        {/* Лист ожидания */}
+        {canAccessPage('list') && (
+          <MenuItem
+            icon={<ListIcon className="text-gray-500" />}
+            activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Лист ожидания"
+            page={Pages.list}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.list, '/list')}
+          />
+        )}
 
-        <MenuItem
-          icon={<ListIcon className="text-gray-500" />}
-          activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Заявки"
-          page={Pages.requests}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.requests, '/requests')}
-          newItems={requestsStats?.byStatus?.WAITING || 0}
-        />
+        {/* Заявки */}
+        {canAccessPage('requests') && (
+          <MenuItem
+            icon={<ListIcon className="text-gray-500" />}
+            activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Заявки"
+            page={Pages.requests}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.requests, '/requests')}
+            newItems={requestsStats?.byStatus?.WAITING || 0}
+          />
+        )}
 
-        <MenuItem
-          icon={<StatisticsIcon className="text-gray-500" />}
-          activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Гант"
-          page={Pages.gantt}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.gantt, '/gantt')}
-        />
+        {/* Гант */}
+        {canAccessPage('gantt') && (
+          <MenuItem
+            icon={<StatisticsIcon className="text-gray-500" />}
+            activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Гант"
+            page={Pages.gantt}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.gantt, '/gantt')}
+          />
+        )}
 
-        <MenuItem
-          icon={<FreeCellIcon className="text-gray-500" />}
-          activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Аренды ячеек"
-          page={Pages.cellRentals}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.cellRentals, '/cell-rentals')}
-        />
+        {/* Аренды ячеек */}
+        {canAccessPage('cell-rentals') && (
+          <MenuItem
+            icon={<FreeCellIcon className="text-gray-500" />}
+            activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Аренды ячеек"
+            page={Pages.cellRentals}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.cellRentals, '/cell-rentals')}
+          />
+        )}
 
-        <MenuItem
-          icon={<FreeCellIcon className="text-gray-500" />}
-          activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Свободные ячейки"
-          page={Pages.freeCells}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.freeCells, '/free-cells')}
-        />
+        {/* Свободные ячейки */}
+        {canAccessPage('free-cells') && (
+          <MenuItem
+            icon={<FreeCellIcon className="text-gray-500" />}
+            activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Свободные ячейки"
+            page={Pages.freeCells}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.freeCells, '/free-cells')}
+          />
+        )}
 
-        <MenuItem
-          icon={<StatisticsIcon className="text-gray-500" />}
-          activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Статистика"
-          page={Pages.statistics}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.statistics, '/statistics')}
-        />
+        {/* Статистика */}
+        {canAccessPage('statistics') && (
+          <MenuItem
+            icon={<StatisticsIcon className="text-gray-500" />}
+            activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Статистика"
+            page={Pages.statistics}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.statistics, '/statistics')}
+          />
+        )}
 
         {/* Разделитель */}
         <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
 
-        {isNavOpened && (
+        {isSuperAdmin && isNavOpened && (
           <div className="mb-2 ml-4">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
               Управление
@@ -344,55 +382,96 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
 
-        <MenuItem
-          icon={<BoxIcon className="text-gray-500" />}
-          activeIcon={<BoxIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Размеры"
-          page={Pages.sizes}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.sizes, '/sizes')}
-        />
+        {/* Размеры */}
+        {canAccessPage('sizes') && (
+          <MenuItem
+            icon={<BoxIcon className="text-gray-500" />}
+            activeIcon={<BoxIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Размеры"
+            page={Pages.sizes}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.sizes, '/sizes')}
+          />
+        )}
 
-        <MenuItem
-          icon={<StatusIcon className="text-gray-500" />}
-          activeIcon={<StatusIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Статусы ячеек"
-          page={Pages.cellStatuses}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.cellStatuses, '/cell-statuses')}
-        />
+        {/* Статусы ячеек */}
+        {canAccessPage('cell-statuses') && (
+          <MenuItem
+            icon={<StatusIcon className="text-gray-500" />}
+            activeIcon={<StatusIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Статусы ячеек"
+            page={Pages.cellStatuses}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.cellStatuses, '/cell-statuses')}
+          />
+        )}
 
-        <MenuItem
-          icon={<CogIcon className="text-gray-500" />}
-          activeIcon={<CogIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Настройки"
-          page={Pages.settings}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.settings, '/settings')}
-        />
+        {/* Настройки */}
+        {canAccessPage('settings') && (
+          <MenuItem
+            icon={<CogIcon className="text-gray-500" />}
+            activeIcon={<CogIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Настройки"
+            page={Pages.settings}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.settings, '/settings')}
+          />
+        )}
 
-        <MenuItem
-          icon={<RubleIcon className="text-gray-500" />}
-          activeIcon={<RubleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Тест Тбанк"
-          page={Pages.tinkoffTest}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.tinkoffTest, '/tinkoff-test')}
-        />
+        {/* Роли - показываем только SUPERADMIN */}
+        {isSuperAdmin && (
+          <MenuItem
+            icon={<RolesIcon className="text-gray-500" />}
+            activeIcon={<RolesIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Роли"
+            page={Pages.roles}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.roles, '/roles')}
+          />
+        )}
 
-        <MenuItem
-          icon={<GridIcon className="text-gray-500" />}
-          activeIcon={<GridIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
-          pageName="Панели"
-          page={Pages.panels}
-          isNavOpened={isNavOpened}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.panels, '/panels')}
-        />
+        {/* Тест Тбанк - только для SUPERADMIN */}
+        {isSuperAdmin && (
+          <MenuItem
+            icon={<RubleIcon className="text-gray-500" />}
+            activeIcon={<RubleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Тест Тбанк"
+            page={Pages.tinkoffTest}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.tinkoffTest, '/tinkoff-test')}
+          />
+        )}
+
+        {/* Панели - только для SUPERADMIN */}
+        {isSuperAdmin && (
+          <MenuItem
+            icon={<GridIcon className="text-gray-500" />}
+            activeIcon={<GridIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Панели"
+            page={Pages.panels}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.panels, '/panels')}
+          />
+        )}
+
+        {/* Пользователи - показываем только SUPERADMIN */}
+        {isSuperAdmin && (
+          <MenuItem
+            icon={<UsersIcon className="text-gray-500" />}
+            activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Пользователи"
+            page={Pages.users}
+            isNavOpened={isNavOpened}
+            currentPage={currentPage}
+            onClick={() => navigateTo(Pages.users, '/users')}
+          />
+        )}
 
       </div>
 
@@ -447,7 +526,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         )}
 
         {/* API Документация (видна только для SUPERADMIN) */}
-        {userRole === 'SUPERADMIN' && (
+        {isSuperAdmin && (
           <MenuItem
             icon={<ApiDocsIcon className="text-gray-500" />}
             activeIcon={<ApiDocsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
@@ -459,8 +538,8 @@ export const Navigation: React.FC<NavigationProps> = ({
           />
         )}
 
-        {/* Страница логов – показываем админам */}
-        {userRole === 'SUPERADMIN' ? (
+        {/* Страница логов – показываем только SUPERADMIN */}
+        {isSuperAdmin && (
           <MenuItem
             icon={<LogsIcon className="text-gray-500" />}
             activeIcon={<LogsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
@@ -470,8 +549,9 @@ export const Navigation: React.FC<NavigationProps> = ({
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.logs, '/logs')}
           />
-        ) : null}
+        )}
 
+        {/* Профиль - доступен всем */}
         <MenuItem
           icon={<UserCircleIcon className="text-gray-500" />}
           activeIcon={<UserCircleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
@@ -482,6 +562,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           onClick={() => navigateTo(Pages.profile, '/profile')}
         />
 
+        {/* Выход - доступен всем */}
         <MenuItem
           icon={<LogoutIcon className="text-gray-500" />}
           activeIcon={<LogoutIcon className="text-red-600" />}

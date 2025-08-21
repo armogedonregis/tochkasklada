@@ -21,7 +21,9 @@ export enum Pages {
   logs = 'logs',
   gantt = 'gantt',
   list = 'list',
-  requests = 'requests'
+  requests = 'requests',
+  roles = 'roles',
+  users = 'users'
   // Добавьте другие необходимые страницы из вашего Flutter-проекта
 }
 

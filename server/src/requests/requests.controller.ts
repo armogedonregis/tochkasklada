@@ -17,8 +17,8 @@ import {
 import { RequestsService } from './requests.service';
 import { CreateRequestDto, FindRequestsDto, CloseRequestDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('requests')
@@ -41,8 +41,8 @@ export class RequestsController {
    * Получение всех заявок с фильтрацией и пагинацией (только для админов)
    */
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('requests:read')
   async getAllRequests(@Query() queryParams: FindRequestsDto) {
     this.logger.log('Getting all requests with filters');
     return this.requestsService.getAllRequests(queryParams);
@@ -52,8 +52,8 @@ export class RequestsController {
    * Получение заявки по ID (только для админов)
    */
   @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('requests:read')
   async getRequestById(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.log(`Getting request by ID: ${id}`);
     return this.requestsService.getRequestById(id);
@@ -63,8 +63,8 @@ export class RequestsController {
    * Закрытие заявки (только для админов)
    */
   @Patch(':id/close')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('requests:close')
   @HttpCode(HttpStatus.OK)
   async closeRequest(
     @Param('id', ParseUUIDPipe) id: string,
@@ -79,8 +79,8 @@ export class RequestsController {
    * Перенос заявки в лист ожидания (только для админов)
    */
   @Patch(':id/move-to-list')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('requests:update')
   @HttpCode(HttpStatus.OK)
   async moveToList(
     @Param('id', ParseUUIDPipe) id: string,
@@ -95,8 +95,8 @@ export class RequestsController {
    * Получение статистики по заявкам (только для админов)
    */
   @Get('stats/overview')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('requests:read')
   async getRequestsStats() {
     this.logger.log('Getting requests statistics');
     return this.requestsService.getRequestsStats();
@@ -106,8 +106,8 @@ export class RequestsController {
    * Удаление заявки (только для суперадминов)
    */
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('system:admin')
   @HttpCode(HttpStatus.OK)
   async deleteRequest(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.log(`Deleting request ${id}`);
