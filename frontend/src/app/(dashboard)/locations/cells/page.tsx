@@ -271,6 +271,8 @@ export default function CellsPage() {
           searchPlaceholder="Поиск по названию ячейки..."
           onEdit={modal.openEdit}
           onDelete={handleDelete}
+          editPermission="cells:update"
+          deletePermission="cells:delete"
           tableId="cells-table"
           totalCount={totalCount}
           pageCount={pageCount}

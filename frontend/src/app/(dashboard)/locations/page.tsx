@@ -135,6 +135,8 @@ export default function CitiesPage() {
         searchPlaceholder="Поиск по названию города..."
         onEdit={modal.openEdit}
         onDelete={openDeleteModal}
+        editPermission="cities:update"
+        deletePermission="cities:delete"
         tableId="cities-table"
         totalCount={data?.meta.totalCount || 0}
         pageCount={data?.meta.totalPages || 0}

@@ -385,6 +385,8 @@ export default function ContainersPage() {
           }
           onEdit={modal.openEdit}
           onDelete={openDeleteModal}
+          editPermission="containers:update"
+          deletePermission="containers:delete"
           tableId="containers-table"
           totalCount={totalCount}
           pageCount={pageCount}

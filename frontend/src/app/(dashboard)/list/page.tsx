@@ -327,6 +327,8 @@ export default function ListPage() {
             searchColumn="name"
             searchPlaceholder="Поиск по имени, email или телефону..."
             tableId="waiting-lists-table"
+            editPermission="lists:update"
+            deletePermission="lists:delete"
             totalCount={totalCount}
             pageCount={pageCount}
             onPaginationChange={tableControls.handlePaginationChange}

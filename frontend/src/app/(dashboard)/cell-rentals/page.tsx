@@ -531,6 +531,8 @@ export default function CellRentalsPage() {
         columns={columns}
         onEdit={modal.openEdit}
         onDelete={handleDelete}
+        editPermission="rentals:update"
+        deletePermission="rentals:delete"
         tableId="payments-table"
         totalCount={totalCount}
         pageCount={pageCount}

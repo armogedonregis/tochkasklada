@@ -176,6 +176,8 @@ export default function LocationsPage() {
         searchPlaceholder="Поиск по названию локации..."
         onEdit={modal.openEdit}
         onDelete={openDeleteModal}
+        editPermission="locations:update"
+        deletePermission="locations:delete"
         tableId="locations-table"
         totalCount={totalCount}
         pageCount={pageCount}

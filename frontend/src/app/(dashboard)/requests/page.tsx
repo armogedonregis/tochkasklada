@@ -260,6 +260,8 @@ export default function RequestsPage() {
                 searchColumn="name"
                 searchPlaceholder="Поиск по имени, email или телефону..."
                 tableId="requests-waiting"
+                editPermission="requests:update"
+                deletePermission="requests:delete"
                 totalCount={totalCount}
                 pageCount={pageCount}
                 onPaginationChange={tableControls.handlePaginationChange}
@@ -282,6 +284,8 @@ export default function RequestsPage() {
                 searchColumn="name"
                 searchPlaceholder="Поиск по имени, email или телефону..."
                 tableId="requests-closed"
+                editPermission="requests:update"
+                deletePermission="requests:delete"
                 totalCount={totalCount}
                 pageCount={pageCount}
                 onPaginationChange={tableControls.handlePaginationChange}

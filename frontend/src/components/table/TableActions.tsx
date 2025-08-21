@@ -12,7 +12,7 @@ interface TableActionsProps {
   deletePermission?: string;
 }
 
-export const TableActions: React.FC<TableActionsProps> = ({ 
+export const TableActions: React.FC<TableActionsProps> = ({
   onEdit,
   onDelete,
   editPermission,
@@ -20,7 +20,7 @@ export const TableActions: React.FC<TableActionsProps> = ({
 }) => {
   return (
     <div className="flex gap-2">
-      {/* <PermissionGate permissions={editPermission ? [editPermission] : []}> */}
+      <PermissionGate permissions={editPermission ? [editPermission] : []}>
         <Button
           variant="outline"
           size="sm"
@@ -32,8 +32,8 @@ export const TableActions: React.FC<TableActionsProps> = ({
         >
           <Edit className="h-4 w-4" />
         </Button>
-      {/* </PermissionGate> */}
-      {/* <PermissionGate permissions={deletePermission ? [deletePermission] : []}> */}
+      </PermissionGate>
+      <PermissionGate permissions={deletePermission ? [deletePermission] : []}>
         <Button
           variant="destructive"
           size="sm"
@@ -45,7 +45,7 @@ export const TableActions: React.FC<TableActionsProps> = ({
         >
           <Trash2 className="h-4 w-4" />
         </Button>
-      {/* </PermissionGate> */}
+      </PermissionGate>
     </div>
   );
 }; 
