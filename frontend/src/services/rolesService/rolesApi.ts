@@ -22,7 +22,7 @@ export const rolesApi = api.injectEndpoints({
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: ['Roles'],
+      invalidatesTags: ['Roles', 'CurrentUser'],
     }),
 
     // Обновить роль
@@ -35,6 +35,7 @@ export const rolesApi = api.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [
         { type: 'Roles', id },
         'Roles',
+        'CurrentUser', // Обновляем данные пользователя при изменении ролей
       ],
     }),
 
@@ -44,7 +45,7 @@ export const rolesApi = api.injectEndpoints({
         url: `admin/roles/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Roles'],
+      invalidatesTags: ['Roles', 'CurrentUser'],
     }),
 
     // Получить все права

@@ -49,7 +49,6 @@ interface PaymentFormFields {
 
 const PaymentsPage = () => {
   const [expandedPayments, setExpandedPayments] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('all');
 
   // Используем хук для управления состоянием таблицы
   const tableControls = useTableControls<PaymentSortField>({
@@ -63,7 +62,6 @@ const PaymentsPage = () => {
     search: tableControls.queryParams.search,
     sortBy: tableControls.queryParams.sortBy,
     sortDirection: tableControls.queryParams.sortDirection as SortDirection,
-    onlyPaid: activeTab === 'paid' ? true : activeTab === 'unpaid' ? false : undefined
   });
 
   const [getCells] = useLazyGetAdminCellsQuery();
@@ -303,33 +301,6 @@ const PaymentsPage = () => {
       }
     },
     {
-      accessorKey: 'status',
-      header: 'Статус',
-      cell: ({ row }) => {
-        const status = row.original.status;
-
-        return (
-          <div className="flex items-center space-x-2">
-            <Badge variant={status ? "default" : "secondary"}>
-              {status ? 'Оплачен' : 'Не оплачен'}
-            </Badge>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => handleToggleStatus(row.original.id, !status)}
-              title={status ? 'Отметить как неоплаченный' : 'Отметить как оплаченный'}
-            >
-              {status ?
-                <X className="h-4 w-4 text-red-500" /> :
-                <Check className="h-4 w-4 text-green-500" />
-              }
-            </Button>
-          </div>
-        );
-      },
-    },
-    {
       id: 'createdAt',
       header: 'Дата создания',
       accessorFn: (row) => row.createdAt,
@@ -407,15 +378,6 @@ const PaymentsPage = () => {
         </Button>
       </div>
 
-      {/* Вкладки */}
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-6 px-4">
-        <TabsList>
-          <TabsTrigger value="all">Все платежи</TabsTrigger>
-          <TabsTrigger value="paid">Оплаченные</TabsTrigger>
-          <TabsTrigger value="unpaid">Неоплаченные</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       {/* Таблица */}
       <BaseTable
         data={payments}
@@ -425,6 +387,8 @@ const PaymentsPage = () => {
         onEdit={modal.openEdit}
         onDelete={handleDelete}
         tableId="payments-table"
+        editPermission='payments:update'
+        deletePermission='payments:delete'
         totalCount={totalCount}
         pageCount={pageCount}
         onPaginationChange={tableControls.handlePaginationChange}

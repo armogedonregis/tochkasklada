@@ -1,5 +1,6 @@
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
+import { useGetCurrentUserQuery } from './authApi';
 
 // Интерфейс для прав пользователя
 export interface UserPermissions {
@@ -7,32 +8,27 @@ export interface UserPermissions {
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
+  isLoading: boolean;
 }
 
 // Хук для получения прав пользователя
 export const useUserPermissions = (): UserPermissions => {
   const { user } = useSelector((state: RootState) => state.user);
+  const { data: currentUser, isLoading, error } = useGetCurrentUserQuery(undefined, {
+    // Принудительно загружаем данные пользователя если он аутентифицирован
+    skip: !user?.id,
+    // Кэшируем на 5 минут
+    refetchOnMountOrArgChange: true,
+  });
   
   // Если пользователь SUPERADMIN, у него все права
   if (user?.role === 'SUPERADMIN') {
-    const allPermissions = new Set([
-      'users:read', 'users:create', 'users:update', 'users:delete',
-      'roles:read', 'roles:create', 'roles:update', 'roles:delete',
-      'permissions:read', 'permissions:assign',
-      'cells:read', 'cells:create', 'cells:update', 'cells:delete',
-      'rentals:read', 'rentals:create', 'rentals:update', 'rentals:delete',
-      'clients:read', 'clients:create', 'clients:update', 'clients:delete',
-      'requests:read', 'requests:update', 'requests:close',
-      'lists:read', 'lists:create', 'lists:update', 'lists:close',
-      'payments:read', 'payments:create', 'payments:update',
-      'system:admin', 'system:logs', 'system:settings'
-    ]);
-
     return {
-      permissions: allPermissions,
-      hasPermission: (permission: string) => allPermissions.has(permission),
-      hasAnyPermission: (permissions: string[]) => permissions.some(p => allPermissions.has(p)),
-      hasAllPermissions: (permissions: string[]) => permissions.every(p => allPermissions.has(p)),
+      permissions: new Set(), // Пустой Set для SUPERADMIN чтобы PermissionGate работал правильно
+      hasPermission: (permission: string) => true, // SUPERADMIN имеет все права
+      hasAnyPermission: (permissions: string[]) => true, // SUPERADMIN имеет все права
+      hasAllPermissions: (permissions: string[]) => true, // SUPERADMIN имеет все права
+      isLoading: false,
     };
   }
 
@@ -43,26 +39,40 @@ export const useUserPermissions = (): UserPermissions => {
       hasPermission: () => false,
       hasAnyPermission: () => false,
       hasAllPermissions: () => false,
+      isLoading: false,
     };
   }
 
-  // TODO: Здесь нужно будет получать права из API
-  // Пока возвращаем базовые права для админа
-  const adminPermissions = new Set([
-    'users:read',
-    'cells:read', 'cells:update',
-    'rentals:read', 'rentals:create', 'rentals:update',
-    'clients:read', 'clients:create', 'clients:update',
-    'requests:read', 'requests:update', 'requests:close',
-    'lists:read', 'lists:create', 'lists:update', 'lists:close',
-    'payments:read', 'payments:create', 'payments:update',
-  ]);
+  // Если данные еще загружаются, возвращаем пустые права
+  if (isLoading || !currentUser) {
+    return {
+      permissions: new Set(),
+      hasPermission: () => false,
+      hasAnyPermission: () => false,
+      hasAllPermissions: () => false,
+      isLoading: true,
+    };
+  }
+
+  // Собираем все права из ролей пользователя
+  const userPermissions = new Set<string>();
+  
+  if (currentUser.admin?.adminRoles) {
+    currentUser.admin.adminRoles.forEach(adminRole => {
+      if (adminRole.role.rolePermissions) {
+        adminRole.role.rolePermissions.forEach(rolePermission => {
+          userPermissions.add(rolePermission.permission.key);
+        });
+      }
+    });
+  }
 
   return {
-    permissions: adminPermissions,
-    hasPermission: (permission: string) => adminPermissions.has(permission),
-    hasAnyPermission: (permissions: string[]) => permissions.some(p => adminPermissions.has(p)),
-    hasAllPermissions: (permissions: string[]) => permissions.every(p => adminPermissions.has(p)),
+    permissions: userPermissions,
+    hasPermission: (permission: string) => userPermissions.has(permission),
+    hasAnyPermission: (permissions: string[]) => permissions.some(p => userPermissions.has(p)),
+    hasAllPermissions: (permissions: string[]) => permissions.every(p => userPermissions.has(p)),
+    isLoading: false,
   };
 };
 
@@ -74,6 +84,12 @@ export const PermissionGate: React.FC<{
   fallback?: React.ReactNode;
 }> = ({ permissions, requireAll = false, children, fallback = null }) => {
   const userPermissions = useUserPermissions();
+  
+  // SUPERADMIN имеет доступ ко всему
+  if (userPermissions.permissions.size === 0) {
+    // Это SUPERADMIN (у него permissions = new Set())
+    return children;
+  }
   
   const hasAccess = requireAll 
     ? userPermissions.hasAllPermissions(permissions)

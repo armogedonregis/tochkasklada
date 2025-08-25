@@ -57,6 +57,7 @@
 
     --radius: 0.5rem
   }
+
   .dark {
 
     --background: 0 0% 3.9%;
@@ -115,7 +116,161 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Мобильные стили */
+@layer utilities {
+
+  /* Отключаем выделение текста на мобильных */
+  .no-select {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Улучшаем touch-события */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Скрываем скроллбар на мобильных */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Адаптивные отступы */
+  .mobile-padding {
+    @apply px-4 py-4;
+  }
+
+  @media (min-width: 768px) {
+    .mobile-padding {
+      @apply px-6 py-6;
+    }
+  }
+
+  /* Мобильная навигация */
+  .mobile-nav-overlay {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* Специальные переходы для мобильного меню */
+  .mobile-menu-transition {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+
+  .mobile-overlay-transition {
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    will-change: opacity;
+  }
+
+  /* Мобильный свитчер темы */
+  .mobile-theme-switcher {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-theme-switcher button {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-theme-switcher button:hover {
+    transform: scale(1.05);
+  }
+
+  .mobile-theme-switcher button:active {
+    transform: scale(0.95);
+  }
+
+  /* Анимация для активной кнопки темы */
+  .mobile-theme-switcher button.active {
+    animation: themeButtonPulse 0.3s ease-in-out;
+  }
+
+  @keyframes themeButtonPulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  /* Мобильный свитчер темы - улучшенные стили */
+  @media (max-width: 768px) {
+    .theme-switcher-mobile button {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .theme-switcher-mobile button:active {
+      transform: scale(0.95);
+    }
+
+    .theme-switcher-mobile button.active {
+      animation: themeButtonPulse 0.3s ease-in-out;
+    }
+  }
+
+  /* Мобильная адаптация таблиц */
+  @media (max-width: 768px) {
+    .table-mobile-optimized {
+      font-size: 14px;
+    }
+
+    .table-mobile-optimized th,
+    .table-mobile-optimized td {
+      padding: 12px 8px;
+    }
+
+    .table-mobile-optimized .table-actions {
+      gap: 8px;
+    }
+
+    .table-mobile-optimized .table-actions button {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
+  /* Улучшенная прокрутка для мобильных */
+  .table-scroll-mobile {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .table-scroll-mobile::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .table-scroll-mobile::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  .table-scroll-mobile::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+
+  .table-scroll-mobile::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
   }
 }

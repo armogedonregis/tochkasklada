@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { RootState } from "@/store/store";
 import { logout } from "@/store/slice/userSlice";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 export default function ProfileButton() {
   const { user, isAuthenticated } = useSelector((state: RootState) => state.user);
@@ -47,14 +46,14 @@ export default function ProfileButton() {
       <Button 
         variant="ghost" 
         size="sm" 
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 touch-manipulation"
         onClick={() => setIsOpen(!isOpen)}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user">
           <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
-        <span>{user.email}</span>
+        <span className="hidden sm:inline">{user.email}</span>
       </Button>
 
       {isOpen && (
@@ -71,7 +70,7 @@ export default function ProfileButton() {
             </div>
           </div>
           <button 
-            className="w-full text-left p-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            className="w-full text-left p-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer touch-manipulation"
             onClick={handleLogout}
           >
             Выйти

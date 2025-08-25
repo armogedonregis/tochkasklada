@@ -61,6 +61,7 @@ export const authApi = api.injectEndpoints({
         url: '/users/me',
         method: 'GET',
       }),
+      providesTags: ['CurrentUser'],
     }),
   }),
   overrideExisting: false,

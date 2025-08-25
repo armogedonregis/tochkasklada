@@ -46,7 +46,7 @@ export default function GanttPage() {
   }
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full overflow-hidden">
       {rentalsData?.data && <TimelineGantt tasks={rentalsData.data} />}
     </div>
   );

@@ -7,7 +7,9 @@ import { useTheme } from '@/lib/theme-provider';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { useGetRequestsStatsQuery } from '@/services/requestsService/requestsApi';
-import { useUserPermissions } from '@/hooks/useUserPermissions';
+
+import { X } from 'lucide-react';
+import { useUserPermissions } from '@/services/authService/userPermissions';
 
 // Компоненты SVG иконок
 const ChevronLeftIcon = () => (
@@ -155,13 +157,19 @@ const LogsIcon = ({ className = "w-5 h-5" }) => (
 
 interface NavigationProps {
   initialIsOpen?: boolean;
+  isMobile?: boolean;
+  onClose?: () => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
   initialIsOpen = true,
+  isMobile = false,
+  onClose,
 }) => {
   const [isNavOpened, setIsNavOpened] = useState(initialIsOpen);
   const [currentPage, setCurrentPage] = useState<Pages | null>(null);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
 
@@ -170,10 +178,46 @@ export const Navigation: React.FC<NavigationProps> = ({
   const userRole = user?.role || 'ADMIN';
   
   // Получаем права пользователя
-  const { canAccessPage, isSuperAdmin } = useUserPermissions();
+  const { hasPermission, hasAnyPermission, hasAllPermissions } = useUserPermissions();
+  
+  // Проверяем, является ли пользователь SUPERADMIN
+  const isSuperAdmin = userRole === 'SUPERADMIN';
+  
+  // Функция для проверки доступа к странице
+  const canAccessPage = (permission: string) => {
+    return isSuperAdmin || hasPermission(permission);
+  };
   
   // Получаем статистику по заявкам для отображения счетчика
   const { data: requestsStats } = useGetRequestsStatsQuery();
+
+  // Обработка свайпов для мобильного меню
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd || !isMobile || !onClose) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+
+    if (isLeftSwipe) {
+      // Добавляем небольшую задержку для плавности
+      setTimeout(() => {
+        onClose();
+      }, 100);
+    }
+  };
 
   // Имитация сохранения состояния
   useEffect(() => {
@@ -201,18 +245,34 @@ export const Navigation: React.FC<NavigationProps> = ({
   const navigateTo = (page: Pages, path: string) => {
     setCurrentPage(page);
     router.push(path);
+    // Закрываем мобильное меню после навигации
+    if (isMobile && onClose) {
+      // Небольшая задержка для плавности
+      setTimeout(() => {
+        onClose();
+      }, 100);
+    }
   };
 
   const toggleNav = () => {
     setIsNavOpened(!isNavOpened);
   };
 
+  // В мобильном режиме всегда показываем полное меню
+  const shouldShowFullMenu = isMobile || isNavOpened;
+
   return (
-    <div className={`flex flex-col h-screen bg-white dark:bg-gray-900 transition-all duration-300 ease-in-out ${isNavOpened ? 'w-64' : 'w-20'
-      } border-r border-gray-200 dark:border-gray-700`}>
+    <div 
+      className={`flex flex-col h-screen bg-white dark:bg-gray-900 transition-all duration-300 ease-in-out ${
+        isMobile ? 'w-full' : shouldShowFullMenu ? 'w-64' : 'w-20'
+      } border-r border-gray-200 dark:border-gray-700`}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Верхняя часть с логотипом */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        {isNavOpened ? (
+        {shouldShowFullMenu ? (
           <div className="flex items-center">
             <span className="text-xl font-bold text-[#F62D40] dark:text-[#F8888F]">Точка.</span>
             <span className="text-xl font-bold ml-1 text-gray-900 dark:text-white">Склада</span>
@@ -222,17 +282,31 @@ export const Navigation: React.FC<NavigationProps> = ({
             <span className="text-xl font-bold text-[#F62D40] dark:text-[#F8888F]">Т</span>
           </div>
         )}
-        <button
-          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
-          onClick={toggleNav}
-        >
-          {isNavOpened ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-        </button>
+        <div className="flex items-center space-x-2">
+          {/* Кнопка закрытия для мобильного меню */}
+          {isMobile && onClose && (
+            <button
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white p-1"
+              onClick={onClose}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+          {/* Кнопка сворачивания/разворачивания (только для десктопа) */}
+          {!isMobile && (
+            <button
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+              onClick={toggleNav}
+            >
+              {isNavOpened ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Основное меню */}
-      <div className="flex-grow overflow-y-auto py-4 px-3">
-        {isNavOpened && (
+      <div className="flex-grow overflow-y-auto py-4 px-3 scrollbar-hide">
+        {shouldShowFullMenu && (
           <div className="mb-2 ml-4">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
               Бизнес
@@ -241,78 +315,78 @@ export const Navigation: React.FC<NavigationProps> = ({
         )}
 
         {/* Франчайзинг - только для SUPERADMIN */}
-        {isSuperAdmin && (
+        {canAccessPage('franchasing') && (
           <MenuItem
             icon={<BriefcaseIcon className="text-gray-500" />}
             activeIcon={<BriefcaseIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Франчайзинг"
             page={Pages.franchasing}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.franchasing, '/franchasing')}
           />
         )}
 
         {/* Локации */}
-        {canAccessPage('locations') && (
+        {canAccessPage('locations:read') && (
           <MenuItem
             icon={<MapIcon className="text-gray-500" />}
             activeIcon={<MapIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Локации"
             page={Pages.locs}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.locs, '/locations')}
           />
         )}
 
         {/* Клиенты */}
-        {canAccessPage('clients') && (
+        {canAccessPage('clients:read') && (
           <MenuItem
             icon={<UsersIcon className="text-gray-500" />}
             activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Клиенты"
             page={Pages.clients}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.clients, '/clients')}
           />
         )}
 
         {/* Платежи */}
-        {canAccessPage('payments') && (
+        {canAccessPage('payments:read') && (
           <MenuItem
             icon={<CreditCardIcon className="text-gray-500" />}
             activeIcon={<CreditCardIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Платежи"
             page={Pages.payments}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.payments, '/payments')}
           />
         )}
 
         {/* Лист ожидания */}
-        {canAccessPage('list') && (
+        {canAccessPage('lists:read') && (
           <MenuItem
             icon={<ListIcon className="text-gray-500" />}
             activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Лист ожидания"
             page={Pages.list}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.list, '/list')}
           />
         )}
 
         {/* Заявки */}
-        {canAccessPage('requests') && (
+        {canAccessPage('requests:read') && (
           <MenuItem
             icon={<ListIcon className="text-gray-500" />}
             activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Заявки"
             page={Pages.requests}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.requests, '/requests')}
             newItems={requestsStats?.byStatus?.WAITING || 0}
@@ -320,52 +394,52 @@ export const Navigation: React.FC<NavigationProps> = ({
         )}
 
         {/* Гант */}
-        {canAccessPage('gantt') && (
+        {canAccessPage('gantt:read') && (
           <MenuItem
             icon={<StatisticsIcon className="text-gray-500" />}
             activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Гант"
             page={Pages.gantt}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.gantt, '/gantt')}
           />
         )}
 
         {/* Аренды ячеек */}
-        {canAccessPage('cell-rentals') && (
+        {canAccessPage('rentals:read') && (
           <MenuItem
             icon={<FreeCellIcon className="text-gray-500" />}
             activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Аренды ячеек"
             page={Pages.cellRentals}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.cellRentals, '/cell-rentals')}
           />
         )}
 
         {/* Свободные ячейки */}
-        {canAccessPage('free-cells') && (
+        {canAccessPage('cells:read') && (
           <MenuItem
             icon={<FreeCellIcon className="text-gray-500" />}
             activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Свободные ячейки"
             page={Pages.freeCells}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.freeCells, '/free-cells')}
           />
         )}
 
         {/* Статистика */}
-        {canAccessPage('statistics') && (
+        {canAccessPage('statistics:read') && (
           <MenuItem
             icon={<StatisticsIcon className="text-gray-500" />}
             activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Статистика"
             page={Pages.statistics}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.statistics, '/statistics')}
           />
@@ -374,7 +448,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         {/* Разделитель */}
         <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
 
-        {isSuperAdmin && isNavOpened && (
+        {(canAccessPage('system:admin') || isSuperAdmin) && shouldShowFullMenu && (
           <div className="mb-2 ml-4">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
               Управление
@@ -383,91 +457,91 @@ export const Navigation: React.FC<NavigationProps> = ({
         )}
 
         {/* Размеры */}
-        {canAccessPage('sizes') && (
+        {canAccessPage('sizes:read') && (
           <MenuItem
             icon={<BoxIcon className="text-gray-500" />}
             activeIcon={<BoxIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Размеры"
             page={Pages.sizes}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.sizes, '/sizes')}
           />
         )}
 
         {/* Статусы ячеек */}
-        {canAccessPage('cell-statuses') && (
+        {canAccessPage('cell-statuses:read') && (
           <MenuItem
             icon={<StatusIcon className="text-gray-500" />}
             activeIcon={<StatusIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Статусы ячеек"
             page={Pages.cellStatuses}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.cellStatuses, '/cell-statuses')}
           />
         )}
 
         {/* Настройки */}
-        {canAccessPage('settings') && (
+        {canAccessPage('settings:read') && (
           <MenuItem
             icon={<CogIcon className="text-gray-500" />}
             activeIcon={<CogIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Настройки"
             page={Pages.settings}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.settings, '/settings')}
           />
         )}
 
         {/* Роли - показываем только SUPERADMIN */}
-        {isSuperAdmin && (
+        {canAccessPage('roles:read') && (
           <MenuItem
             icon={<RolesIcon className="text-gray-500" />}
             activeIcon={<RolesIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Роли"
             page={Pages.roles}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.roles, '/roles')}
           />
         )}
 
         {/* Тест Тбанк - только для SUPERADMIN */}
-        {isSuperAdmin && (
+        {canAccessPage('tinkoff-test:read') && (
           <MenuItem
             icon={<RubleIcon className="text-gray-500" />}
             activeIcon={<RubleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Тест Тбанк"
             page={Pages.tinkoffTest}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.tinkoffTest, '/tinkoff-test')}
           />
         )}
 
         {/* Панели - только для SUPERADMIN */}
-        {isSuperAdmin && (
+        {canAccessPage('panels:read') && (
           <MenuItem
             icon={<GridIcon className="text-gray-500" />}
             activeIcon={<GridIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Панели"
             page={Pages.panels}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.panels, '/panels')}
           />
         )}
 
         {/* Пользователи - показываем только SUPERADMIN */}
-        {isSuperAdmin && (
+        {canAccessPage('users:read') && (
           <MenuItem
             icon={<UsersIcon className="text-gray-500" />}
             activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Пользователи"
             page={Pages.users}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.users, '/users')}
           />
@@ -477,7 +551,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
       {/* Профиль пользователя */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-        {isNavOpened && (
+        {shouldShowFullMenu && (
           <div className="mb-2 ml-4">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
               Тема
@@ -485,9 +559,10 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
 
-        {isNavOpened ? (
+        {shouldShowFullMenu ? (
           <div className="mb-4 px-2">
-            <div className="flex items-center justify-between rounded-lg bg-gray-100 dark:bg-gray-800 p-1.5">
+            {/* Десктопная версия свитчера */}
+            <div className="hidden md:flex items-center justify-between rounded-lg bg-gray-100 dark:bg-gray-800 p-1.5">
               <button
                 onClick={() => theme === 'dark' && toggleTheme()}
                 className={`flex items-center space-x-2 rounded-md py-1.5 px-2.5 transition-all ${theme === 'light'
@@ -509,6 +584,38 @@ export const Navigation: React.FC<NavigationProps> = ({
                 <span className="text-xs font-medium">Темная</span>
               </button>
             </div>
+
+            {/* Мобильная версия свитчера */}
+            <div className="md:hidden">
+              <div className="text-center mb-2">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Тема: {theme === 'light' ? 'Светлая' : 'Темная'}
+                </span>
+              </div>
+              <div className="flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 p-1.5 theme-switcher-mobile">
+                <button
+                  onClick={() => theme === 'dark' && toggleTheme()}
+                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-all touch-manipulation ${
+                    theme === 'light'
+                      ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-lg scale-110 active'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <SunIcon className="h-5 w-5" />
+                </button>
+                <div className="mx-3 w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                <button
+                  onClick={() => theme === 'light' && toggleTheme()}
+                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-all touch-manipulation ${
+                    theme === 'dark'
+                      ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-lg scale-110 active'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <MoonIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex justify-center mb-4">
@@ -526,26 +633,26 @@ export const Navigation: React.FC<NavigationProps> = ({
         )}
 
         {/* API Документация (видна только для SUPERADMIN) */}
-        {isSuperAdmin && (
+        {canAccessPage('system:settings') && (
           <MenuItem
             icon={<ApiDocsIcon className="text-gray-500" />}
             activeIcon={<ApiDocsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="API Документация"
             page={Pages.apiDocs}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.apiDocs, '/docs')}
           />
         )}
 
         {/* Страница логов – показываем только SUPERADMIN */}
-        {isSuperAdmin && (
+        {canAccessPage('system:logs') && (
           <MenuItem
             icon={<LogsIcon className="text-gray-500" />}
             activeIcon={<LogsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Логи"
             page={Pages.logs}
-            isNavOpened={isNavOpened}
+            isNavOpened={shouldShowFullMenu}
             currentPage={currentPage}
             onClick={() => navigateTo(Pages.logs, '/logs')}
           />
@@ -557,7 +664,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           activeIcon={<UserCircleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Профиль"
           page={Pages.profile}
-          isNavOpened={isNavOpened}
+          isNavOpened={shouldShowFullMenu}
           currentPage={currentPage}
           onClick={() => navigateTo(Pages.profile, '/profile')}
         />
@@ -568,7 +675,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           activeIcon={<LogoutIcon className="text-red-600" />}
           pageName="Выход"
           page={Pages.logout}
-          isNavOpened={isNavOpened}
+          isNavOpened={shouldShowFullMenu}
           currentPage={currentPage}
           onClick={() => {
             // Логика выхода

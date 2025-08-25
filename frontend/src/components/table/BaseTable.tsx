@@ -81,6 +81,7 @@ function DraggableColumnHeader<TData>({
         bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium
         ${isReorderingEnabled ? 'cursor-move' : ''}
         relative ${canSort && !isReorderingEnabled ? 'cursor-pointer select-none' : ''}
+        text-sm
       `}
       onClick={canSort && !isReorderingEnabled
         ? header.column.getToggleSortingHandler()
@@ -555,7 +556,7 @@ export function BaseTable<TData, TSortField extends string = string>({
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className="py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis"
+                    className="py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis text-sm"
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(
@@ -592,7 +593,7 @@ export function BaseTable<TData, TSortField extends string = string>({
   return (
     <div className={`w-full ${className}`}>
       {/* Панель управления с поиском и настройками */}
-      <div className={`flex items-center ${searchColumn ? "justify-between" : "justify-end"} mb-6 px-4 pt-4`}>
+      <div className={`flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-0 ${searchColumn ? "justify-between" : "justify-end"} mb-6 px-4 pt-4`}>
         {searchColumn && (
           <TableSearch
             placeholder={searchPlaceholder}
@@ -616,13 +617,15 @@ export function BaseTable<TData, TSortField extends string = string>({
           {isReorderingEnabled && (
             <div className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs px-2 py-1 rounded-md flex items-center">
               <ArrowUpDown className="h-3 w-3 mr-1" />
-              Режим переставления колонок активен
+              <span className="hidden sm:inline">Режим переставления колонок активен</span>
+              <span className="sm:hidden">Переставление колонок</span>
             </div>
           )}
           {isResizingEnabled && (
             <div className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs px-2 py-1 rounded-md flex items-center">
               <Move className="h-3 w-3 mr-1" />
-              Режим изменения размера колонок активен
+              <span className="hidden sm:inline">Режим изменения размера колонок активен</span>
+              <span className="sm:hidden">Изменение размера</span>
             </div>
           )}
         </div>
@@ -632,8 +635,8 @@ export function BaseTable<TData, TSortField extends string = string>({
       <div className="w-full border border-gray-200 dark:border-gray-700 rounded-lg relative overflow-hidden">
         {isLoading && <TableLoadingOverlay />}
 
-        <div className="overflow-x-auto">
-          <div className="min-w-full inline-block align-middle">
+        <div className="overflow-x-auto table-scroll-mobile">
+          <div className="min-w-full inline-block align-middle table-mobile-optimized">
             {isReorderingEnabled ? (
               <DndContext
                 sensors={sensors}

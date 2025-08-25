@@ -45,15 +45,16 @@ export function TableColumnSettings({
   }
 
   return (
-    <div className="flex items-center gap-2 ml-4">
+    <div className="flex items-center gap-2 sm:ml-4 w-full sm:w-auto">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="flex gap-1 items-center">
+          <Button variant="outline" size="sm" className="flex gap-1 items-center w-full sm:w-auto min-h-[44px] sm:min-h-[32px] touch-manipulation">
             <Settings className="h-4 w-4" />
-            <span>Настройки</span>
+            <span className="hidden sm:inline">Настройки</span>
+            <span className="sm:hidden">Настройки таблицы</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-72 sm:w-56">
           <DropdownMenuLabel>Управление таблицей</DropdownMenuLabel>
           <DropdownMenuSeparator />
           
@@ -61,6 +62,7 @@ export function TableColumnSettings({
             <DropdownMenuCheckboxItem
               checked={isReorderingEnabled}
               onCheckedChange={(checked) => onToggleReordering(!!checked)}
+              className="min-h-[44px] sm:min-h-[32px]"
             >
               <ArrowUpDown className="mr-2 h-4 w-4" />
               <span>Переставление колонок</span>
@@ -69,6 +71,7 @@ export function TableColumnSettings({
             <DropdownMenuCheckboxItem
               checked={isResizingEnabled}
               onCheckedChange={(checked) => onToggleResizing(!!checked)}
+              className="min-h-[44px] sm:min-h-[32px]"
             >
               <Move className="mr-2 h-4 w-4" />
               <span>Изменение размера колонок</span>
@@ -83,6 +86,7 @@ export function TableColumnSettings({
               key={column.id}
               checked={column.isVisible}
               onCheckedChange={(checked) => column.toggleVisibility(!!checked)}
+              className="min-h-[44px] sm:min-h-[32px]"
             >
               {column.isVisible ? (
                 <Eye className="mr-2 h-4 w-4" />
@@ -95,7 +99,7 @@ export function TableColumnSettings({
           
           <DropdownMenuSeparator />
           
-          <DropdownMenuItem onClick={onResetSettings}>
+          <DropdownMenuItem onClick={onResetSettings} className="min-h-[44px] sm:min-h-[32px]">
             <span className="mr-2">↺</span>
             <span>Сбросить настройки</span>
           </DropdownMenuItem>

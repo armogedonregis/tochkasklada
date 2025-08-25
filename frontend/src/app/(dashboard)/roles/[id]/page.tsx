@@ -20,6 +20,7 @@ import { Users } from "lucide-react";
 import { IForm } from "@/components/forms/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect } from "react";
+import { PermissionGate } from "@/services/authService/userPermissions";
 
 // Схема валидации для роли
 const roleValidationSchema = yup.object({
@@ -71,6 +72,17 @@ export default function RoleDetailsPage() {
       setSelectedPermissions(initialPermissions);
     }
   }, [role, isCreateMode]);
+
+  // Синхронизируем selectedPermissions с defaultValues при изменении режима редактирования
+  useEffect(() => {
+    if (isEditing && role?.rolePermissions) {
+      const initialPermissions: { [key: string]: boolean } = {};
+      role.rolePermissions.forEach(rp => {
+        initialPermissions[`permission_${rp.permission.id}`] = true;
+      });
+      setSelectedPermissions(initialPermissions);
+    }
+  }, [isEditing, role]);
   
   const [updateRole, { isLoading: isUpdating }] = useUpdateRoleMutation();
   const [createRole, { isLoading: isCreating }] = useCreateRoleMutation();
@@ -110,8 +122,8 @@ export default function RoleDetailsPage() {
       return permissionsByCategory[category].filter(permission => 
         formValues[`permission_${permission.id}`]
       ).length;
-    } else if (selectedPermissions && Object.keys(selectedPermissions).length > 0) {
-      // Для формы - считаем выбранные разрешения из состояния
+    } else if (isEditing && selectedPermissions && Object.keys(selectedPermissions).length > 0) {
+      // Для режима редактирования - считаем выбранные разрешения из состояния
       return permissionsByCategory[category].filter(permission => 
         selectedPermissions[`permission_${permission.id}`]
       ).length;
@@ -215,110 +227,114 @@ export default function RoleDetailsPage() {
     }
 
     return (
-      <div className="p-6 space-y-6">
-        {/* Заголовок */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/roles")}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Назад
-          </Button>
-          <h1 className="text-3xl font-bold">Создать новую роль</h1>
-        </div>
+      <PermissionGate permissions={['roles:read', 'roles:create']}>
+        <div className="p-6 space-y-6">
+          {/* Заголовок */}
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/roles")}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Назад
+            </Button>
+            <h1 className="text-3xl font-bold">Создать новую роль</h1>
+          </div>
 
-        {/* Форма создания */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Создание новой роли</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {permissionsLoading ? (
-              <div className="text-center py-4">Загрузка прав доступа...</div>
-            ) : (
-              <div className="space-y-6">
-                {/* Базовые поля */}
-                <BaseForm
-                  fields={formFields}
-                  validationSchema={roleValidationSchema}
-                  onSubmit={handleSubmit}
-                  defaultValues={{
-                    name: "",
-                    description: "",
-                  }}
-                  renderButtons={() => null} // Убираем кнопки, они будут внизу
-                />
+          {/* Форма создания */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Создание новой роли</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {permissionsLoading ? (
+                <div className="text-center py-4">Загрузка прав доступа...</div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Базовые поля */}
+                  <BaseForm
+                    fields={formFields}
+                    validationSchema={roleValidationSchema}
+                    onSubmit={handleSubmit}
+                    defaultValues={{
+                      name: "",
+                      description: "",
+                    }}
+                    renderButtons={() => null} // Убираем кнопки, они будут внизу
+                  />
 
-                {/* Табы с разрешениями */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Права доступа</h3>
-                  <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-                    <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 h-auto p-1 bg-gray-100 dark:bg-gray-800">
-                      {Object.keys(permissionsByCategory).map(category => (
-                        <TabsTrigger 
-                          key={category} 
-                          value={category} 
-                          className="text-xs px-2 py-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm rounded"
-                        >
-                          {getCategoryLabel(category)}
-                          <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
-                            ({getActivePermissionsCount(category)}/{permissionsByCategory[category].length})
-                          </span>
-                        </TabsTrigger>
+                  {/* Табы с разрешениями */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Права доступа</h3>
+                    <Tabs value={activeCategory} onValueChange={setActiveCategory}>
+                      <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 h-auto p-1 bg-gray-100 dark:bg-gray-800">
+                        {Object.keys(permissionsByCategory).map(category => (
+                          <TabsTrigger 
+                            key={category} 
+                            value={category} 
+                            className="text-xs px-2 py-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm rounded"
+                          >
+                            {getCategoryLabel(category)}
+                            <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
+                              ({getActivePermissionsCount(category)}/{permissionsByCategory[category].length})
+                            </span>
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      
+                      {Object.entries(permissionsByCategory).map(([category, permissions]) => (
+                        <TabsContent key={category} value={category} className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {permissions.map(permission => (
+                              <label key={permission.id} className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  name={`permission_${permission.id}`}
+                                  checked={selectedPermissions[`permission_${permission.id}`] || false}
+                                  onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {permission.description || permission.key}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </TabsContent>
                       ))}
-                    </TabsList>
-                    
-                    {Object.entries(permissionsByCategory).map(([category, permissions]) => (
-                      <TabsContent key={category} value={category} className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {permissions.map(permission => (
-                            <label key={permission.id} className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                              <input
-                                type="checkbox"
-                                name={`permission_${permission.id}`}
-                                checked={selectedPermissions[`permission_${permission.id}`] || false}
-                                onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                              />
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {permission.description || permission.key}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </TabsContent>
-                    ))}
-                  </Tabs>
-                </div>
+                    </Tabs>
+                  </div>
 
-                {/* Кнопка создания */}
-                <div className="flex justify-end">
-                  <Button onClick={() => {
-                    const formData = new FormData(document.querySelector('form') as HTMLFormElement);
-                    const values: any = {};
-                    formData.forEach((value, key) => {
-                      if (!key.startsWith('permission_')) {
-                        values[key] = value;
-                      }
-                    });
-                    // Добавляем выбранные разрешения из состояния
-                    Object.entries(selectedPermissions).forEach(([key, value]) => {
-                      if (value) {
-                        values[key] = true;
-                      }
-                    });
-                    handleSubmit(values);
-                  }}>
-                    Создать роль
-                  </Button>
+                  {/* Кнопка создания */}
+                  <div className="flex justify-end">
+                    <PermissionGate permissions={['roles:create']}>
+                      <Button onClick={() => {
+                        const formData = new FormData(document.querySelector('form') as HTMLFormElement);
+                        const values: any = {};
+                        formData.forEach((value, key) => {
+                          if (!key.startsWith('permission_')) {
+                            values[key] = value;
+                          }
+                        });
+                        // Добавляем выбранные разрешения из состояния
+                        Object.entries(selectedPermissions).forEach(([key, value]) => {
+                          if (value) {
+                            values[key] = true;
+                          }
+                        });
+                        handleSubmit(values);
+                      }}>
+                        Создать роль
+                      </Button>
+                    </PermissionGate>
+                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </PermissionGate>
     );
   }
 
@@ -371,210 +387,234 @@ export default function RoleDetailsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Заголовок */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/roles")}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Назад к ролям
-          </Button>
-          <h1 className="text-3xl font-bold">
-            {isEditing ? 'Редактирование роли' : role.name}
-          </h1>
-        </div>
-        
-        <div className="flex gap-2">
-          {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Редактировать
+    <PermissionGate permissions={['roles:read', 'roles:update']}>
+      <div className="p-6 space-y-6">
+        {/* Заголовок */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/roles")}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Назад к ролям
             </Button>
-          ) : (
-            <>
-              <Button onClick={() => setIsEditing(false)} variant="outline">
-                <X className="w-4 h-4 mr-2" />
-                Отмена
-              </Button>
-              <Button 
-                type="submit" 
-                form="role-form"
-                disabled={isUpdating}
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {isUpdating ? 'Сохранение...' : 'Сохранить'}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Информация о роли */}
-      {!isEditing && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Основная информация</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Название</p>
-                <p className="font-medium">{role.name}</p>
-              </div>
-              {role.description && (
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Описание</p>
-                  <p className="font-medium">{role.description}</p>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {getPermissionCount()} прав
-                </Badge>
-                <Badge variant="outline">
-                  <Users className="w-3 h-3 mr-1" />
-                  {getAdminCount()} админов
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Права доступа</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {role.rolePermissions && role.rolePermissions.length > 0 ? (
-                <div className="space-y-4">
-                  {Object.entries(
-                    role.rolePermissions.reduce((acc, rp) => {
-                      const category = rp.permission.key.split(':')[0];
-                      if (!acc[category]) acc[category] = [];
-                      acc[category].push(rp);
-                      return acc;
-                    }, {} as { [key: string]: typeof role.rolePermissions })
-                  ).map(([category, permissions]) => (
-                    <div key={category} className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 border-b pb-1">
-                        {getCategoryLabel(category)}
-                      </h4>
-                      <div className="flex flex-wrap gap-1">
-                        {permissions.map((rp) => (
-                          <Badge key={rp.permission.id} variant="outline" className="text-xs">
-                            {rp.permission.description || rp.permission.key}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 dark:text-gray-400">Права не назначены</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Форма редактирования */}
-      {isEditing && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Редактирование роли</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {permissionsLoading ? (
-              <div className="text-center py-4">Загрузка прав доступа...</div>
-            ) : !permissionsByCategory || Object.keys(permissionsByCategory).length === 0 ? (
-              <div className="text-center text-red-600 py-4">
-                Ошибка загрузки прав доступа
-              </div>
+            <h1 className="text-3xl font-bold">
+              {isEditing ? 'Редактирование роли' : role.name}
+            </h1>
+          </div>
+          
+          <div className="flex gap-2">
+            {!isEditing ? (
+              <PermissionGate permissions={['roles:update']}>
+                <Button onClick={() => setIsEditing(true)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Редактировать
+                </Button>
+              </PermissionGate>
             ) : (
-              <div className="space-y-6">
-                {/* Базовые поля */}
-                <BaseForm
-                  fields={formFields}
-                  validationSchema={roleValidationSchema}
-                  onSubmit={handleSubmit}
-                  defaultValues={defaultValues}
-                  renderButtons={() => null} // Убираем кнопки, они будут внизу
-                />
+              <>
+                <Button onClick={() => {
+                  setIsEditing(false);
+                  // Сбрасываем состояние к исходным значениям
+                  if (role?.rolePermissions) {
+                    const initialPermissions: { [key: string]: boolean } = {};
+                    role.rolePermissions.forEach(rp => {
+                      initialPermissions[`permission_${rp.permission.id}`] = true;
+                    });
+                    setSelectedPermissions(initialPermissions);
+                  }
+                }} variant="outline">
+                  <X className="w-4 h-4 mr-2" />
+                  Отмена
+                </Button>
+                <Button 
+                  type="submit" 
+                  form="role-form"
+                  disabled={isUpdating}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isUpdating ? 'Сохранение...' : 'Сохранить'}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
 
-                {/* Табы с разрешениями */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Права доступа</h3>
-                  <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-                    <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 h-auto p-1 bg-gray-100 dark:bg-gray-800">
-                      {Object.keys(permissionsByCategory).map(category => (
-                        <TabsTrigger 
-                          key={category} 
-                          value={category} 
-                          className="text-xs px-2 py-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm rounded"
-                        >
+        {/* Информация о роли */}
+        {!isEditing && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Основная информация</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Название</p>
+                  <p className="font-medium">{role.name}</p>
+                </div>
+                {role.description && (
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Описание</p>
+                    <p className="font-medium">{role.description}</p>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    {getPermissionCount()} прав
+                  </Badge>
+                  <Badge variant="outline">
+                    <Users className="w-3 h-3 mr-1" />
+                    {getAdminCount()} админов
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Права доступа</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {role.rolePermissions && role.rolePermissions.length > 0 ? (
+                  <div className="space-y-4">
+                    {Object.entries(
+                      role.rolePermissions.reduce((acc, rp) => {
+                        const category = rp.permission.key.split(':')[0];
+                        if (!acc[category]) acc[category] = [];
+                        acc[category].push(rp);
+                        return acc;
+                      }, {} as { [key: string]: typeof role.rolePermissions })
+                    ).map(([category, permissions]) => (
+                      <div key={category} className="space-y-2">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 border-b pb-1">
                           {getCategoryLabel(category)}
-                          <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
-                            ({getActivePermissionsCount(category)}/{permissionsByCategory[category].length})
-                          </span>
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                    
-                    {Object.entries(permissionsByCategory).map(([category, permissions]) => (
-                      <TabsContent key={category} value={category} className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {permissions.map(permission => (
-                            <label key={permission.id} className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                              <input
-                                type="checkbox"
-                                name={`permission_${permission.id}`}
-                                checked={selectedPermissions[`permission_${permission.id}`] || defaultValues[`permission_${permission.id}`] || false}
-                                onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                              />
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {permission.description || permission.key}
-                              </span>
-                            </label>
+                        </h4>
+                        <div className="flex flex-wrap gap-1">
+                          {permissions.map((rp) => (
+                            <Badge key={rp.permission.id} variant="outline" className="text-xs">
+                              {rp.permission.description || rp.permission.key}
+                            </Badge>
                           ))}
                         </div>
-                      </TabsContent>
+                      </div>
                     ))}
-                  </Tabs>
-                </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">Права не назначены</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-                {/* Кнопки редактирования */}
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Отмена
-                  </Button>
-                  <Button onClick={() => {
-                    const formData = new FormData(document.querySelector('form') as HTMLFormElement);
-                    const values: any = {};
-                    formData.forEach((value, key) => {
-                      if (!key.startsWith('permission_')) {
-                        values[key] = value;
-                      }
-                    });
-                    // Добавляем выбранные разрешения из состояния
-                    Object.entries(selectedPermissions).forEach(([key, value]) => {
-                      if (value) {
-                        values[key] = true;
-                      }
-                    });
-                    handleSubmit(values);
-                  }}>
-                    Сохранить изменения
-                  </Button>
+        {/* Форма редактирования */}
+        {isEditing && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Редактирование роли</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {permissionsLoading ? (
+                <div className="text-center py-4">Загрузка прав доступа...</div>
+              ) : !permissionsByCategory || Object.keys(permissionsByCategory).length === 0 ? (
+                <div className="text-center text-red-600 py-4">
+                  Ошибка загрузки прав доступа
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Базовые поля */}
+                  <BaseForm
+                    fields={formFields}
+                    validationSchema={roleValidationSchema}
+                    onSubmit={handleSubmit}
+                    defaultValues={defaultValues}
+                    renderButtons={() => null} // Убираем кнопки, они будут внизу
+                  />
+
+                  {/* Табы с разрешениями */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Права доступа</h3>
+                    <Tabs value={activeCategory} onValueChange={setActiveCategory}>
+                      <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 h-auto p-1 bg-gray-100 dark:bg-gray-800">
+                        {Object.keys(permissionsByCategory).map(category => (
+                          <TabsTrigger 
+                            key={category} 
+                            value={category} 
+                            className="text-xs px-2 py-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm rounded"
+                          >
+                            {getCategoryLabel(category)}
+                            <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
+                              ({getActivePermissionsCount(category)}/{permissionsByCategory[category].length})
+                            </span>
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      
+                      {Object.entries(permissionsByCategory).map(([category, permissions]) => (
+                        <TabsContent key={category} value={category} className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {permissions.map(permission => (
+                              <label key={permission.id} className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  name={`permission_${permission.id}`}
+                                  checked={selectedPermissions[`permission_${permission.id}`] || false}
+                                  onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {permission.description || permission.key}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  </div>
+
+                  {/* Кнопки редактирования */}
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => {
+                      setIsEditing(false);
+                      // Сбрасываем состояние к исходным значениям
+                      if (role?.rolePermissions) {
+                        const initialPermissions: { [key: string]: boolean } = {};
+                        role.rolePermissions.forEach(rp => {
+                          initialPermissions[`permission_${rp.permission.id}`] = true;
+                        });
+                        setSelectedPermissions(initialPermissions);
+                      }
+                    }}>
+                      Отмена
+                    </Button>
+                    <Button onClick={() => {
+                      const formData = new FormData(document.querySelector('form') as HTMLFormElement);
+                      const values: any = {};
+                      formData.forEach((value, key) => {
+                        if (!key.startsWith('permission_')) {
+                          values[key] = value;
+                        }
+                      });
+                      // Добавляем выбранные разрешения из состояния
+                      Object.entries(selectedPermissions).forEach(([key, value]) => {
+                        if (value) {
+                          values[key] = true;
+                        }
+                      });
+                      handleSubmit(values);
+                    }}>
+                      Сохранить изменения
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </PermissionGate>
   );
 }

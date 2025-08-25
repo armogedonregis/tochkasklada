@@ -19,7 +19,7 @@ export const TableActions: React.FC<TableActionsProps> = ({
   deletePermission
 }) => {
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 table-actions">
       <PermissionGate permissions={editPermission ? [editPermission] : []}>
         <Button
           variant="outline"
@@ -29,6 +29,7 @@ export const TableActions: React.FC<TableActionsProps> = ({
             onEdit();
           }}
           title="Редактировать"
+          className="min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] touch-manipulation"
         >
           <Edit className="h-4 w-4" />
         </Button>
@@ -42,6 +43,7 @@ export const TableActions: React.FC<TableActionsProps> = ({
             onDelete();
           }}
           title="Удалить"
+          className="min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] touch-manipulation"
         >
           <Trash2 className="h-4 w-4" />
         </Button>

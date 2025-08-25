@@ -16,7 +16,6 @@ import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -159,18 +158,6 @@ export default function ClientsPage() {
               </div>
             )) : ''}
           </div>
-        );
-      }
-    },
-    {
-      id: 'isActive',
-      header: 'Активен',
-      cell: ({ row }) => {
-        return (
-          <Switch
-            checked={row.original.isActive}
-            onCheckedChange={(checked) => handleActiveChange(row.original, checked)}
-          />
         );
       }
     },
