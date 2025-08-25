@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MenuItem, Pages } from './MenuItem';
+import { MenuItem } from './MenuItem';
 import { useTheme } from '@/lib/theme-provider';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
@@ -10,6 +10,8 @@ import { useGetRequestsStatsQuery } from '@/services/requestsService/requestsApi
 
 import { X } from 'lucide-react';
 import { useUserPermissions } from '@/services/authService/userPermissions';
+import { useAppDispatch } from '@/store/hooks';
+import { logout } from '@/store/slice/userSlice';
 
 // Компоненты SVG иконок
 const ChevronLeftIcon = () => (
@@ -167,11 +169,11 @@ export const Navigation: React.FC<NavigationProps> = ({
   onClose,
 }) => {
   const [isNavOpened, setIsNavOpened] = useState(initialIsOpen);
-  const [currentPage, setCurrentPage] = useState<Pages | null>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const dispatch = useAppDispatch();
 
   // Получаем роль пользователя из Redux store
   const { user } = useSelector((state: RootState) => state.user);
@@ -225,33 +227,15 @@ export const Navigation: React.FC<NavigationProps> = ({
     if (savedNavState) {
       setIsNavOpened(JSON.parse(savedNavState));
     }
-
-    const savedCurrentPage = localStorage.getItem('currentPage');
-    if (savedCurrentPage) {
-      setCurrentPage(savedCurrentPage as Pages);
-    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem('isNavOpened', JSON.stringify(isNavOpened));
   }, [isNavOpened]);
 
-  useEffect(() => {
-    if (currentPage) {
-      localStorage.setItem('currentPage', currentPage);
-    }
-  }, [currentPage]);
-
-  const navigateTo = (page: Pages, path: string) => {
-    setCurrentPage(page);
-    router.push(path);
-    // Закрываем мобильное меню после навигации
-    if (isMobile && onClose) {
-      // Небольшая задержка для плавности
-      setTimeout(() => {
-        onClose();
-      }, 100);
-    }
+  const handleLogout = () => {
+    dispatch(logout());
+    router.push("/login");
   };
 
   const toggleNav = () => {
@@ -320,10 +304,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<BriefcaseIcon className="text-gray-500" />}
             activeIcon={<BriefcaseIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Франчайзинг"
-            page={Pages.franchasing}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.franchasing, '/franchasing')}
+            href="/"
           />
         )}
 
@@ -333,10 +315,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<MapIcon className="text-gray-500" />}
             activeIcon={<MapIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Локации"
-            page={Pages.locs}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.locs, '/locations')}
+            href="/locations"
           />
         )}
 
@@ -346,10 +326,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<UsersIcon className="text-gray-500" />}
             activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Клиенты"
-            page={Pages.clients}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.clients, '/clients')}
+            href="/clients"
           />
         )}
 
@@ -359,10 +337,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<CreditCardIcon className="text-gray-500" />}
             activeIcon={<CreditCardIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Платежи"
-            page={Pages.payments}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.payments, '/payments')}
+            href="/payments"
           />
         )}
 
@@ -372,10 +348,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<ListIcon className="text-gray-500" />}
             activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Лист ожидания"
-            page={Pages.list}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.list, '/list')}
+            href="/list"
           />
         )}
 
@@ -385,10 +359,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<ListIcon className="text-gray-500" />}
             activeIcon={<ListIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Заявки"
-            page={Pages.requests}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.requests, '/requests')}
+            href="/requests"
             newItems={requestsStats?.byStatus?.WAITING || 0}
           />
         )}
@@ -399,10 +371,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<StatisticsIcon className="text-gray-500" />}
             activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Гант"
-            page={Pages.gantt}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.gantt, '/gantt')}
+            href="/gantt"
           />
         )}
 
@@ -412,10 +382,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<FreeCellIcon className="text-gray-500" />}
             activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Аренды ячеек"
-            page={Pages.cellRentals}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.cellRentals, '/cell-rentals')}
+            href="/cell-rentals"
           />
         )}
 
@@ -425,10 +393,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<FreeCellIcon className="text-gray-500" />}
             activeIcon={<FreeCellIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Свободные ячейки"
-            page={Pages.freeCells}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.freeCells, '/free-cells')}
+            href="/free-cells"
           />
         )}
 
@@ -438,10 +404,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<StatisticsIcon className="text-gray-500" />}
             activeIcon={<StatisticsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Статистика"
-            page={Pages.statistics}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.statistics, '/statistics')}
+            href="/statistics"
           />
         )}
 
@@ -462,10 +426,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<BoxIcon className="text-gray-500" />}
             activeIcon={<BoxIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Размеры"
-            page={Pages.sizes}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.sizes, '/sizes')}
+            href="/sizes"
           />
         )}
 
@@ -475,10 +437,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<StatusIcon className="text-gray-500" />}
             activeIcon={<StatusIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Статусы ячеек"
-            page={Pages.cellStatuses}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.cellStatuses, '/cell-statuses')}
+            href="/cell-statuses"
           />
         )}
 
@@ -488,10 +448,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<CogIcon className="text-gray-500" />}
             activeIcon={<CogIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Настройки"
-            page={Pages.settings}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.settings, '/settings')}
+            href="/settings"
           />
         )}
 
@@ -501,10 +459,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<RolesIcon className="text-gray-500" />}
             activeIcon={<RolesIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Роли"
-            page={Pages.roles}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.roles, '/roles')}
+            href="/roles"
           />
         )}
 
@@ -514,10 +470,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<RubleIcon className="text-gray-500" />}
             activeIcon={<RubleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Тест Тбанк"
-            page={Pages.tinkoffTest}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.tinkoffTest, '/tinkoff-test')}
+            href="/tinkoff-test"
           />
         )}
 
@@ -527,10 +481,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<GridIcon className="text-gray-500" />}
             activeIcon={<GridIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Панели"
-            page={Pages.panels}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.panels, '/panels')}
+            href="/panels"
           />
         )}
 
@@ -540,10 +492,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<UsersIcon className="text-gray-500" />}
             activeIcon={<UsersIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Пользователи"
-            page={Pages.users}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.users, '/users')}
+            href="/users"
           />
         )}
 
@@ -638,10 +588,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<ApiDocsIcon className="text-gray-500" />}
             activeIcon={<ApiDocsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="API Документация"
-            page={Pages.apiDocs}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.apiDocs, '/docs')}
+            href="/docs"
           />
         )}
 
@@ -651,10 +599,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             icon={<LogsIcon className="text-gray-500" />}
             activeIcon={<LogsIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
             pageName="Логи"
-            page={Pages.logs}
             isNavOpened={shouldShowFullMenu}
-            currentPage={currentPage}
-            onClick={() => navigateTo(Pages.logs, '/logs')}
+            href="/logs"
           />
         )}
 
@@ -663,10 +609,8 @@ export const Navigation: React.FC<NavigationProps> = ({
           icon={<UserCircleIcon className="text-gray-500" />}
           activeIcon={<UserCircleIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
           pageName="Профиль"
-          page={Pages.profile}
           isNavOpened={shouldShowFullMenu}
-          currentPage={currentPage}
-          onClick={() => navigateTo(Pages.profile, '/profile')}
+          href="/profile"
         />
 
         {/* Выход - доступен всем */}
@@ -674,13 +618,8 @@ export const Navigation: React.FC<NavigationProps> = ({
           icon={<LogoutIcon className="text-gray-500" />}
           activeIcon={<LogoutIcon className="text-red-600" />}
           pageName="Выход"
-          page={Pages.logout}
           isNavOpened={shouldShowFullMenu}
-          currentPage={currentPage}
-          onClick={() => {
-            // Логика выхода
-            router.push('/');
-          }}
+          onClick={handleLogout}
         />
       </div>
     </div>

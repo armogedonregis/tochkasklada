@@ -1,41 +1,16 @@
 'use client';
 
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-export enum Pages {
-  franchasing = 'franchasing',
-  locs = 'locs',
-  clients = 'clients',
-  payments = 'payments',
-  settings = 'settings',
-  profile = 'profile',
-  logout = 'logout',
-  sizes = 'sizes',
-  tinkoffTest = 'tinkoffTest',
-  cellStatuses = 'cellStatuses',
-  panels = 'panels',
-  freeCells = 'freeCells',
-  cellRentals = 'cellRentals',
-  apiDocs = 'apiDocs',
-  statistics = 'statistics',
-  logs = 'logs',
-  gantt = 'gantt',
-  list = 'list',
-  requests = 'requests',
-  roles = 'roles',
-  users = 'users'
-  // Добавьте другие необходимые страницы из вашего Flutter-проекта
-}
 
 interface MenuItemProps {
   icon: React.ReactNode;
   activeIcon: React.ReactNode;
   pageName: string;
-  page: Pages;
   newItems?: number;
-  goto?: boolean;
   isNavOpened?: boolean;
-  currentPage?: Pages | null;
+  href?: string;
   onClick?: () => void;
 }
 
@@ -43,17 +18,16 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   icon,
   activeIcon,
   pageName,
-  page,
   newItems = 0,
-  goto = false,
   isNavOpened = true,
-  currentPage,
+  href,
   onClick,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
-  const isActive = currentPage === page;
-
+  const pathname = usePathname();
+  const isActive = pathname === href;
+  
   const handleMouseEnter = () => {
     if (window.innerWidth > 768) { // Только для десктопа
       setIsHovered(true);
@@ -81,9 +55,16 @@ export const MenuItem: React.FC<MenuItemProps> = ({
     setIsPressed(false);
   };
 
+  const RenderLink = (props: any) => {
+    if (href !== '' || href !== undefined) {
+      return <Link href={href} {...props}></Link>
+    }
+    return <div {...props}></div>
+  }
+
   return (
-    <div
-      className={`w-full h-11 cursor-pointer transition-all duration-200 ease-in-out px-4 ${isActive ? 'bg-gray-100 dark:bg-gray-800' : 'bg-transparent'
+    <RenderLink
+      className={`w-full h-11 block cursor-pointer transition-all duration-200 ease-in-out px-4 ${isActive ? 'bg-gray-100 dark:bg-gray-800' : 'bg-transparent'
         } ${isPressed ? 'bg-gray-200 dark:bg-gray-700' : ''
         } rounded-2xl active:bg-gray-200 dark:active:bg-gray-700 touch-manipulation`}
       onMouseEnter={handleMouseEnter}
@@ -91,6 +72,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
+      href={href || ''}
       onClick={onClick}
     >
       <div className="flex items-center h-full px-2">
@@ -102,8 +84,8 @@ export const MenuItem: React.FC<MenuItemProps> = ({
           <div className="flex flex-grow items-center justify-between">
             <span
               className={`ml-4 text-sm font-medium transition-all duration-150 no-select ${isHovered
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-900 dark:text-white'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-900 dark:text-white'
                 }`}
             >
               {pageName}
@@ -117,6 +99,6 @@ export const MenuItem: React.FC<MenuItemProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </RenderLink>
   );
 }; 
