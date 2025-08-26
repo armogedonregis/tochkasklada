@@ -116,7 +116,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, [isMobileMenuOpen]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden lg:pb-0">
       {/* Мобильное меню (overlay) */}
       {(isMobileMenuOpen || isClosing) && (
         <div className="fixed inset-0 z-50 lg:hidden">
@@ -128,7 +128,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           />
           <div
             ref={mobileMenuRef}
-            className={`fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-900 shadow-xl mobile-menu-transition ${isClosing ? 'transform -translate-x-full' :
+            className={`fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-900 shadow-xl mobile-menu-transition z-50 ${isClosing ? 'transform -translate-x-full' :
                 isOpening ? 'transform -translate-x-full' : 'transform translate-x-0'
               }`}
             onTouchStart={onMenuTouchStart}
@@ -143,11 +143,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
         </div>
       )}
-
-      {/* Индикатор свайпа для мобильных устройств */}
-      {/* <div className="fixed left-2 top-1/2 transform -translate-y-1/2 z-30 lg:hidden">
-        <div className="w-1 h-16 bg-gray-300 dark:bg-gray-600 rounded-full opacity-60"></div>
-      </div> */}
 
       {/* Боковая навигация (скрыта на мобильных) */}
       <div className="hidden lg:block h-screen sticky top-0 flex-shrink-0 z-20">
@@ -168,7 +163,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <div className="flex items-center lg:hidden">
               <button
                 onClick={toggleMobileMenu}
-                className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white touch-manipulation"
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white touch-manipulation touch-fix"
               >
                 <Menu className="h-6 w-6" />
               </button>
@@ -187,7 +182,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </header>
 
         {/* Контент страницы (с прокруткой) */}
-        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">
+        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4 lg:p-6 safe-area-inset mobile-optimized overflow-mobile-fix">
           {children}
         </div>
       </div>

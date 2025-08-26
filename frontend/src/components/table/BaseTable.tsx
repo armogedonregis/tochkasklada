@@ -528,7 +528,7 @@ export function BaseTable<TData, TSortField extends string = string>({
 
   // Рендер основного содержимого таблицы
   const renderTableContent = () => (
-    <Table className="w-full table-fixed">
+    <Table className="w-full table-fixed table-mobile">
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id} className="border-b border-gray-200 dark:border-gray-700">
@@ -567,7 +567,7 @@ export function BaseTable<TData, TSortField extends string = string>({
                 ))}
               </TableRow>
               {/* Расширенная часть строки как отдельная строка таблицы */}
-              {renderRowSubComponent && (
+              {renderRowSubComponent && renderRowSubComponent({ row }) && (
                 <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
                   <TableCell colSpan={table.getVisibleFlatColumns().length} className="p-0">
                     {renderRowSubComponent({ row })}
@@ -635,8 +635,8 @@ export function BaseTable<TData, TSortField extends string = string>({
       <div className="w-full border border-gray-200 dark:border-gray-700 rounded-lg relative overflow-hidden">
         {isLoading && <TableLoadingOverlay />}
 
-        <div className="overflow-x-auto table-scroll-mobile">
-          <div className="min-w-full inline-block align-middle table-mobile-optimized">
+        <div className="table-mobile-container fixed-bottom-scroll">
+          <div className="min-w-full inline-block align-middle">
             {isReorderingEnabled ? (
               <DndContext
                 sensors={sensors}

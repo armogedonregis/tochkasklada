@@ -273,4 +273,801 @@
   .table-scroll-mobile::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
   }
+
+  /* Специальные стили для iPhone и iOS Safari */
+  @supports (-webkit-touch-callout: none) {
+    /* iPhone-specific styles */
+    .safe-area-inset {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Исправление проблем с viewport на iPhone */
+    body {
+      -webkit-text-size-adjust: 100%;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Исправление проблем с скроллом на iPhone */
+    .overflow-hidden {
+      -webkit-overflow-scrolling: touch;
+      overflow: hidden;
+    }
+
+    /* Исправление проблем с таблицами на iPhone */
+    table {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Исправление проблем с кнопками на iPhone */
+    button, [role="button"] {
+      -webkit-appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* Исправление проблем с input на iPhone */
+    input, textarea, select {
+      -webkit-appearance: none;
+      border-radius: 0;
+      font-size: 16px; /* Предотвращает зум на iPhone */
+    }
+
+    /* Исправление проблем с модальными окнами на iPhone */
+    .modal-content {
+      -webkit-overflow-scrolling: touch;
+      max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+
+    /* Исправление проблем с навигацией на iPhone */
+    .navigation-mobile {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+
+    /* Специальные стили для скролла в боковой навигации */
+    .navigation-mobile.overflow-mobile-fix {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior: contain !important;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+    }
+
+    .navigation-mobile.overflow-mobile-fix::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .navigation-mobile.overflow-mobile-fix::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .navigation-mobile.overflow-mobile-fix::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 2px;
+    }
+
+    .navigation-mobile.overflow-mobile-fix::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.7);
+    }
+
+    /* Исправление проблем с flex-grow и overflow */
+    .navigation-mobile.flex-grow {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    /* Исправление проблем с пагинацией на iPhone */
+    .pagination-mobile {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    /* Исправление проблем с поиском на iPhone */
+    .search-input {
+      -webkit-appearance: none;
+      font-size: 16px;
+    }
+
+    /* Исправление проблем с dropdown на iPhone */
+    .dropdown-menu {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    /* Исправление проблем с tooltip на iPhone */
+    .tooltip {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Исправление проблем с drag & drop на iPhone */
+    .draggable {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    /* Исправление проблем с анимациями на iPhone */
+    .animate-mobile {
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
+
+    /* Исправление проблем с sticky элементами на iPhone */
+    .sticky-mobile {
+      position: -webkit-sticky;
+      position: sticky;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+
+    /* Исправление проблем с fixed элементами на iPhone */
+    .fixed-mobile {
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+
+    /* Исправление проблем с overflow на iPhone */
+    .overflow-fix {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    /* Исправление проблем с height на iPhone */
+    .height-fix {
+      height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+
+    /* Исправление проблем с width на iPhone */
+    .width-fix {
+      width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+      min-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+    }
+  }
+
+  /* Дополнительные стили для мобильных устройств */
+  @media (max-width: 768px) {
+    /* Улучшенная адаптация для мобильных */
+
+    /* Улучшенная таблица для мобильных */
+    .table-mobile {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .table-mobile th,
+    .table-mobile td {
+      padding: 12px 8px;
+      word-break: break-word;
+    }
+
+    /* Улучшенные кнопки для мобильных */
+    .button-mobile {
+      min-height: 44px;
+      min-width: 44px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Улучшенные формы для мобильных */
+    .form-mobile input,
+    .form-mobile textarea,
+    .form-mobile select {
+      font-size: 16px;
+      min-height: 44px;
+      padding: 12px 16px;
+    }
+
+    /* Улучшенная пагинация для мобильных */
+    .pagination-mobile {
+      gap: 8px;
+    }
+
+    .pagination-mobile button {
+      min-width: 44px;
+      min-height: 44px;
+    }
+
+    /* Улучшенный поиск для мобильных */
+    .search-mobile {
+      min-height: 44px;
+      font-size: 16px;
+    }
+
+    /* Улучшенные модальные окна для мобильных */
+    .modal-mobile {
+      margin: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+    }
+  }
+
+  /* Дополнительные стили для исправления проблем с мобильной навигацией */
+  @media (max-width: 768px) {
+    /* Исправление проблем с z-index на мобильных */
+    .z-mobile-fix {
+      z-index: 9999 !important;
+    }
+
+    /* Исправление проблем с touch событиями */
+    .touch-fix {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Исправление проблем с overflow на мобильных */
+    .overflow-mobile-fix {
+      overflow: auto !important;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    /* Исправление проблем с height на мобильных */
+    .height-mobile-fix {
+      height: auto !important;
+      min-height: auto !important;
+      max-height: none !important;
+    }
+
+    /* Исправление проблем с position на мобильных */
+    .position-mobile-fix {
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+    }
+  }
+
+  /* Исправление проблем с flexbox в навигации на мобильных */
+  @media (max-width: 768px) {
+    .navigation-mobile {
+      height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .navigation-mobile .flex-grow {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+    }
+
+    /* Принудительное исправление overflow */
+    .navigation-mobile .overflow-mobile-fix {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior: contain !important;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    /* Исправление проблем с height для flex-grow */
+    .navigation-mobile .flex-grow.overflow-mobile-fix {
+      height: auto;
+      min-height: 0;
+      max-height: none;
+      overflow-y: auto !important;
+    }
+  }
+
+  /* Дополнительные исправления для iOS Safari */
+  @supports (-webkit-touch-callout: none) {
+    .navigation-mobile .flex-grow {
+      -webkit-flex: 1 1 auto;
+      flex: 1 1 auto;
+      -webkit-overflow-scrolling: touch;
+      overflow-y: auto;
+    }
+
+    .navigation-mobile .overflow-mobile-fix {
+      -webkit-overflow-scrolling: touch !important;
+      overflow-y: auto !important;
+      -webkit-flex: 1 1 auto;
+      flex: 1 1 auto;
+    }
+  }
+
+  /* Дополнительные стили для мобильных таблиц */
+  .table-mobile {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    padding: 0.5rem;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  /* Улучшенные стили для мобильных кнопок */
+  .button-mobile {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+  }
+
+  /* Стили для мобильных форм */
+  .form-mobile input,
+  .form-mobile textarea,
+  .form-mobile select {
+    font-size: 16px;
+    min-height: 44px;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+  }
+
+  /* Стили для мобильных карточек */
+  .card-mobile {
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Стили для мобильных заголовков */
+  .title-mobile {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Стили для мобильных описаний */
+  .description-mobile {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #6b7280;
+    margin-bottom: 1rem;
+  }
+
+  /* Стили для мобильных фильтров */
+  .filter-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Стили для мобильных таблиц с горизонтальным скроллом */
+  .table-container-mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  /* Стили для мобильных строк таблицы */
+  .table-row-mobile {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 0.75rem 0;
+  }
+
+  /* Стили для мобильных ячеек таблицы */
+  .table-cell-mobile {
+    padding: 0.5rem;
+    vertical-align: top;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  /* Стили для мобильных заголовков таблицы */
+  .table-header-mobile {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  /* Стили для мобильных бейджей */
+  .badge-mobile {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.5rem;
+  }
+
+  /* Стили для мобильных иконок */
+  .icon-mobile {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  /* Стили для мобильных разделителей */
+  .divider-mobile {
+    height: 1px;
+    background-color: #e5e7eb;
+    margin: 1rem 0;
+  }
+
+  /* Стили для мобильных отступов */
+  .spacing-mobile {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Стили для мобильных сеток */
+  .grid-mobile {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .grid-mobile {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .grid-mobile {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* Стили для мобильных модальных окон */
+  .modal-mobile {
+    max-width: 95vw;
+    max-height: 90vh;
+    margin: 1rem;
+    border-radius: 0.75rem;
+  }
+
+  /* Стили для мобильных полей ввода */
+  .input-mobile {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 16px;
+    background-color: white;
+  }
+
+  /* Стили для мобильных селектов */
+  .select-mobile {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 16px;
+    background-color: white;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+  }
+
+  /* Мобильные таблицы-карточки */
+  .mobile-table {
+    display: block;
+  }
+
+  .mobile-table .table-header {
+    display: none;
+  }
+
+  .mobile-table .table-row {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: white;
+    padding: 1rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .mobile-table .table-cell {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .mobile-table .table-cell:last-child {
+    border-bottom: none;
+  }
+
+  .mobile-table .table-cell-label {
+    font-weight: 600;
+    color: #374151;
+    min-width: 120px;
+    flex-shrink: 0;
+  }
+
+  .mobile-table .table-cell-value {
+    text-align: right;
+    flex: 1;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  .mobile-table .table-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+  }
+
+  /* Десктопные таблицы */
+  .desktop-table {
+    display: none;
+  }
+
+  /* Адаптивные таблицы */
+  @media (min-width: 768px) {
+    .mobile-table {
+      display: none;
+    }
+    
+    .desktop-table {
+      display: table;
+    }
+  }
+
+  /* Мобильные карточки для данных */
+  .mobile-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .mobile-card-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #111827;
+  }
+
+  .mobile-card-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .mobile-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .mobile-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.5rem 0;
+  }
+
+  .mobile-card-label {
+    font-weight: 500;
+    color: #6b7280;
+    min-width: 100px;
+    flex-shrink: 0;
+  }
+
+  .mobile-card-value {
+    text-align: right;
+    flex: 1;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  /* Мобильные бейджи */
+  .mobile-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  /* Мобильные кнопки действий */
+  .mobile-action-button {
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  /* Мобильные иконки */
+  .mobile-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  /* Мобильные статусы */
+  .mobile-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Мобильные даты */
+  .mobile-date {
+    font-family: monospace;
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  /* Мобильные суммы */
+  .mobile-amount {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #059669;
+  }
+
+  /* Мобильные ID */
+  .mobile-id {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+  }
+
+  /* Мобильные телефоны */
+  .mobile-phone {
+    font-family: monospace;
+    font-size: 0.875rem;
+    color: #111827;
+  }
+
+  /* Мобильные email */
+  .mobile-email {
+    font-size: 0.875rem;
+    color: #2563eb;
+    word-break: break-all;
+  }
+
+  /* Мобильные имена */
+  .mobile-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #111827;
+    word-break: break-word;
+  }
+
+  /* Мобильные описания */
+  .mobile-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+    word-break: break-word;
+    line-height: 1.4;
+  }
+}
+
+/* Мобильные таблицы */
+.table-mobile-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  position: relative;
+  z-index: 10;
+}
+
+.table-mobile-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-mobile-container::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 3px;
+}
+
+.table-mobile-container::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.table-mobile-container::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Фиксированный скролл внизу экрана */
+.fixed-bottom-scroll {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.dark .fixed-bottom-scroll {
+  background: #1f2937;
+  border-top-color: #374151;
+}
+
+.table-mobile {
+  min-width: 800px; /* Минимальная ширина для мобильных устройств */
+}
+
+.table-mobile th,
+.table-mobile td {
+  white-space: nowrap;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.table-mobile th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.table-mobile td {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Адаптивные размеры для мобильных устройств */
+@media (max-width: 768px) {
+  .table-mobile th,
+  .table-mobile td {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.75rem;
+  }
+  
+  .table-mobile {
+    min-width: 700px;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-mobile {
+    min-width: 600px;
+  }
 }

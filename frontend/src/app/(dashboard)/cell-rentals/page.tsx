@@ -278,32 +278,32 @@ export default function CellRentalsPage() {
 
     if (!client) {
       return (
-        <div className="p-4 pl-12 text-sm text-gray-500">Информация о клиенте недоступна</div>
+        <div className="p-4 pl-4 md:pl-12 text-sm text-gray-500">Информация о клиенте недоступна</div>
       );
     }
 
     return (
-      <div className="pl-12 pr-4 py-4 border-t border-gray-100">
+      <div className="pl-4 md:pl-12 pr-4 py-4 border-t border-gray-100">
         <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4">
           <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
             <User size={16} />
             Информация о клиенте
           </h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-500 dark:text-gray-400">ФИО:</p>
-              <p className="font-medium">{client?.name}</p>
+              <p className="font-medium break-words">{client?.name}</p>
             </div>
             <div>
               <p className="text-gray-500 dark:text-gray-400">Email:</p>
-              <p className="font-medium">{client?.user?.email || 'Не указан'}</p>
+              <p className="font-medium break-words">{client?.user?.email || 'Не указан'}</p>
             </div>
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <p className="text-gray-500 dark:text-gray-400 mb-1">Телефоны:</p>
               <div className="font-medium space-y-1">
                 {client.phones && client.phones.length > 0 ? (
                   client.phones.map((phone: any, index: number) => (
-                    <div key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded">
+                    <div key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded break-words">
                       {typeof phone === 'object' ? phone.phone || phone.number : phone}
                     </div>
                   ))
@@ -469,116 +469,120 @@ export default function CellRentalsPage() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-      {/* Заголовок и кнопка добавления */}
-      <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <div>
-          <h1 className="text-2xl font-bold">Управление ячейками</h1>
-          <p className="text-sm text-muted-foreground">
-            Просмотр и управление арендами ячеек
-          </p>
+    <div className="min-h-full bg-gray-50 dark:bg-gray-900 pb-20 lg:pb-0">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
+        {/* Заголовок и кнопка добавления */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 px-4 pt-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold">Управление ячейками</h1>
+            <p className="text-sm text-muted-foreground">
+              Просмотр и управление арендами ячеек
+            </p>
+          </div>
+          <Button onClick={() => modal.openCreate()} className="gap-2 w-full sm:w-auto touch-manipulation button-mobile">
+            <Plus className="h-4 w-4" />
+            Добавить аренду
+          </Button>
         </div>
-        <Button onClick={() => modal.openCreate()} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Добавить аренду
-        </Button>
-      </div>
 
-      {/* Фильтры */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 px-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по ячейке или клиенту..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
+        {/* Фильтры */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 px-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Поиск по ячейке или клиенту..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+            />
+          </div>
+
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as CellRentalStatus | 'ALL')}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Фильтр по статусу" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Все статусы</SelectItem>
+              {statusList?.map((status) => (
+                <SelectItem key={status.statusType} value={status.statusType as string}>
+                  {status.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={locationFilter} onValueChange={(value) => setLocationFilter(value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Фильтр по локации" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Все локации</SelectItem>
+              {locationsData?.data?.map((location) => (
+                <SelectItem key={location.id} value={location.id}>
+                  {location.name} ({location.city?.short_name})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Таблица */}
+        <div className="overflow-hidden overflow-fix">
+          <BaseTable
+            data={cellRentals}
+            columns={columns}
+            onEdit={modal.openEdit}
+            onDelete={handleDelete}
+            editPermission="rentals:update"
+            deletePermission="rentals:delete"
+            tableId="payments-table"
+            totalCount={totalCount}
+            pageCount={pageCount}
+            onPaginationChange={tableControls.handlePaginationChange}
+            onSortingChange={tableControls.handleSortingChange}
+            isLoading={isLoading}
+            error={error}
+            onRetry={refetch}
+            sortableFields={CellRentalSortField}
+            pagination={tableControls.pagination}
+            sorting={tableControls.sorting}
+            persistSettings={true}
+            renderRowSubComponent={({ row }) =>
+              expandedRentals.includes(row.original.id) ? <ExpandedRentalInfo rental={row.original} /> : null
+            }
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as CellRentalStatus | 'ALL')}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Фильтр по статусу" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Все статусы</SelectItem>
-            {statusList?.map((status) => (
-              <SelectItem key={status.statusType} value={status.statusType as string}>
-                {status.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={locationFilter} onValueChange={(value) => setLocationFilter(value)}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Фильтр по локации" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Все локации</SelectItem>
-            {locationsData?.data?.map((location) => (
-              <SelectItem key={location.id} value={location.id}>
-                {location.name} ({location.city?.short_name})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Модальное окно */}
+        <BaseFormModal
+          isOpen={modal.isOpen}
+          onClose={modal.closeModal}
+          title={modal.editItem ? 'Редактировать аренду ячейки' : 'Добавить аренду ячейки'}
+          fields={modalFields}
+          validationSchema={cellRentalValidationSchema}
+          onSubmit={modal.handleSubmit}
+          submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+          defaultValues={modal.editItem ? (() => {
+            const cells = modal.editItem?.cell;
+            const cellIds = Array.isArray(cells) && cells.length ? cells.map((c) => c.id) : [];
+            return {
+              cellIds: cellIds,
+              clientId: modal.editItem.clientId,
+              startDate: formatDateForInput(modal.editItem.startDate),
+              endDate: formatDateForInput(modal.editItem.endDate),
+              rentalStatus: modal.editItem.rentalStatus,
+              days: differenceInDays(new Date(modal.editItem.endDate), new Date(modal.editItem.startDate))
+            };
+          })() : {
+            cellIds: [],
+            clientId: undefined,
+            startDate: '',
+            endDate: '',
+            rentalStatus: 'ACTIVE',
+            days: undefined
+          }}
+        />
       </div>
-
-      {/* Таблица */}
-      <BaseTable
-        data={cellRentals}
-        columns={columns}
-        onEdit={modal.openEdit}
-        onDelete={handleDelete}
-        editPermission="rentals:update"
-        deletePermission="rentals:delete"
-        tableId="payments-table"
-        totalCount={totalCount}
-        pageCount={pageCount}
-        onPaginationChange={tableControls.handlePaginationChange}
-        onSortingChange={tableControls.handleSortingChange}
-        isLoading={isLoading}
-        error={error}
-        onRetry={refetch}
-        sortableFields={CellRentalSortField}
-        pagination={tableControls.pagination}
-        sorting={tableControls.sorting}
-        persistSettings={true}
-        renderRowSubComponent={({ row }) =>
-          expandedRentals.includes(row.original.id) ? <ExpandedRentalInfo rental={row.original} /> : null
-        }
-      />
-
-      {/* Модальное окно */}
-      <BaseFormModal
-        isOpen={modal.isOpen}
-        onClose={modal.closeModal}
-        title={modal.editItem ? 'Редактировать аренду ячейки' : 'Добавить аренду ячейки'}
-        fields={modalFields}
-        validationSchema={cellRentalValidationSchema}
-        onSubmit={modal.handleSubmit}
-        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
-        defaultValues={modal.editItem ? (() => {
-          const cells = modal.editItem?.cell;
-          const cellIds = Array.isArray(cells) && cells.length ? cells.map((c) => c.id) : [];
-          return {
-            cellIds: cellIds,
-            clientId: modal.editItem.clientId,
-            startDate: formatDateForInput(modal.editItem.startDate),
-            endDate: formatDateForInput(modal.editItem.endDate),
-            rentalStatus: modal.editItem.rentalStatus,
-            days: differenceInDays(new Date(modal.editItem.endDate), new Date(modal.editItem.startDate))
-          };
-        })() : {
-          cellIds: [],
-          clientId: undefined,
-          startDate: '',
-          endDate: '',
-          rentalStatus: 'ACTIVE',
-          days: undefined
-        }}
-      />
     </div>
   );
 }

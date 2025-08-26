@@ -146,66 +146,65 @@ const CellRentalDetailsPage = () => {
   const location = mainCell?.container?.location;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => router.back()} className="gap-2">
+    <div className="min-h-full bg-gray-50 dark:bg-gray-900 space-y-6 pb-20 lg:pb-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <Button variant="outline" onClick={() => router.back()} className="gap-2 w-full sm:w-auto touch-manipulation button-mobile">
           <ArrowLeft className="h-4 w-4" />
           Назад к списку
         </Button>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => extendModal.openCreate()} className="gap-2" disabled={isExtending}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Button onClick={() => extendModal.openCreate()} className="gap-2 w-full sm:w-auto" disabled={isExtending}>
             <DollarSign className="h-4 w-4" />
             {isExtending ? 'Продление...' : 'Продлить'}
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => statusModal.openCreate()} 
-            className="gap-2" 
+          <Button
+            variant="outline"
+            onClick={() => statusModal.openCreate()}
+            className="gap-2 w-full sm:w-auto"
             disabled={isUpdating}
           >
             <RefreshCw className="h-4 w-4" />
             {isUpdating ? 'Обновление...' : 'Изменить статус'}
           </Button>
-          <Button variant="destructive" onClick={handleCloseRental} className="gap-2" disabled={isClosing}>
+          <Button variant="destructive" onClick={handleCloseRental} className="gap-2 w-full sm:w-auto" disabled={isClosing}>
             <Power className="h-4 w-4" />
             {isClosing ? 'Закрытие...' : 'Закрыть аренду'}
           </Button>
         </div>
-      </header>
+      </div>
 
-      <main>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
           {/* Card: Rental Info */}
           <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText />
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                <FileText className="h-5 w-5" />
                 Информация об аренде
               </CardTitle>
-              <CardDescription>ID: {rental.id}</CardDescription>
+              <CardDescription className="text-sm">ID: {rental.id}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <span className="text-muted-foreground">Статус</span>
                 <Badge style={{ backgroundColor: cellStatuses?.find(status => status.statusType === rental.rentalStatus)?.color || '#gray', color: 'white' }}>
                   {cellStatuses?.find(status => status.statusType === rental.rentalStatus)?.name || rental.rentalStatus}
                 </Badge>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <span className="text-muted-foreground">Начало аренды</span>
                 <strong>{formatDate(rental.startDate)}</strong>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <span className="text-muted-foreground">Окончание аренды</span>
                 <strong>{formatDate(rental.endDate)}</strong>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <span className="text-muted-foreground">Осталось дней</span>
                 <strong className={daysLeft < 7 ? 'text-red-500' : ''}>
                   {rental.isActive ? `${daysLeft} д.` : '–'}
                 </strong>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <span className="text-muted-foreground">Продлений</span>
                 <strong>{rental.extensionCount}</strong>
               </div>
@@ -215,7 +214,7 @@ const CellRentalDetailsPage = () => {
           {/* Card: Client Info */}
           <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><User />Клиент</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl"><User className="h-5 w-5" />Клиент</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p><strong>{client?.name || 'Имя не указано'}</strong></p>
@@ -235,7 +234,7 @@ const CellRentalDetailsPage = () => {
           {/* Card: Cell Info */}
           <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Box />Ячейка</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl"><Box className="h-5 w-5" />Ячейка</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
@@ -256,8 +255,8 @@ const CellRentalDetailsPage = () => {
                   cells.length === 0
                     ? '—'
                     : Array.from(new Set(
-                        cells.map(c => c.size ? `${c.size.name} (${c.size.short_name})` : null).filter(Boolean)
-                      )).join(', ')
+                      cells.map(c => c.size ? `${c.size.name} (${c.size.short_name})` : null).filter(Boolean)
+                    )).join(', ')
                 }
               </p>
               <p className="flex items-center gap-2 text-muted-foreground">
@@ -275,46 +274,43 @@ const CellRentalDetailsPage = () => {
         {/* Payments Table */}
         <Card>
           <CardHeader>
-            <CardTitle>История платежей</CardTitle>
+            <CardTitle className="text-lg md:text-xl">История платежей</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Дата</TableHead>
-                  <TableHead>Сумма</TableHead>
-                  <TableHead>Описание</TableHead>
-                  <TableHead>Срок (дней)</TableHead>
-                  <TableHead>Статус</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rental.payments && rental.payments.length > 0 ? (
-                  rental.payments.map((payment: Payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>{formatDate(payment.createdAt)}</TableCell>
-                      <TableCell>{formatAmount(payment.amount)}</TableCell>
-                      <TableCell>{payment.description}</TableCell>
-                      <TableCell>{payment.rentalDuration || '–'}</TableCell>
-                      <TableCell>
-                        <Badge variant={payment.status ? 'default' : 'destructive'}>
-                          {payment.status ? 'Оплачен' : 'Ошибка'}
-                        </Badge>
-                      </TableCell>
+            <div className="overflow-x-auto -mx-4 px-4">
+              <div className="min-w-[600px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Дата</TableHead>
+                      <TableHead>Сумма</TableHead>
+                      <TableHead>Описание</TableHead>
+                      <TableHead>Срок (дней)</TableHead>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                      Платежей по этой аренде не найдено.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {rental.payments && rental.payments.length > 0 ? (
+                      rental.payments.map((payment: Payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                          <TableCell>{formatAmount(payment.amount)}</TableCell>
+                          <TableCell>{payment.description}</TableCell>
+                          <TableCell>{payment.rentalDuration || '–'}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center">
+                          Платежей по этой аренде не найдено.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </CardContent>
         </Card>
-      </main>
 
       {/* Модальное окно продления */}
       <BaseFormModal

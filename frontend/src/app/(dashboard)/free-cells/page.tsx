@@ -74,77 +74,81 @@ export default function CellRentalsPage() {
 
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-      {/* Заголовок и кнопка добавления */}
-      <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <div>
-          <h1 className="text-2xl font-bold">Свободные ячейками</h1>
-          <p className="text-sm text-muted-foreground">
-            Просмотр свободных ячеек
-          </p>
+    <div className="min-h-full bg-gray-50 dark:bg-gray-900 pb-20 lg:pb-0">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
+        {/* Заголовок и кнопка добавления */}
+        <div className="flex justify-between items-center mb-4 px-4 pt-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold">Свободные ячейки</h1>
+            <p className="text-sm text-muted-foreground">
+              Просмотр свободных ячеек
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Фильтры и поиск (единый grid, как на странице cell-rentals) */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 px-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по ячейке, размеру или локации..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
+        {/* Фильтры и поиск (единый grid, как на странице cell-rentals) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 px-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Поиск по ячейке, размеру или локации..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+            />
+          </div>
+          <div>
+            <Select value={locationFilter} onValueChange={(value) => setLocationFilter(value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Фильтр по локации" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Все локации</SelectItem>
+                {locationsData?.data?.map((location: any) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.name} ({location.city?.short_name})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Select value={sizeFilter} onValueChange={(value) => setSizeFilter(value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Фильтр по размеру" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Все размеры</SelectItem>
+                {sizes?.map((s: any) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name} ({s.short_name})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="overflow-hidden overflow-fix">
+          <BaseTable
+            data={cellRentals}
+            columns={columns}
+            disableActions={true}
+            tableId="free-cells-table"
+            totalCount={totalCount}
+            pageCount={pageCount}
+            onPaginationChange={tableControls.handlePaginationChange}
+            onSortingChange={tableControls.handleSortingChange}
+            isLoading={isLoading}
+            error={error}
+            onRetry={refetch}
+            persistSettings={true}
+            sortableFields={CellFreeSortField}
+            pagination={tableControls.pagination}
+            sorting={tableControls.sorting}
           />
         </div>
-        <div>
-          <Select value={locationFilter} onValueChange={(value) => setLocationFilter(value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Фильтр по локации" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Все локации</SelectItem>
-              {locationsData?.data?.map((location: any) => (
-                <SelectItem key={location.id} value={location.id}>
-                  {location.name} ({location.city?.short_name})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Select value={sizeFilter} onValueChange={(value) => setSizeFilter(value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Фильтр по размеру" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Все размеры</SelectItem>
-              {sizes?.map((s: any) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name} ({s.short_name})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
-
-      <BaseTable
-        data={cellRentals}
-        columns={columns}
-        disableActions={true}
-        tableId="free-cells-table"
-        totalCount={totalCount}
-        pageCount={pageCount}
-        onPaginationChange={tableControls.handlePaginationChange}
-        onSortingChange={tableControls.handleSortingChange}
-        isLoading={isLoading}
-        error={error}
-        onRetry={refetch}
-        persistSettings={true}
-        sortableFields={CellFreeSortField}
-        pagination={tableControls.pagination}
-        sorting={tableControls.sorting}
-      />
     </div>
   );
 }

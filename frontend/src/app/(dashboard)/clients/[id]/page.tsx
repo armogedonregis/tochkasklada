@@ -129,15 +129,14 @@ const ClientDetailsPage = () => {
   const allPayments = getAllPayments();
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header className="flex items-center justify-between">
+    <div className="space-y-6 pb-20 lg:pb-0">
+      <div className="flex items-center justify-between">
         <Button variant="outline" onClick={() => router.back()} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           Назад к списку
         </Button>
-      </header>
+      </div>
 
-      <main>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Card: Client Info */}
           <Card className="lg:col-span-1">
@@ -223,58 +222,60 @@ const ClientDetailsPage = () => {
         {activeRentals.length > 0 && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Активные аренды</CardTitle>
+              <CardTitle className="text-lg md:text-xl">Активные аренды</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ячейка</TableHead>
-                    <TableHead>Локация</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Начало</TableHead>
-                    <TableHead>Окончание</TableHead>
-                    <TableHead>Дней осталось</TableHead>
-                    <TableHead>Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activeRentals.map((rental) => {
-                    const daysLeft = differenceInDays(parseISO(rental.endDate), new Date());
-                    const cells = rental.cell || [];
-                    const cellName = cells.length === 0 ? '—' : (cells.length === 1 ? (cells[0].name || '—') : `${cells.length} ячеек`);
-                    const locationName = (() => {
-                      const locs = Array.from(new Set(cells.map(c => c.container?.location?.name).filter(Boolean)));
-                      if (locs.length === 0) return '—';
-                      if (locs.length === 1) return locs[0] as string;
-                      return 'Несколько локаций';
-                    })();
-                    return (
-                      <TableRow key={rental.id}>
-                        <TableCell className="font-mono">{cellName}</TableCell>
-                        <TableCell>{locationName}</TableCell>
-                        <TableCell>{getStatusBadge(rental)}</TableCell>
-                        <TableCell>{formatDate(rental.startDate)}</TableCell>
-                        <TableCell>{formatDate(rental.endDate)}</TableCell>
-                        <TableCell>
-                          <span className={daysLeft < 7 ? 'text-red-500 font-semibold' : ''}>
-                            {daysLeft} дн.
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => router.push(`/cell-rentals/${rental.id}`)}
-                          >
-                            Подробнее
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <div className="table-mobile-container">
+                <Table className="table-mobile">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ячейка</TableHead>
+                      <TableHead>Локация</TableHead>
+                      <TableHead>Статус</TableHead>
+                      <TableHead>Начало</TableHead>
+                      <TableHead>Окончание</TableHead>
+                      <TableHead>Дней осталось</TableHead>
+                      <TableHead>Действия</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeRentals.map((rental) => {
+                      const daysLeft = differenceInDays(parseISO(rental.endDate), new Date());
+                      const cells = rental.cell || [];
+                      const cellName = cells.length === 0 ? '—' : (cells.length === 1 ? (cells[0].name || '—') : `${cells.length} ячеек`);
+                      const locationName = (() => {
+                        const locs = Array.from(new Set(cells.map(c => c.container?.location?.name).filter(Boolean)));
+                        if (locs.length === 0) return '—';
+                        if (locs.length === 1) return locs[0] as string;
+                        return 'Несколько локаций';
+                      })();
+                      return (
+                        <TableRow key={rental.id}>
+                          <TableCell className="font-mono">{cellName}</TableCell>
+                          <TableCell>{locationName}</TableCell>
+                          <TableCell>{getStatusBadge(rental)}</TableCell>
+                          <TableCell>{formatDate(rental.startDate)}</TableCell>
+                          <TableCell>{formatDate(rental.endDate)}</TableCell>
+                          <TableCell>
+                            <span className={daysLeft < 7 ? 'text-red-500 font-semibold' : ''}>
+                              {daysLeft} дн.
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/cell-rentals/${rental.id}`)}
+                            >
+                              Подробнее
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -282,120 +283,117 @@ const ClientDetailsPage = () => {
         {/* All Rentals */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>История аренд</CardTitle>
+            <CardTitle className="text-lg md:text-xl">История аренд</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ячейка</TableHead>
-                  <TableHead>Локация</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Период аренды</TableHead>
-                  <TableHead>Длительность</TableHead>
-                  <TableHead>Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {clientRentals && clientRentals.length > 0 && clientRentals.filter(rental => rental.status?.statusType === CellRentalStatus.CLOSED).length > 0 ? (
-                  clientRentals.map((rental) => {
-                    const duration = differenceInDays(parseISO(rental.endDate), parseISO(rental.startDate)) + 1;
-                    const cells = rental.cell || [];
-                    const cellName = cells.length === 0 ? '—' : (cells.length === 1 ? (cells[0].name || '—') : `${cells.length} ячеек`);
-                    const locationName = (() => {
-                      const locs = Array.from(new Set(cells.map(c => c.container?.location?.name).filter(Boolean)));
-                      if (locs.length === 0) return '—';
-                      if (locs.length === 1) return locs[0] as string;
-                      return 'Несколько локаций';
-                    })();
-                    return (
-                      <TableRow key={rental.id}>
-                        <TableCell className="font-mono">{cellName}</TableCell>
-                        <TableCell>{locationName}</TableCell>
-                        <TableCell>{getStatusBadge(rental)}</TableCell>
-                        <TableCell>
-                          {formatDate(rental.startDate)} - {formatDate(rental.endDate)}
-                        </TableCell>
-                        <TableCell>{duration} дн.</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => router.push(`/cell-rentals/${rental.id}`)}
-                          >
-                            Подробнее
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
+            <div className="table-mobile-container">
+              <Table className="table-mobile">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center">
-                      У клиента пока нет аренд.
-                    </TableCell>
+                    <TableHead>Ячейка</TableHead>
+                    <TableHead>Локация</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead>Период аренды</TableHead>
+                    <TableHead>Длительность</TableHead>
+                    <TableHead>Действия</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                    {clientRentals && clientRentals.length > 0 && clientRentals.filter(rental => rental.status?.statusType === CellRentalStatus.CLOSED).length > 0 ? (
+                    clientRentals.map((rental) => {
+                      const duration = differenceInDays(parseISO(rental.endDate), parseISO(rental.startDate)) + 1;
+                      const cells = rental.cell || [];
+                      const cellName = cells.length === 0 ? '—' : (cells.length === 1 ? (cells[0].name || '—') : `${cells.length} ячеек`);
+                      const locationName = (() => {
+                        const locs = Array.from(new Set(cells.map(c => c.container?.location?.name).filter(Boolean)));
+                        if (locs.length === 0) return '—';
+                        if (locs.length === 1) return locs[0] as string;
+                        return 'Несколько локаций';
+                      })();
+                      return (
+                        <TableRow key={rental.id}>
+                          <TableCell className="font-mono">{cellName}</TableCell>
+                          <TableCell>{locationName}</TableCell>
+                          <TableCell>{getStatusBadge(rental)}</TableCell>
+                          <TableCell>
+                            {formatDate(rental.startDate)} - {formatDate(rental.endDate)}
+                          </TableCell>
+                          <TableCell>{duration} дн.</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/cell-rentals/${rental.id}`)}
+                            >
+                              Подробнее
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center">
+                        У клиента пока нет аренд.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
         {/* All Payments */}
         <Card>
           <CardHeader>
-            <CardTitle>История платежей</CardTitle>
+            <CardTitle className="text-lg md:text-xl">История платежей</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Дата</TableHead>
-                  <TableHead>Сумма</TableHead>
-                  <TableHead>Описание</TableHead>
-                  <TableHead>Ячейка</TableHead>
-                  <TableHead>Срок (дней)</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allPayments.length > 0 ? (
-                  allPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>{formatDate(payment.createdAt)}</TableCell>
-                      <TableCell className="font-semibold">{formatAmount(payment.amount)}</TableCell>
-                      <TableCell>{payment.description}</TableCell>
-                      <TableCell className="font-mono">{payment.rentalInfo.cellName}</TableCell>
-                      <TableCell>{payment.rentalDuration || '–'}</TableCell>
-                      <TableCell>
-                        <Badge variant={payment.status ? 'default' : 'destructive'}>
-                          {payment.status ? 'Оплачен' : 'Ошибка'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/cell-rentals/${payment.rentalInfo.rentalId}`)}
-                        >
-                          К аренде
-                        </Button>
+            <div className="table-mobile-container">
+              <Table className="table-mobile">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Дата</TableHead>
+                    <TableHead>Описание</TableHead>
+                    <TableHead>Ячейка</TableHead>
+                    <TableHead>Срок (дней)</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead>Действия</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allPayments.length > 0 ? (
+                    allPayments.map((payment) => (
+                      <TableRow key={payment.id}>
+                        <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                        <TableCell className="font-semibold">{formatAmount(payment.amount)}</TableCell>
+                        <TableCell>{payment.description}</TableCell>
+                        <TableCell className="font-mono">{payment.rentalInfo.cellName}</TableCell>
+                        <TableCell>{payment.rentalDuration || '–'}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push(`/cell-rentals/${payment.rentalInfo.rentalId}`)}
+                          >
+                            К аренде
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center">
+                        У клиента пока нет платежей.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center">
-                      У клиента пока нет платежей.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
-      </main>
     </div>
   );
 };

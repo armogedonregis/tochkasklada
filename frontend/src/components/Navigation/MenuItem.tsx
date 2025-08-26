@@ -12,6 +12,7 @@ interface MenuItemProps {
   isNavOpened?: boolean;
   href?: string;
   onClick?: () => void;
+  className?: string;
 }
 
 export const MenuItem: React.FC<MenuItemProps> = ({
@@ -22,6 +23,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   isNavOpened = true,
   href,
   onClick,
+  className = '',
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -66,7 +68,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
     <RenderLink
       className={`w-full h-11 block cursor-pointer transition-all duration-200 ease-in-out px-4 ${isActive ? 'bg-gray-100 dark:bg-gray-800' : 'bg-transparent'
         } ${isPressed ? 'bg-gray-200 dark:bg-gray-700' : ''
-        } rounded-2xl active:bg-gray-200 dark:active:bg-gray-700 touch-manipulation`}
+        } rounded-2xl active:bg-gray-200 dark:active:bg-gray-700 touch-manipulation ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}

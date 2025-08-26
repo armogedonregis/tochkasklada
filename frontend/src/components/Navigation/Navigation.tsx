@@ -248,7 +248,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   return (
     <div 
       className={`flex flex-col h-screen bg-white dark:bg-gray-900 transition-all duration-300 ease-in-out ${
-        isMobile ? 'w-full' : shouldShowFullMenu ? 'w-64' : 'w-20'
+        isMobile ? 'w-full z-50' : shouldShowFullMenu ? 'w-64' : 'w-20'
       } border-r border-gray-200 dark:border-gray-700`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
@@ -270,7 +270,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           {/* Кнопка закрытия для мобильного меню */}
           {isMobile && onClose && (
             <button
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white p-1"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white p-1 touch-manipulation"
               onClick={onClose}
             >
               <X className="w-5 h-5" />
@@ -279,7 +279,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           {/* Кнопка сворачивания/разворачивания (только для десктопа) */}
           {!isMobile && (
             <button
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white touch-manipulation"
               onClick={toggleNav}
             >
               {isNavOpened ? <ChevronLeftIcon /> : <ChevronRightIcon />}
@@ -289,7 +289,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       </div>
 
       {/* Основное меню */}
-      <div className="flex-grow overflow-y-auto py-4 px-3 scrollbar-hide">
+      <div className="flex-grow overflow-y-auto py-4 px-3 scrollbar-hide navigation-mobile overflow-mobile-fix">
         {shouldShowFullMenu && (
           <div className="mb-2 ml-4">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -306,6 +306,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Франчайзинг"
             isNavOpened={shouldShowFullMenu}
             href="/"
+            className="hidden md:block"
           />
         )}
 
@@ -317,6 +318,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Локации"
             isNavOpened={shouldShowFullMenu}
             href="/locations"
+            className="hidden md:block"
           />
         )}
 
@@ -350,6 +352,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Лист ожидания"
             isNavOpened={shouldShowFullMenu}
             href="/list"
+            className="hidden md:block"
           />
         )}
 
@@ -362,6 +365,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             isNavOpened={shouldShowFullMenu}
             href="/requests"
             newItems={requestsStats?.byStatus?.WAITING || 0}
+            className="hidden md:block"
           />
         )}
 
@@ -373,6 +377,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Гант"
             isNavOpened={shouldShowFullMenu}
             href="/gantt"
+            className="hidden md:block"
           />
         )}
 
@@ -406,14 +411,15 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Статистика"
             isNavOpened={shouldShowFullMenu}
             href="/statistics"
+            className="hidden md:block"
           />
         )}
 
         {/* Разделитель */}
-        <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+        <div className="my-4 border-t border-gray-200 lg:block hidden dark:border-gray-700"></div>
 
         {(canAccessPage('system:admin') || isSuperAdmin) && shouldShowFullMenu && (
-          <div className="mb-2 ml-4">
+          <div className="mb-2 ml-4 lg:block hidden">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
               Управление
             </span>
@@ -428,6 +434,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Размеры"
             isNavOpened={shouldShowFullMenu}
             href="/sizes"
+            className="hidden md:block"
           />
         )}
 
@@ -439,6 +446,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Статусы ячеек"
             isNavOpened={shouldShowFullMenu}
             href="/cell-statuses"
+            className="hidden md:block"
           />
         )}
 
@@ -450,6 +458,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Настройки"
             isNavOpened={shouldShowFullMenu}
             href="/settings"
+            className="hidden md:block"
           />
         )}
 
@@ -461,6 +470,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Роли"
             isNavOpened={shouldShowFullMenu}
             href="/roles"
+            className="hidden md:block"
           />
         )}
 
@@ -472,6 +482,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Тест Тбанк"
             isNavOpened={shouldShowFullMenu}
             href="/tinkoff-test"
+            className="hidden md:block"
           />
         )}
 
@@ -483,6 +494,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Панели"
             isNavOpened={shouldShowFullMenu}
             href="/panels"
+            className="hidden md:block"
           />
         )}
 
@@ -494,13 +506,14 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Пользователи"
             isNavOpened={shouldShowFullMenu}
             href="/users"
+            className="hidden md:block"
           />
         )}
 
       </div>
 
       {/* Профиль пользователя */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 navigation-mobile overflow-mobile-fix">
         {shouldShowFullMenu && (
           <div className="mb-2 ml-4">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -590,6 +603,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="API Документация"
             isNavOpened={shouldShowFullMenu}
             href="/docs"
+            className="hidden md:block"
           />
         )}
 
@@ -601,6 +615,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             pageName="Логи"
             isNavOpened={shouldShowFullMenu}
             href="/logs"
+            className="hidden md:block"
           />
         )}
 

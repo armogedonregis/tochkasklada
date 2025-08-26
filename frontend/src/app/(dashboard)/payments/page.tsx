@@ -181,20 +181,20 @@ const PaymentsPage = () => {
 
     if (!user) {
       return (
-        <div className="p-4 pl-12 text-sm text-gray-500">
+        <div className="p-4 md:pl-12 text-sm text-gray-500">
           Информация о клиенте недоступна
         </div>
       );
     }
 
     return (
-      <div className="pl-12 pr-4 py-4 border-t border-gray-100">
+      <div className="pl-4 md:pl-12 pr-4 py-4 border-t border-gray-100 dark:border-gray-700">
         <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4">
           <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
             <User size={16} />
             Информация о клиенте
           </h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-500 dark:text-gray-400">ФИО:</p>
               <p className="font-medium">{user.client?.name}</p>
@@ -203,7 +203,7 @@ const PaymentsPage = () => {
               <p className="text-gray-500 dark:text-gray-400">Email:</p>
               <p className="font-medium">{user?.email || 'Не указан'}</p>
             </div>
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <p className="text-gray-500 dark:text-gray-400 mb-1">Телефоны:</p>
               <div className="font-medium space-y-1">
                 {user.client.phones && user.client.phones.length > 0 ? (
@@ -370,41 +370,62 @@ const PaymentsPage = () => {
   ];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-      {/* Панель добавления */}
-      <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <Button onClick={() => modal.openCreate()}>
-          Добавить платеж
-        </Button>
-      </div>
+    <div className="min-h-full bg-gray-50 dark:bg-gray-900 pb-20 lg:pb-0">
+        {/* Заголовок страницы */}
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+            Платежи
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Управление платежами и арендой ячеек
+          </p>
+        </div>
 
-      {/* Таблица */}
-      <BaseTable
-        data={payments}
-        columns={columns}
-        searchColumn="orderId"
-        searchPlaceholder="Поиск по ID платежа..."
-        onEdit={modal.openEdit}
-        onDelete={handleDelete}
-        tableId="payments-table"
-        editPermission='payments:update'
-        deletePermission='payments:delete'
-        totalCount={totalCount}
-        pageCount={pageCount}
-        onPaginationChange={tableControls.handlePaginationChange}
-        onSortingChange={tableControls.handleSortingChange}
-        onSearchChange={tableControls.handleSearchChange}
-        isLoading={isLoading}
-        error={error}
-        onRetry={refetch}
-        sortableFields={PaymentSortField}
-        pagination={tableControls.pagination}
-        sorting={tableControls.sorting}
-        persistSettings={true}
-        renderRowSubComponent={({ row }) =>
-          expandedPayments.includes(row.original.id) ? <ExpandedClientInfo payment={row.original} /> : null
-        }
-      />
+        {/* Основной контент */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+          {/* Панель добавления */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex-1">
+              <Button 
+                onClick={() => modal.openCreate()}
+                className="w-full sm:w-auto touch-manipulation button-mobile"
+                size="lg"
+              >
+                Добавить платеж
+              </Button>
+            </div>
+          </div>
+
+          {/* Таблица */}
+          <div className="overflow-hidden">
+            <BaseTable
+              data={payments}
+              columns={columns}
+              searchColumn="orderId"
+              searchPlaceholder="Поиск по ID платежа..."
+              onEdit={modal.openEdit}
+              onDelete={handleDelete}
+              tableId="payments-table"
+              editPermission='payments:update'
+              deletePermission='payments:delete'
+              totalCount={totalCount}
+              pageCount={pageCount}
+              onPaginationChange={tableControls.handlePaginationChange}
+              onSortingChange={tableControls.handleSortingChange}
+              onSearchChange={tableControls.handleSearchChange}
+              isLoading={isLoading}
+              error={error}
+              onRetry={refetch}
+              sortableFields={PaymentSortField}
+              pagination={tableControls.pagination}
+              sorting={tableControls.sorting}
+              persistSettings={true}
+              renderRowSubComponent={({ row }) =>
+                expandedPayments.includes(row.original.id) ? <ExpandedClientInfo payment={row.original} /> : null
+              }
+            />
+          </div>
+        </div>
 
       {/* Модальное окно */}
       <BaseFormModal

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from 'react';
-import { 
+import {
   useGetClientsQuery,
   useCreateClientMutation,
   useUpdateClientMutation,
-  useDeleteClientMutation 
+  useDeleteClientMutation
 } from '@/services/clientsService/clientsApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
@@ -16,7 +15,6 @@ import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PermissionGate } from '@/services/authService';
@@ -51,23 +49,19 @@ interface ClientFormFields {
 
 export default function ClientsPage() {
   const router = useRouter();
-  
-  // Состояние для фильтра активности
-  const [activeFilter, setActiveFilter] = useState<string>('all');
 
   // Используем хук для управления состоянием таблицы
   const tableControls = useTableControls<ClientSortField>({
     defaultPageSize: 10,
   });
-  
+
   // Получение данных о клиентах с учетом параметров
   const { data, error, isLoading, refetch } = useGetClientsQuery({
     page: tableControls.queryParams.page,
     limit: tableControls.queryParams.limit,
     search: tableControls.queryParams.search,
     sortBy: tableControls.queryParams.sortBy,
-    sortDirection: tableControls.queryParams.sortDirection,
-    isActive: activeFilter === 'all' ? undefined : activeFilter === 'active'
+    sortDirection: tableControls.queryParams.sortDirection
   });
 
   // Мутации для операций с клиентами
@@ -79,7 +73,7 @@ export default function ClientsPage() {
   const modal = useFormModal<ClientFormFields, Client>({
     onSubmit: async (values) => {
       if (modal.editItem) {
-        await updateClient({ 
+        await updateClient({
           id: modal.editItem.id,
           name: values.name,
           email: values.email,
@@ -111,19 +105,6 @@ export default function ClientsPage() {
       } catch (error) {
         toast.error('Ошибка при удалении клиента');
       }
-    }
-  };
-
-  // Обработчик изменения статуса активности
-  const handleActiveChange = async (client: Client, newValue: boolean) => {
-    try {
-      await updateClient({ 
-        id: client.id,
-        isActive: newValue
-      }).unwrap();
-      toast.success('Статус клиента обновлен');
-    } catch (error) {
-      toast.error('Ошибка при обновлении статуса клиента');
     }
   };
 
@@ -164,8 +145,8 @@ export default function ClientsPage() {
     {
       accessorKey: 'createdAt',
       header: 'Дата регистрации',
-      cell: ({ row }) => row.original.createdAt 
-        ? new Date(row.original.createdAt).toLocaleDateString('ru-RU') 
+      cell: ({ row }) => row.original.createdAt
+        ? new Date(row.original.createdAt).toLocaleDateString('ru-RU')
         : '-',
     },
     {
@@ -214,78 +195,72 @@ export default function ClientsPage() {
 
   return (
     <ProtectedPage pageName="clients">
-      {/* Панель добавления и фильтрации */}
-      <div className="flex justify-between items-center mb-4 px-4 pt-4">
-        <div className="flex items-center gap-4">
-          <PermissionGate permissions={['clients:create']}>
-            <Button onClick={() => modal.openCreate()}>
-              Добавить клиента
-            </Button>
-          </PermissionGate>
-          <Select value={activeFilter} onValueChange={setActiveFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Фильтр по статусу" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все клиенты</SelectItem>
-              <SelectItem value="active">Активные</SelectItem>
-              <SelectItem value="inactive">Неактивные</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="min-h-full bg-gray-50 dark:bg-gray-900 pb-20 lg:pb-0">
+        {/* Панель добавления и фильтрации */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 px-4 pt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+              <PermissionGate permissions={['clients:create']}>
+                <Button onClick={() => modal.openCreate()} className="w-full sm:w-auto touch-manipulation button-mobile">
+                  Добавить клиента
+                </Button>
+              </PermissionGate>
+            </div>
+          </div>
+
+          {/* Таблица */}
+          <div className="overflow-hidden overflow-fix">
+            <BaseTable
+              data={data?.data || []}
+              columns={columns}
+              searchColumn="name"
+              searchPlaceholder="Поиск по имени клиента..."
+              onEdit={modal.openEdit}
+              onDelete={handleDelete}
+              editPermission="clients:update"
+              deletePermission="clients:delete"
+              tableId="clients-table"
+              totalCount={data?.meta?.totalCount || 0}
+              pageCount={data?.meta?.totalPages || 1}
+              onPaginationChange={tableControls.handlePaginationChange}
+              onSortingChange={tableControls.handleSortingChange}
+              onSearchChange={tableControls.handleSearchChange}
+              isLoading={isLoading}
+              error={error}
+              onRetry={refetch}
+              sortableFields={ClientSortField}
+              pagination={tableControls.pagination}
+              sorting={tableControls.sorting}
+              persistSettings={true}
+            />
+          </div>
+
+          {/* Модальное окно */}
+          <BaseFormModal
+            isOpen={modal.isOpen}
+            onClose={modal.closeModal}
+            title={modal.editItem ? 'Редактировать клиента' : 'Добавить клиента'}
+            fields={modalFields}
+            validationSchema={clientValidationSchema}
+            onSubmit={modal.handleSubmit}
+            submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
+            defaultValues={modal.editItem ? {
+              name: modal.editItem.name,
+              email: modal.editItem.user?.email || '',
+              phones: Array.isArray(modal.editItem.phones) ? modal.editItem.phones.map((p: any) => ({
+                phone: p.phone,
+                comment: p.comment || ''
+              })) : [],
+              isActive: modal.editItem.isActive
+            } : {
+              name: '',
+              email: '',
+              phones: [],
+              isActive: false
+            }}
+          />
         </div>
       </div>
-
-      {/* Таблица */}
-      <div className="">
-        <BaseTable
-          data={data?.data || []}
-          columns={columns}
-          searchColumn="name"
-          searchPlaceholder="Поиск по имени клиента..."
-          onEdit={modal.openEdit}
-          onDelete={handleDelete}
-          editPermission="clients:update"
-          deletePermission="clients:delete"
-          tableId="clients-table"
-          totalCount={data?.meta?.totalCount || 0}
-          pageCount={data?.meta?.totalPages || 1}
-          onPaginationChange={tableControls.handlePaginationChange}
-          onSortingChange={tableControls.handleSortingChange}
-          onSearchChange={tableControls.handleSearchChange}
-          isLoading={isLoading}
-          error={error}
-          onRetry={refetch}
-          sortableFields={ClientSortField}
-          pagination={tableControls.pagination}
-          sorting={tableControls.sorting}
-          persistSettings={true}
-        />
-      </div>
-
-      {/* Модальное окно */}
-      <BaseFormModal
-        isOpen={modal.isOpen}
-        onClose={modal.closeModal}
-        title={modal.editItem ? 'Редактировать клиента' : 'Добавить клиента'}
-        fields={modalFields}
-        validationSchema={clientValidationSchema}
-        onSubmit={modal.handleSubmit}
-        submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
-        defaultValues={modal.editItem ? {
-          name: modal.editItem.name,
-          email: modal.editItem.user?.email || '',
-          phones: Array.isArray(modal.editItem.phones) ? modal.editItem.phones.map((p: any) => ({ 
-            phone: p.phone, 
-            comment: p.comment || '' 
-          })) : [],
-          isActive: modal.editItem.isActive
-        } : {
-          name: '',
-          email: '',
-          phones: [],
-          isActive: false
-        }}
-      />
     </ProtectedPage>
   );
 } 
