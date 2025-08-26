@@ -356,7 +356,7 @@ export class PaymentsService {
               where: { id: cellRentalId },
               data: { clientId: newUser.client.id }
             });
-            
+
             this.logger.log(`Rental ${cellRentalId} clientId updated to ${newUser.client.id} when linking payment`, PaymentsService.name);
           }
         }
@@ -375,7 +375,7 @@ export class PaymentsService {
         // Если нужно продлить аренду
         if (extendRental === true && !rentalEndDate) {
           const newEndDate = new Date(rental.endDate);
-          newEndDate.setMonth(newEndDate.getMonth() + 1);
+          newEndDate.setMonth(newEndDate.getMonth());
           updateRentalData.endDate = newEndDate;
           updateRentalData.lastExtendedAt = new Date();
           updateRentalData.extensionCount = { increment: 1 };
@@ -403,7 +403,7 @@ export class PaymentsService {
         // Если передается новый userId, используем его
         if (data.userId && data.userId !== existingPayment.userId) {
           targetUserId = data.userId;
-          
+
           // Получаем информацию о новом пользователе
           const newUser = await this.prisma.user.findUnique({
             where: { id: targetUserId },
@@ -514,7 +514,7 @@ export class PaymentsService {
     // Обрабатываем обновление пользователя в платеже
     if (data.userId && data.userId !== existingPayment.userId) {
       this.logger.log(`Updating user in payment ${id} from ${existingPayment.userId} to ${data.userId}`, PaymentsService.name);
-      
+
       // Проверяем, существует ли новый пользователь
       const newUser = await this.prisma.user.findUnique({
         where: { id: data.userId },
@@ -537,13 +537,13 @@ export class PaymentsService {
       // Если платеж привязан к аренде, обновляем clientId в аренде
       if (existingPayment.cellRentalId) {
         this.logger.log(`Payment ${id} is linked to rental ${existingPayment.cellRentalId}, updating clientId in rental`, PaymentsService.name);
-        
+
         try {
           await this.prisma.cellRental.update({
             where: { id: existingPayment.cellRentalId },
             data: { clientId: newUser.client.id }
           });
-          
+
           this.logger.log(`Rental ${existingPayment.cellRentalId} clientId updated to ${newUser.client.id}`, PaymentsService.name);
         } catch (rentalError) {
           this.logger.error(`Error updating clientId in rental ${existingPayment.cellRentalId}: ${rentalError.message}`, rentalError.stack, PaymentsService.name);
@@ -1178,22 +1178,34 @@ export class PaymentsService {
    */
   private _calculateRentalEndDate(startDate: Date, value: number, unit: string): Date {
     const endDate = new Date(startDate);
-
-    if (unit.startsWith('мес')) {
-      // Добавляем месяцы - точно календарные месяцы
-      // Если оплатили 28.07, то до 27.08 (ровно месяц)
+    const normalizedUnit = unit.toLowerCase().trim();
+  
+    if (normalizedUnit.includes('мес') || normalizedUnit.includes('month')) {
+      // Корректное добавление месяцев с учетом количества дней
+      const day = startDate.getDate();
       endDate.setMonth(endDate.getMonth() + value);
-      // НЕ вычитаем день, так как это уже правильная дата окончания
-    } else if (unit.startsWith('дн') || unit.startsWith('day')) {
-      // Добавляем дни
+      
+      // Проверяем, не "перескочили" ли мы на следующий месяц
+      if (endDate.getDate() !== day) {
+        // Если да, устанавливаем последний день предыдущего месяца
+        endDate.setDate(0);
+      }
+    } 
+    else if (normalizedUnit.includes('дн') || normalizedUnit.includes('day')) {
       endDate.setDate(endDate.getDate() + value);
-      // НЕ вычитаем день, так как это уже правильная дата окончания
-    } else if (unit.startsWith('год') || unit.startsWith('year')) {
-      // Добавляем годы - точно календарные годы
+    } 
+    else if (normalizedUnit.includes('год') || normalizedUnit.includes('year')) {
       endDate.setFullYear(endDate.getFullYear() + value);
-      // НЕ вычитаем день, так как это уже правильная дата окончания
+      
+      // Обработка 29 февраля в високосных годах
+      if (startDate.getMonth() === 1 && startDate.getDate() === 29) {
+        const isLeapYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+        if (!isLeapYear(endDate.getFullYear())) {
+          endDate.setDate(28); // 28 февраля в невисокосный год
+        }
+      }
     }
-
+  
     return endDate;
   }
 
@@ -1624,8 +1636,8 @@ export class PaymentsService {
 
       // Продлеваем аренду календарным способом (если передан период)
       const newEndDate = rentalDuration
-        ? this._calculateRentalEndDate(new Date(latestRental.endDate), rentalDuration.value, rentalDuration.unit)
-        : (() => { const d = new Date(latestRental.endDate); d.setMonth(d.getMonth() + 1); return d; })();
+      ? this._calculateRentalEndDate(new Date(latestRental.endDate), rentalDuration.value, rentalDuration.unit)
+      : this._calculateRentalEndDate(new Date(latestRental.endDate), 1, 'month');
 
       const updatedRental = await this.prisma.cellRental.update({
         where: { id: latestRental.id },
@@ -1653,8 +1665,8 @@ export class PaymentsService {
     try {
       const startDate = new Date();
       const endDate = rentalDuration
-        ? this._calculateRentalEndDate(new Date(startDate), rentalDuration.value, rentalDuration.unit)
-        : (() => { const d = new Date(startDate); d.setMonth(d.getMonth() + 1); return d; })();
+      ? this._calculateRentalEndDate(new Date(startDate), rentalDuration.value, rentalDuration.unit)
+      : this._calculateRentalEndDate(new Date(startDate), 1, 'month');
 
       const rental = await this.cellRentalsService.create({
         cellIds: cellIds,

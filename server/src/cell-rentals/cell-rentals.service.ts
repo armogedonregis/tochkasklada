@@ -1403,23 +1403,22 @@ export class CellRentalsService {
    * Правильно рассчитывает дату окончания аренды с использованием календарных периодов
    */
   private _calculateRentalEndDate(startDate: Date, value: number, unit: string): Date {
-    const endDate = new Date(startDate);
+    // Создаем копию даты чтобы избежать мутации исходного объекта
+    const endDate = new Date(startDate.getTime());
     
     if (unit.startsWith('мес')) {
-      // Добавляем месяцы - точно календарные месяцы
       endDate.setMonth(endDate.getMonth() + value);
-      endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
     } else if (unit.startsWith('дн') || unit.startsWith('day')) {
-      // Добавляем дни
-      endDate.setDate(endDate.getDate() + value - 1); // Вычитаем 1 день для корректной даты окончания
+      endDate.setDate(endDate.getDate() + value);
     } else if (unit.startsWith('год') || unit.startsWith('year')) {
-      // Добавляем годы - точно календарные годы
       endDate.setFullYear(endDate.getFullYear() + value);
-      endDate.setDate(endDate.getDate() - 1); // Вычитаем 1 день для корректной даты окончания
     }
     
+    // Вычитаем 1 миллисекунду вместо 1 дня для большей точности
+    endDate.setTime(endDate.getTime() - 1);
+    
     return endDate;
-  }
+}
 
   /**
    * Извлекает информацию о периоде аренды из описания платежа
