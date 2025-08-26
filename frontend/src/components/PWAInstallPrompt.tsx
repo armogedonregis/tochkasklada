@@ -13,11 +13,23 @@ export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
+
+
   useEffect(() => {
+    const storage = localStorage.getItem('pwa-install-prompt');
+    if (storage) {
+      const dateCache = new Date(storage);
+      if (dateCache > new Date()) return;
+    }
+
+    const dateCache = new Date();
+    dateCache.setDate(dateCache.getDate() + 1);
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowInstallPrompt(true);
+      localStorage.setItem('pwa-install-prompt', dateCache.toISOString());
     };
 
     window.addEventListener('beforeinstallprompt', handler);
