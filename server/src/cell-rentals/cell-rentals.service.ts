@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RolesService } from '../roles/roles.service';
 import { CreateCellRentalDto, UpdateCellRentalDto, ExtendCellRentalDto, FindCellRentalsDto, CellRentalSortField, SortDirection, UpdateRentalStatusDto } from './dto';
 import { CellRentalStatus, Prisma } from '@prisma/client';
 import { CellFreeSortField, FindFreeCellRentalsDto } from './dto/find-free-cells.dto';
@@ -11,12 +12,13 @@ export class CellRentalsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly rolesService: RolesService,
   ) {
     this.logger.log('CellRentalsService instantiated', 'CellRentalsService');
   }
 
   // Получение аренд с фильтрацией, поиском и пагинацией
-  async findCellRentals(queryParams: FindCellRentalsDto) {
+  async findCellRentals(queryParams: FindCellRentalsDto, currentUser?: { id: string; role: string }) {
     this.logger.log(`Fetching cell rentals with query: ${JSON.stringify(queryParams)}`, 'CellRentalsService');
     try {
       const {
@@ -132,6 +134,25 @@ export class CellRentalsService {
         default:
           orderBy.createdAt = sortDirection;
           break;
+      }
+
+      // Фильтрация по доступным локациям для ADMIN
+      if (currentUser && currentUser.role === 'ADMIN') {
+        const admin = await this.prisma.admin.findUnique({ where: { userId: currentUser.id }, select: { id: true } });
+        const ids = admin ? await this.rolesService.getAccessibleLocationIdsForAdmin(admin.id) : [];
+        if (ids.length > 0) {
+          const ands: any[] = Array.isArray((where as any).AND) ? ([...(where as any).AND] as any[]) : ((where as any).AND ? [((where as any).AND as any)] : []);
+          ands.push({
+            cell: {
+              some: {
+                container: { location: { id: { in: ids } } }
+              }
+            }
+          });
+          (where as any).AND = ands;
+        } else {
+          return { data: [], meta: { totalCount: 0, page, limit, totalPages: 0 } };
+        }
       }
 
       // Запрос на получение общего количества

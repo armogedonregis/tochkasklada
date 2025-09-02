@@ -7,6 +7,7 @@ import { Prisma, UserRole } from '@prisma/client';
 import { LoggerService } from '../logger/logger.service';
 import { CellRentalsService } from '../cell-rentals/cell-rentals.service';
 import { ListService } from '../list/list.service';
+import { RolesService } from '../roles/roles.service';
 import { RequestsService } from '../requests/requests.service';
 
 // Добавляем интерфейс на уровне класса
@@ -37,6 +38,7 @@ export class PaymentsService {
     private readonly cellRentalsService: CellRentalsService,
     private readonly listService: ListService,
     private readonly requestsService: RequestsService,
+    private readonly rolesService: RolesService,
   ) {
     this.logger.debug?.('PaymentsService instantiated', PaymentsService.name);
   }
@@ -832,7 +834,7 @@ export class PaymentsService {
   }
 
   // Получение всех платежей (для администратора)
-  async getAllPayments(queryParams: FindPaymentsDto) {
+  async getAllPayments(queryParams: FindPaymentsDto, currentUser?: { id: string; role: string }) {
     try {
       const {
         search,
@@ -862,6 +864,31 @@ export class PaymentsService {
           // Поиск по ID связанной аренды ячейки
           { cellRentalId: { contains: search } }
         ];
+      }
+
+      // Фильтрация по доступным локациям для ADMIN (для SUPERADMIN не ограничиваем)
+      if (currentUser && currentUser.role === 'ADMIN') {
+        const adminLocations = await this.rolesService.getAccessibleLocationIdsForAdmin((await this.prisma.admin.findUnique({ where: { userId: currentUser.id }, select: { id: true } }))?.id || '');
+        if (adminLocations && adminLocations.length > 0) {
+          where.AND = where.AND || [];
+          where.AND.push({
+            cellRental: {
+              cell: {
+                some: {
+                  container: {
+                    location: { id: { in: adminLocations } }
+                  }
+                }
+              }
+            }
+          });
+        } else {
+          // Если локаций нет — возвращаем пустой результат
+          return {
+            data: [],
+            meta: { totalCount: 0, page, limit, totalPages: 0 },
+          };
+        }
       }
 
       // Вычисляем параметры пагинации

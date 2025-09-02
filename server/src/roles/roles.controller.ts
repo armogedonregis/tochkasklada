@@ -9,7 +9,8 @@ import {
   UseGuards, 
   ParseUUIDPipe, 
   HttpCode, 
-  HttpStatus
+  HttpStatus,
+  Req
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -106,5 +107,33 @@ export class RolesController {
   @RequirePermissions('roles:read')
   async getAdminLocationPermissions(@Param('adminId', ParseUUIDPipe) adminId: string) {
     return this.rolesService.getAdminLocationPermissions(adminId);
+  }
+
+  /**
+   * Массовое назначение доступных локаций и прав администратору
+   */
+  @Post('assign-admin-locations')
+  @HttpCode(HttpStatus.CREATED)
+  @RequirePermissions('roles:assign')
+  async assignAdminLocations(@Body() dto: { adminId: string; locationIds: string[]; permissions: string[] }) {
+    return this.rolesService.assignAdminLocations(dto);
+  }
+
+  /**
+   * Доступные локации для текущего админа
+   */
+  @Get('me/locations')
+  @RequirePermissions('locations:read')
+  async getMyLocations(@Req() req: any) {
+    return this.rolesService.getAccessibleLocationsForUser(req.user.id);
+  }
+
+  /**
+   * Срез по конкретной локации для текущего админа (включая контейнеры и ячейки)
+   */
+  @Get('me/location/:locationId/snapshot')
+  @RequirePermissions('locations:read')
+  async getMyLocationSnapshot(@Req() req: any, @Param('locationId', ParseUUIDPipe) locationId: string) {
+    return this.rolesService.getLocationSnapshotForUser(req.user.id, locationId);
   }
 }

@@ -3,12 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { hashPassword, generateRandomPassword } from '../common/utils/password.utils';
 import { ClientSortField, FindClientsDto, SortDirection, UpdateClientDto, CreateClientDto } from './dto';
 import { LoggerService } from '../logger/logger.service';
+import { RolesService } from '../roles/roles.service';
 
 @Injectable()
 export class ClientsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly rolesService: RolesService,
   ) {
     this.logger.log('ClientsService instantiated', 'ClientsService');
   }
@@ -253,7 +255,7 @@ export class ClientsService {
   /**
    * Поиск клиентов с пагинацией и фильтрацией
    */
-  async findAll(queryParams: FindClientsDto) {
+  async findAll(queryParams: FindClientsDto, currentUser?: { id: string; role: string }) {
     this.logger.log(`Fetching all clients with query params: ${JSON.stringify(queryParams)}`, 'ClientsService');
     const { 
       search, 
@@ -313,6 +315,29 @@ export class ClientsService {
           }
         }
       ];
+    }
+
+    // Фильтрация по доступным локациям для ADMIN (через активные аренды клиента)
+    if (currentUser && currentUser.role === 'ADMIN') {
+      const admin = await this.prisma.admin.findUnique({ where: { userId: currentUser.id }, select: { id: true } });
+      const ids = admin ? await this.rolesService.getAccessibleLocationIdsForAdmin(admin.id) : [];
+      if (ids.length > 0) {
+        where.AND = where.AND || [];
+        where.AND.push({
+          rentals: {
+            some: {
+              cell: {
+                some: {
+                  container: { location: { id: { in: ids } } }
+                }
+              }
+            }
+          }
+        });
+      } else {
+        this.logger.log('Admin has no accessible locations, returning empty clients list', 'ClientsService');
+        return { data: [], meta: { totalCount: 0, page, limit, totalPages: 0 } } as any;
+      }
     }
 
     this.logger.log(`Final where conditions: ${JSON.stringify(where)}`, 'ClientsService');

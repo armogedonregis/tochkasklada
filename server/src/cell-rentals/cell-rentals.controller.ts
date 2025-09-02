@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, ParseUUIDPipe, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, ParseUUIDPipe, HttpCode, HttpStatus, Query, Req } from '@nestjs/common';
 import { CellRentalsService } from './cell-rentals.service';
 import { UpdateCellRentalDto, FindCellRentalsDto, ExtendCellRentalDto, UpdateRentalStatusDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -23,8 +23,8 @@ export class CellRentalsAdminController {
   @Get()
   @RequirePermissions('rentals:read')
   @HttpCode(HttpStatus.OK)
-  findAll(@Query() query: FindCellRentalsDto) {
-    return this.cellRentalsService.findCellRentals(query);
+  findAll(@Query() query: FindCellRentalsDto, @Req() req: any) {
+    return this.cellRentalsService.findCellRentals(query, req.user);
   }
 
   /**

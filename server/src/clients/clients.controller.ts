@@ -11,7 +11,8 @@ import {
   HttpStatus,
   Query,
   ParseUUIDPipe,
-  Logger
+  Logger,
+  Req
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -78,7 +79,8 @@ export class ClientsController {
   @Get()
   async findAll(
     @Query() dto: FindClientsDto,
-    @Query('isActive') rawIsActive?: string
+    @Query('isActive') rawIsActive?: string,
+    @Req() req?: any,
   ) {
     this.logger.log(`Raw isActive query param: ${rawIsActive}, type: ${typeof rawIsActive}`);
 
@@ -88,7 +90,7 @@ export class ClientsController {
       this.logger.log(`Overriding isActive in DTO to: ${dto.isActive}`);
     }
     
-    return this.clientsService.findAll(dto);
+    return this.clientsService.findAll(dto, req?.user);
   }
 
   /**

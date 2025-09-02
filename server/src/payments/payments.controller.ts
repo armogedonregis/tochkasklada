@@ -145,8 +145,8 @@ export class PaymentsController {
   @Get()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('payments:read')
-  getAllPayments(@Query() query: FindPaymentsDto) {
-    return this.paymentsService.getAllPayments(query);
+  getAllPayments(@Query() query: FindPaymentsDto, @Req() req: any) {
+    return this.paymentsService.getAllPayments(query, req.user);
   }
 
   /**

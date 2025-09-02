@@ -426,6 +426,18 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
 
+        {/* Локации (управление) */}
+        {canAccessPage('locations:read') && (
+          <MenuItem
+            icon={<MapIcon className="text-gray-500" />}
+            activeIcon={<MapIcon className="text-[#F62D40] dark:text-[#F8888F]" />}
+            pageName="Локации (управление)"
+            isNavOpened={shouldShowFullMenu}
+            href="/control/locations"
+            className="hidden md:block"
+          />
+        )}
+
         {/* Размеры */}
         {canAccessPage('sizes:read') && (
           <MenuItem

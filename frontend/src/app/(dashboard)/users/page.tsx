@@ -7,7 +7,8 @@ import {
   useUpdateUserMutation,
   useDeleteUserMutation 
 } from '@/services/usersService/usersApi';
-import { useGetRolesQuery } from '@/services/rolesService/rolesApi';
+import { useGetRolesQuery, useAssignAdminLocationsMutation, useGetAdminLocationPermissionsQuery } from '@/services/rolesService/rolesApi';
+import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
 import { BaseFormModal } from '@/components/modals/BaseFormModal';
@@ -49,6 +50,7 @@ export default function UsersPage() {
   
   // Получение данных о ролях
   const { data: roles = [] } = useGetRolesQuery();
+  const { data: allLocations = { data: [] } } = useGetLocationsQuery({ limit: 1000 } as any);
 
   // Мутации для операций с пользователями
   const [createUser] = useCreateUserMutation();
@@ -96,6 +98,8 @@ export default function UsersPage() {
     }
   });
 
+  const [assignAdminLocations, { isLoading: isAssigning }] = useAssignAdminLocationsMutation();
+
   // Обработчик удаления пользователя
   const handleDelete = async (user: User) => {
     try {
@@ -123,6 +127,7 @@ export default function UsersPage() {
       cell: ({ row }) => {
         const user = row.original;
         const roles = user.admin?.adminRoles?.map(ar => ar.role.name) || [];
+        // для админов покажем ярлык
         
         if (user.role === 'SUPERADMIN') {
           return (
@@ -180,6 +185,9 @@ export default function UsersPage() {
                 >
                   <Edit className="w-4 h-4" />
                 </Button>
+                {user.role === 'ADMIN' && (
+                  <AssignLocationsButton user={user} />
+                )}
                 
                 <Button
                   variant="outline"
@@ -303,5 +311,92 @@ export default function UsersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Кнопка и модалка назначения локаций и прав админу
+function AssignLocationsButton({ user }: { user: User }) {
+  const [open, setOpen] = useState(false);
+  const { data: allLocations = { data: [] } } = useGetLocationsQuery({ limit: 1000 } as any);
+  const { data: currentPerms } = useGetAdminLocationPermissionsQuery(user.admin?.id || '', { skip: !user.admin?.id });
+  const [assignAdminLocations, { isLoading }] = useAssignAdminLocationsMutation();
+
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([ 
+    'locations:read', 'clients:read', 'cells:read', 'rentals:read', 'payments:read' 
+  ]);
+
+  // Инициализация из текущих данных
+  useState(() => {
+    if (currentPerms && Array.isArray(currentPerms)) {
+      const locIds = currentPerms.map((x: any) => x.locationId).filter(Boolean);
+      setSelectedLocationIds(Array.from(new Set(locIds)) as string[]);
+      // Права берём объединением ключей (если нужно)
+      const keys = Array.from(new Set(currentPerms.flatMap((x: any) => x.permissions || [])));
+      if (keys.length) setSelectedPermissions(keys);
+    }
+  });
+
+  const toggleLocation = (id: string) => {
+    setSelectedLocationIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const togglePermission = (key: string) => {
+    setSelectedPermissions(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]);
+  };
+
+  const save = async () => {
+    await assignAdminLocations({
+      adminId: user.admin!.id,
+      locationIds: selectedLocationIds,
+      permissions: selectedPermissions,
+    }).unwrap();
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        Настроить доступ
+      </Button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-2xl mx-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-lg font-semibold">Доступ к локациям — {user.email}</div>
+              <Button variant="ghost" onClick={() => setOpen(false)}>Закрыть</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div className="font-medium mb-2">Локации</div>
+                <div className="max-h-64 overflow-auto space-y-2">
+                  {allLocations.data.map((loc: any) => (
+                    <label key={loc.id} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedLocationIds.includes(loc.id)} onChange={() => toggleLocation(loc.id)} />
+                      <span>{loc.name} ({loc.city?.short_name})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="font-medium mb-2">Права</div>
+                <div className="grid grid-cols-1 gap-2">
+                  {['locations:read','clients:read','clients:update','cells:read','rentals:read','payments:read'].map(key => (
+                    <label key={key} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedPermissions.includes(key)} onChange={() => togglePermission(key)} />
+                      <span>{key}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
+              <Button onClick={save} disabled={isLoading || selectedLocationIds.length === 0}>Сохранить</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

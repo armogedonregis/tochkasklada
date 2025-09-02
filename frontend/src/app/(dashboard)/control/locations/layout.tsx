@@ -12,7 +12,7 @@ export default function LocationsLayout({
   const pathname = usePathname();
   
   const isActive = (path: string) => {
-    return pathname === path || pathname.startsWith(`${path}/`);
+    return pathname === `/control${path}` || pathname.startsWith(`/control${path}/`);
   };
 
   return (
@@ -23,7 +23,7 @@ export default function LocationsLayout({
 
       {/* Навигационные вкладки */}
       <div className="flex border-b mb-4">
-        <Link href="/locations">
+        <Link href="/control/locations">
           <span 
             className={`px-4 py-2 cursor-pointer ${
               isActive('/locations') && !isActive('/locations/locations') && !isActive('/locations/containers') && !isActive('/locations/cells') 
@@ -34,7 +34,7 @@ export default function LocationsLayout({
             Города
           </span>
         </Link>
-        <Link href="/locations/locations">
+        <Link href="/control/locations/locations">
           <span 
             className={`px-4 py-2 cursor-pointer ${
               isActive('/locations/locations') ? 'border-b-2 border-blue-500 text-blue-500' : ''
@@ -43,7 +43,7 @@ export default function LocationsLayout({
             Локации
           </span>
         </Link>
-        <Link href="/locations/containers">
+        <Link href="/control/locations/containers">
           <span 
             className={`px-4 py-2 cursor-pointer ${
               isActive('/locations/containers') ? 'border-b-2 border-blue-500 text-blue-500' : ''
@@ -52,7 +52,7 @@ export default function LocationsLayout({
             Контейнеры
           </span>
         </Link>
-        <Link href="/locations/cells">
+        <Link href="/control/locations/cells">
           <span 
             className={`px-4 py-2 cursor-pointer ${
               isActive('/locations/cells') ? 'border-b-2 border-blue-500 text-blue-500' : ''

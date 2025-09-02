@@ -87,49 +87,71 @@ export class UsersService {
   async create(createUserDto: CreateUserDto) {
     this.logger.log(`Creating a new user with email: ${createUserDto.email}`, 'UsersService');
 
-    const hashedPassword = await hashPassword(createUserDto.password);
-    
-    return this.prisma.$transaction(async (prisma) => {
-      // Создаем пользователя с ролью ADMIN по умолчанию
-      const user = await prisma.user.create({ 
-        data: {
-          email: createUserDto.email,
-          password: hashedPassword,
-          role: 'ADMIN', // Роль по умолчанию
-        },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
+    // Предварительные проверки
+    const existing = await this.prisma.user.findUnique({ where: { email: createUserDto.email } });
+    if (existing) {
+      throw new BadRequestException('Пользователь с таким email уже существует');
+    }
 
-      // Создаем запись в таблице admin
-      const admin = await prisma.admin.create({
-        data: {
-          userId: user.id,
-        },
-      });
-      this.logger.log(`Admin profile created for user id: ${user.id}`, 'UsersService');
-
-      // Если указаны роли, назначаем их
-      if (createUserDto.roleIds && createUserDto.roleIds.length > 0) {
-        for (const roleId of createUserDto.roleIds) {
-          await prisma.adminRole.create({
-            data: {
-              adminId: admin.id,
-              roleId,
-            },
-          });
-        }
-        this.logger.log(`Roles assigned to user id: ${user.id}`, 'UsersService');
+    if (createUserDto.roleIds && createUserDto.roleIds.length > 0) {
+      const roles = await this.prisma.role.findMany({ where: { id: { in: createUserDto.roleIds } }, select: { id: true } });
+      const found = new Set(roles.map(r => r.id));
+      const missing = createUserDto.roleIds.filter(id => !found.has(id));
+      if (missing.length > 0) {
+        throw new BadRequestException(`Некорректные роли: ${missing.join(', ')}`);
       }
+    }
 
-      this.logger.log(`User created with id: ${user.id}`, 'UsersService');
-      return user;
-    });
+    const hashedPassword = await hashPassword(createUserDto.password);
+
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        // Создаем пользователя с ролью ADMIN по умолчанию
+        const user = await prisma.user.create({ 
+          data: {
+            email: createUserDto.email,
+            password: hashedPassword,
+            role: 'ADMIN', // Роль по умолчанию
+          },
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+
+        // Создаем запись в таблице admin
+        const admin = await prisma.admin.create({
+          data: {
+            userId: user.id,
+          },
+        });
+        this.logger.log(`Admin profile created for user id: ${user.id}`, 'UsersService');
+
+        // Если указаны роли, назначаем их
+        if (createUserDto.roleIds && createUserDto.roleIds.length > 0) {
+          await prisma.adminRole.createMany({
+            data: createUserDto.roleIds.map(roleId => ({ adminId: admin.id, roleId }))
+          });
+          this.logger.log(`Roles assigned to user id: ${user.id}`, 'UsersService');
+        }
+
+        this.logger.log(`User created with id: ${user.id}`, 'UsersService');
+        return user;
+      });
+    } catch (error: any) {
+      // Преобразуем частые ошибки Prisma в понятные ответы
+      if (error?.code === 'P2002') {
+        throw new BadRequestException('Нарушение уникальности (возможно, email уже используется)');
+      }
+      if (error?.code === 'P2003') {
+        throw new BadRequestException('Некорректные ссылки на связанные записи (roles/admin)');
+      }
+      this.logger.error(`Failed to create user: ${error?.message}`, error?.stack, 'UsersService');
+      throw error;
+    }
   }
   
   /**
@@ -277,7 +299,7 @@ export class UsersService {
     const users = await this.prisma.user.findMany({
       where: {
         role: {
-          in: ['ADMIN', 'SUPERADMIN']
+          in: ['ADMIN']
         }
       },
       select: {

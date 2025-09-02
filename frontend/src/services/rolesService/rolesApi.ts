@@ -59,6 +59,37 @@ export const rolesApi = api.injectEndpoints({
       query: () => 'admin/roles/permissions/categories',
       providesTags: ['Permissions'],
     }),
+
+    // Получить права администратора по локациям
+    getAdminLocationPermissions: builder.query<any[], string>({
+      query: (adminId) => `admin/roles/admin/${adminId}/location-permissions`,
+      providesTags: (result, error, adminId) => [{ type: 'Roles', id: `admin-locations-${adminId}` }],
+    }),
+
+    // Назначить администратору локации и права
+    assignAdminLocations: builder.mutation<{ success: boolean; adminId: string },{ adminId: string; locationIds: string[]; permissions: string[] }>({
+      query: (data) => ({
+        url: 'admin/roles/assign-admin-locations',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Roles', id: `admin-locations-${arg.adminId}` },
+        'Roles',
+      ],
+    }),
+
+    // Доступные локации текущего админа
+    getMyLocations: builder.query<{ data: any[] }, void>({
+      query: () => 'admin/roles/me/locations',
+      providesTags: ['Roles'],
+    }),
+
+    // Срез по конкретной локации для текущего админа
+    getMyLocationSnapshot: builder.query<{ data: any }, string>({
+      query: (locationId) => `admin/roles/me/location/${locationId}/snapshot`,
+      providesTags: (result, error, locationId) => [{ type: 'Roles', id: `snapshot-${locationId}` }],
+    }),
   }),
 });
 
@@ -70,4 +101,8 @@ export const {
   useDeleteRoleMutation,
   useGetPermissionsQuery,
   useGetPermissionsByCategoryQuery,
+  useGetAdminLocationPermissionsQuery,
+  useAssignAdminLocationsMutation,
+  useGetMyLocationsQuery,
+  useGetMyLocationSnapshotQuery,
 } = rolesApi;

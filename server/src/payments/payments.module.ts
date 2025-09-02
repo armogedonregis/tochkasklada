@@ -5,9 +5,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { CellRentalsModule } from '../cell-rentals/cell-rentals.module';
 import { ListModule } from '../list/list.module';
 import { RequestsModule } from '../requests/requests.module';
+import { RolesModule } from '../roles/roles.module';
 
 @Module({
-  imports: [PrismaModule, CellRentalsModule, ListModule, RequestsModule],
+  imports: [PrismaModule, CellRentalsModule, ListModule, RequestsModule, RolesModule],
   controllers: [PaymentsController],
   providers: [PaymentsService],
   exports: [PaymentsService],
