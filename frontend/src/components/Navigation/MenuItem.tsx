@@ -31,15 +31,14 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   const isActive = pathname === href;
   
   const handleMouseEnter = () => {
-    if (window.innerWidth > 768) { // Только для десктопа
-      setIsHovered(true);
-    }
+    // Отключаем hover на тач-устройствах
+    const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || (window.matchMedia && window.matchMedia('(hover: none)').matches));
+    if (isTouch) return;
+    setIsHovered(true);
   };
 
   const handleMouseLeave = () => {
-    if (window.innerWidth > 768) { // Только для десктопа
-      setIsHovered(false);
-    }
+    setIsHovered(false);
   };
 
   const handleTouchStart = () => {
@@ -58,7 +57,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   };
 
   const RenderLink = (props: any) => {
-    if (href !== '' || href !== undefined) {
+    if (href && href !== '') {
       return <Link href={href} {...props}></Link>
     }
     return <div {...props}></div>
@@ -66,7 +65,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
 
   return (
     <RenderLink
-      className={`w-full h-11 block cursor-pointer transition-all duration-200 ease-in-out px-4 ${isActive ? 'bg-gray-100 dark:bg-gray-800' : 'bg-transparent'
+      className={`w-full h-11 block cursor-pointer select-none transition-all duration-200 ease-in-out px-4 ${isActive ? 'bg-gray-100 dark:bg-gray-800' : 'bg-transparent'
         } ${isPressed ? 'bg-gray-200 dark:bg-gray-700' : ''
         } rounded-2xl active:bg-gray-200 dark:active:bg-gray-700 touch-manipulation ${className}`}
       onMouseEnter={handleMouseEnter}
@@ -74,7 +73,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
-      href={href || ''}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
       onClick={onClick}
     >
       <div className="flex items-center h-full px-2">

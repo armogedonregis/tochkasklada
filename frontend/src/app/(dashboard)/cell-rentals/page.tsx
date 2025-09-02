@@ -302,11 +302,15 @@ export default function CellRentalsPage() {
               <p className="text-gray-500 dark:text-gray-400 mb-1">Телефоны:</p>
               <div className="font-medium space-y-1">
                 {client.phones && client.phones.length > 0 ? (
-                  client.phones.map((phone: any, index: number) => (
-                    <div key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded break-words">
-                      {typeof phone === 'object' ? phone.phone || phone.number : phone}
-                    </div>
-                  ))
+                  client.phones.map((phone: any, index: number) => {
+                    const number = typeof phone === 'object' ? (phone.phone || phone.number) : phone;
+                    const comment = typeof phone === 'object' ? phone.comment : undefined;
+                    return (
+                      <div key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded break-words">
+                        {number}{comment ? ` — ${comment}` : ''}
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="text-gray-400">Телефоны не указаны</div>
                 )}

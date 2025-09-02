@@ -225,7 +225,10 @@ const CellRentalDetailsPage = () => {
               {client?.phones?.map(p => (
                 <p key={p.id} className="flex items-center gap-2 text-muted-foreground">
                   <Phone className="h-4 w-4" />
-                  {p.phone}
+                  <span>
+                    {p.phone}
+                    {p.comment ? ` — ${p.comment}` : ''}
+                  </span>
                 </p>
               ))}
             </CardContent>

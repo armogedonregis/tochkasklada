@@ -674,19 +674,12 @@ export class PaymentsService {
           where: { id: cellRentalId }
         });
       } else {
-        // Если остались другие платежи – откатываем срок аренды
-        const rental = await this.prisma.cellRental.findUnique({
-          where: { id: cellRentalId }
-        });
-        if (rental) {
-          // Откатываем на то количество дней, которое было в удаленном платеже
-          const daysToSubtract = existingPayment.rentalDuration || 30; // 30 как fallback
-          const newEndDate = new Date(rental.endDate);
-          newEndDate.setDate(newEndDate.getDate() - daysToSubtract);
-          await this.prisma.cellRental.update({
-            where: { id: cellRentalId },
-            data: { endDate: newEndDate }
-          });
+        // Если остались другие платежи – пересчитываем срок аренды по всем платежам
+        try {
+          await this.cellRentalsService.recalculateRentalDuration(cellRentalId);
+        } catch (e) {
+          this.logger.error(`Failed to recalc rental ${cellRentalId} after payment delete: ${e.message}`,
+            e.stack, PaymentsService.name);
         }
       }
     }
@@ -1552,15 +1545,18 @@ export class PaymentsService {
     statusId?: string,
     rentalDuration?: { value: number; unit: string }
   ) {
+    // Дедупликация перед дальнейшей обработкой (на случай повторного указания одной и той же ячейки)
+    const uniqueCellIds = Array.from(new Set(cellIds));
+
     // Проверяем существование всех ячеек
-    this.logger.log(`Checking if all ${cellIds.length} cells exist...`, PaymentsService.name);
+    this.logger.log(`Checking if all ${uniqueCellIds.length} cells exist...`, PaymentsService.name);
     const cells = await this.prisma.cells.findMany({
-      where: { id: { in: cellIds } }
+      where: { id: { in: uniqueCellIds } }
     });
 
-    if (cells.length !== cellIds.length) {
+    if (cells.length !== uniqueCellIds.length) {
       const foundIds = cells.map(c => c.id);
-      const missingIds = cellIds.filter(id => !foundIds.includes(id));
+      const missingIds = uniqueCellIds.filter(id => !foundIds.includes(id));
       throw new BadRequestException(`Ячейки не найдены: ${missingIds.join(', ')}`);
     }
 
@@ -1573,7 +1569,7 @@ export class PaymentsService {
         isActive: true,
         cell: {
           some: {
-            id: { in: cellIds }
+            id: { in: uniqueCellIds }
           }
         }
       },
@@ -1610,7 +1606,7 @@ export class PaymentsService {
       );
 
       // Определяем новые ячейки, которые нужно добавить
-      const newCellIds = cellIds.filter(id => !alreadyRentedCellIds.includes(id));
+      const newCellIds = uniqueCellIds.filter(id => !alreadyRentedCellIds.includes(id));
 
       this.logger.log(`Already rented cells: ${alreadyRentedCellIds.length}, New cells to add: ${newCellIds.length}`, PaymentsService.name);
 
@@ -1669,7 +1665,7 @@ export class PaymentsService {
       : this._calculateRentalEndDate(new Date(startDate), 1, 'month');
 
       const rental = await this.cellRentalsService.create({
-        cellIds: cellIds,
+        cellIds: uniqueCellIds,
         clientId: clientId,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString()

@@ -1461,11 +1461,23 @@ export class CellRentalsService {
     let currentEndDate = new Date(rental.startDate);
     
     for (const payment of allPayments) {
-      const period = this._extractRentalPeriodFromDescription(payment.description || '');
-      currentEndDate = this._calculateRentalEndDate(currentEndDate, period.value, period.unit);
-      
+      // Сначала используем структурированное поле rentalDuration (в днях), если оно есть
+      let value: number;
+      let unit: string;
+
+      if (typeof (payment as any).rentalDuration === 'number' && (payment as any).rentalDuration > 0) {
+        value = (payment as any).rentalDuration as number;
+        unit = 'дн';
+      } else {
+        const period = this._extractRentalPeriodFromDescription(payment.description || '');
+        value = period.value;
+        unit = period.unit;
+      }
+
+      currentEndDate = this._calculateRentalEndDate(currentEndDate, value, unit);
+
       this.logger.log(
-        `Payment ${payment.id}: +${period.value} ${period.unit}, new end date: ${currentEndDate.toISOString()}`,
+        `Payment ${payment.id}: +${value} ${unit}, new end date: ${currentEndDate.toISOString()}`,
         'CellRentalsService'
       );
     }

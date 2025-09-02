@@ -1,6 +1,7 @@
 'use client';
 
 import React, { ReactNode, useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { Navigation } from '../Navigation/Navigation';
 import ProfileButton from '../auth/ProfileButton';
 import { Menu, X } from 'lucide-react';
@@ -16,6 +17,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   const toggleMobileMenu = () => {
     if (isMobileMenuOpen) {
@@ -115,6 +117,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     };
   }, [isMobileMenuOpen]);
 
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      closeMobileMenu();
+    }
+  }, [pathname]);
+
   return (
     <div className="flex h-screen overflow-hidden lg:pb-0">
       {/* Мобильное меню (overlay) */}
@@ -151,7 +159,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       {/* Основной контент */}
       <div
-        className="flex flex-col flex-1 w-0 overflow-hidden touch-manipulation"
+        className="flex flex-col flex-1 w-0 overflow-hidden overflow-x-hidden overscroll-x-none touch-manipulation"
         onTouchStart={onContentTouchStart}
         onTouchMove={onContentTouchMove}
         onTouchEnd={onContentTouchEnd}
