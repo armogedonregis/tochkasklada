@@ -4,7 +4,7 @@ import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import ProfileButton from '../auth/ProfileButton';
 import { Menu, X } from 'lucide-react';
-import { Navigation } from '../navigation';
+import { Navigation } from '../Navigation';
 
 interface MainLayoutProps {
   children: ReactNode;
