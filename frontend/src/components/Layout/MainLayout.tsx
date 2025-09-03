@@ -2,9 +2,9 @@
 
 import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { Navigation } from '../navigation/Navigation';
 import ProfileButton from '../auth/ProfileButton';
 import { Menu, X } from 'lucide-react';
+import { Navigation } from '../navigation';
 
 interface MainLayoutProps {
   children: ReactNode;
