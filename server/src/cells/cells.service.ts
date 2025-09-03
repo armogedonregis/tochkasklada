@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, InternalServerErrorException } from '@ne
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCellDto, UpdateCellDto, FindCellsDto, CellSortField, SortDirection } from './dto';
 import { LoggerService } from '../logger/logger.service';
+import { RolesService } from '../roles/roles.service';
 
 @Injectable()
 export class CellsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly rolesService: RolesService,
   ) {
     this.logger.log('CellsService instantiated', 'CellsService');
   }
@@ -15,7 +17,7 @@ export class CellsService {
   /**
    * Расширенный поиск ячеек с пагинацией, сортировкой и фильтрацией
    */
-  async findCells(queryParams: FindCellsDto) {
+  async findCells(queryParams: FindCellsDto, currentUser?: { id: string; role: string }) {
     this.logger.log(`Finding cells with query: ${JSON.stringify(queryParams)}`, 'CellsService');
     try {
       const {
@@ -111,6 +113,25 @@ export class CellsService {
             }
           }
         };
+      }
+
+      // Фильтрация по доступным локациям для ADMIN
+      if (currentUser && currentUser.role === 'ADMIN') {
+        const admin = await this.prisma.admin.findUnique({ where: { userId: currentUser.id }, select: { id: true } });
+        if (admin) {
+          const accessibleLocationIds = await this.rolesService.getAccessibleLocationIdsForAdmin(admin.id);
+          if (accessibleLocationIds.length === 0) {
+            return { data: [], meta: { totalCount: 0, page, limit, totalPages: 0 } } as any;
+          }
+          // Ограничиваем выдачу ячеек доступными локациями
+          where.container = {
+            ...where.container,
+            location: {
+              ...where.container?.location,
+              id: { in: accessibleLocationIds },
+            },
+          };
+        }
       }
 
       // Вычисляем параметры пагинации

@@ -9,6 +9,7 @@ import {
   UpdateContainerDto 
 } from './dto';
 import { LoggerService } from '../logger/logger.service';
+import { RolesService } from '../roles/roles.service';
 
 /**
  * Сервис для управления контейнерами
@@ -19,6 +20,7 @@ export class ContainersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly rolesService: RolesService,
   ) {
     this.logger.log('ContainersService instantiated', 'ContainersService');
   }
@@ -26,7 +28,7 @@ export class ContainersService {
   /**
    * Поиск контейнеров с пагинацией и фильтрацией
    */
-  async findContainers(queryParams: FindContainersDto) {
+  async findContainers(queryParams: FindContainersDto, currentUser?: { id: string; role: string }) {
     this.logger.log(`Finding containers with query: ${JSON.stringify(queryParams)}`, 'ContainersService');
     try {
       const { 
@@ -71,6 +73,31 @@ export class ContainersService {
             }
           ]
         };
+      }
+
+      // Фильтрация по доступным локациям для ADMIN
+      if (currentUser && currentUser.role === 'ADMIN') {
+        const admin = await this.prisma.admin.findUnique({ where: { userId: currentUser.id }, select: { id: true } });
+        if (admin) {
+          const accessibleLocationIds = await this.rolesService.getAccessibleLocationIdsForAdmin(admin.id);
+          if (accessibleLocationIds.length === 0) {
+            return { data: [], meta: { totalCount: 0, page, limit, totalPages: 0 } } as any;
+          }
+          
+          // Ограничиваем выдачу контейнеров только доступными локациями
+          if (where.OR) {
+            // Если уже есть OR условия (поиск), добавляем дополнительное условие через AND
+            where = {
+              AND: [
+                where,
+                { locId: { in: accessibleLocationIds } }
+              ]
+            };
+          } else {
+            // Если нет поисковых условий, просто ограничиваем по locId
+            where.locId = { in: accessibleLocationIds };
+          }
+        }
       }
 
       // Вычисляем параметры пагинации

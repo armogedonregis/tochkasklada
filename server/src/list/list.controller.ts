@@ -32,8 +32,8 @@ export class ListController {
   // Получение всех заявок с фильтрацией и пагинацией
   @Get()
   @RequirePermissions('lists:read')
-  async getAllLists(@Query() queryParams: FindListsDto) {
-    return this.listService.getAllLists(queryParams);
+  async getAllLists(@Query() queryParams: FindListsDto, @Request() req) {
+    return this.listService.getAllLists(queryParams, req.user);
   }
 
   // Получение заявки по ID

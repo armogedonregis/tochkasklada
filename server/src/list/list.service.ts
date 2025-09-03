@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, BadRequestException, InternalServerError
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateListDto, FindListsDto, CloseListDto, ListSortField, SortDirection } from './dto';
 import { LoggerService } from '../logger/logger.service';
+import { RolesService } from '../roles/roles.service';
 
 @Injectable()
 export class ListService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly rolesService: RolesService,
   ) {
     this.logger.debug?.('ListService instantiated', ListService.name);
   }
@@ -65,7 +67,7 @@ export class ListService {
   }
 
   // Получение всех записей с фильтрацией и пагинацией
-  async getAllLists(queryParams: FindListsDto) {
+  async getAllLists(queryParams: FindListsDto, currentUser?: { id: string; role: string }) {
     try {
       const {
         search,
@@ -101,6 +103,33 @@ export class ListService {
           { phone: { contains: search, mode: 'insensitive' } },
           { description: { contains: search, mode: 'insensitive' } }
         ];
+      }
+
+      // Фильтрация по доступным локациям для ADMIN
+      if (currentUser && currentUser.role === 'ADMIN') {
+        const admin = await this.prisma.admin.findUnique({ where: { userId: currentUser.id }, select: { id: true } });
+        if (admin) {
+          const accessibleLocationIds = await this.rolesService.getAccessibleLocationIdsForAdmin(admin.id);
+          if (accessibleLocationIds.length === 0) {
+            return { data: [], meta: { totalCount: 0, page, limit, totalPages: 0 } } as any;
+          }
+          
+          // Ограничиваем выдачу листов ожидания только доступными локациями
+          if (where.OR) {
+            // Если уже есть OR условия (поиск), добавляем дополнительное условие через AND
+            where = {
+              AND: [
+                where,
+                { locationId: { in: accessibleLocationIds } }
+              ]
+            };
+          } else {
+            // Если нет поисковых условий, просто ограничиваем по locationId
+            where.locationId = where.locationId ? 
+              { in: accessibleLocationIds.filter(id => id === where.locationId) } : 
+              { in: accessibleLocationIds };
+          }
+        }
       }
 
       // Вычисляем параметры пагинации

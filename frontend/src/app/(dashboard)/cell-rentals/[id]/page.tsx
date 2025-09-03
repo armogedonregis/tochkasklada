@@ -139,7 +139,7 @@ const CellRentalDetailsPage = () => {
     );
   }
 
-  const daysLeft = differenceInDays(parseISO(rental.endDate), new Date());
+  const daysLeft = differenceInDays(parseISO(rental.endDate), new Date()) + 1;
   const client = rental.client;
   const cells = rental.cell || [];
   const mainCell = Array.isArray(cells) ? cells[0] : undefined;

@@ -240,7 +240,7 @@ const ClientDetailsPage = () => {
                   </TableHeader>
                   <TableBody>
                     {activeRentals.map((rental) => {
-                      const daysLeft = differenceInDays(parseISO(rental.endDate), new Date());
+                      const daysLeft = differenceInDays(parseISO(rental.endDate), new Date()) + 1;
                       const cells = rental.cell || [];
                       const cellName = cells.length === 0 ? '—' : (cells.length === 1 ? (cells[0].name || '—') : `${cells.length} ячеек`);
                       const locationName = (() => {

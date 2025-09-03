@@ -1195,35 +1195,33 @@ export class PaymentsService {
 
   /**
    * Правильно рассчитывает дату окончания аренды с использованием календарных периодов
+   * Логика: аренда начинается в startDate и заканчивается в последний день периода включительно
+   * Например: начало 03.09, 1 месяц -> конец 02.10 включительно (30 дней: 03.09-02.10)
    */
   private _calculateRentalEndDate(startDate: Date, value: number, unit: string): Date {
     const endDate = new Date(startDate);
     const normalizedUnit = unit.toLowerCase().trim();
   
     if (normalizedUnit.includes('мес') || normalizedUnit.includes('month')) {
-      // Корректное добавление месяцев с учетом количества дней
-      const day = startDate.getDate();
+      // Для месяцев: добавляем месяцы и вычитаем 1 день для получения включительной даты
       endDate.setMonth(endDate.getMonth() + value);
-      
-      // Проверяем, не "перескочили" ли мы на следующий месяц
-      if (endDate.getDate() !== day) {
-        // Если да, устанавливаем последний день предыдущего месяца
-        endDate.setDate(0);
-      }
+      endDate.setDate(endDate.getDate() - 1);
+      // Устанавливаем время на конец дня (23:59:59.999)
+      endDate.setHours(23, 59, 59, 999);
     } 
     else if (normalizedUnit.includes('дн') || normalizedUnit.includes('day')) {
-      endDate.setDate(endDate.getDate() + value);
+      // Для дней: добавляем (дни - 1), чтобы получить включительную дату
+      // Например: начало 03.09, +30 дней -> 03.09 + 29 дней = 02.10 (30 дней включительно)
+      endDate.setDate(endDate.getDate() + value - 1);
+      // Устанавливаем время на конец дня (23:59:59.999)
+      endDate.setHours(23, 59, 59, 999);
     } 
     else if (normalizedUnit.includes('год') || normalizedUnit.includes('year')) {
+      // Для лет: добавляем годы и вычитаем 1 день
       endDate.setFullYear(endDate.getFullYear() + value);
-      
-      // Обработка 29 февраля в високосных годах
-      if (startDate.getMonth() === 1 && startDate.getDate() === 29) {
-        const isLeapYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-        if (!isLeapYear(endDate.getFullYear())) {
-          endDate.setDate(28); // 28 февраля в невисокосный год
-        }
-      }
+      endDate.setDate(endDate.getDate() - 1);
+      // Устанавливаем время на конец дня (23:59:59.999)
+      endDate.setHours(23, 59, 59, 999);
     }
   
     return endDate;

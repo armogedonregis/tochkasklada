@@ -10,7 +10,8 @@ import {
   HttpCode,
   HttpStatus,
   Query,
-  ParseUUIDPipe
+  ParseUUIDPipe,
+  Request
 } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { CreateLocationDto, FindLocationsDto, UpdateLocationDto } from './dto';
@@ -33,8 +34,8 @@ export class LocationsController {
   @Get()
   @UseGuards(PermissionsGuard)
   @RequirePermissions('locations:read')
-  async findAll(@Query() query: FindLocationsDto) {
-    return await this.locationsService.findLocations(query);
+  async findAll(@Query() query: FindLocationsDto, @Request() req) {
+    return await this.locationsService.findLocations(query, req.user);
   }
 
   /**

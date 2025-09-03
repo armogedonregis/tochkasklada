@@ -1,5 +1,5 @@
 // public/sw.js
-const CACHE_NAME = 'tochka-sklada-v3';
+const CACHE_NAME = 'tochka-sklada-v4';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

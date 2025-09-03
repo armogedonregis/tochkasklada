@@ -10,7 +10,8 @@ import {
   HttpCode,
   HttpStatus,
   Query,
-  ParseUUIDPipe
+  ParseUUIDPipe,
+  Request
 } from '@nestjs/common';
 import { ContainersService } from './containers.service';
 import { CreateContainerDto, FindContainersDto, UpdateContainerDto } from './dto';
@@ -34,8 +35,8 @@ export class ContainersController {
    */
   @Get()
   @RequirePermissions('containers:read')
-  async findAll(@Query() query: FindContainersDto) {
-    return await this.containersService.findContainers(query);
+  async findAll(@Query() query: FindContainersDto, @Request() req) {
+    return await this.containersService.findContainers(query, req.user);
   }
 
   /**

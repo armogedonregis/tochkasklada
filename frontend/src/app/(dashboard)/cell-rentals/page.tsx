@@ -243,8 +243,9 @@ export default function CellRentalsPage() {
           // Создаем дату в UTC без сдвига часового пояса
           const [year, month, day] = start.split('-').map(Number);
           const startUtc = new Date(Date.UTC(year, month - 1, day)); // month - 1 потому что в JS месяцы начинаются с 0
-          // Для 1 дня: startDate = сегодня, endDate = завтра (добавляем 1 день)
-          const dateEnd = addDays(startUtc, days);
+          // Для N дней: endDate = startDate + (N-1) дней (включительно)
+          // Например: 1 день = startDate + 0 дней, 30 дней = startDate + 29 дней
+          const dateEnd = addDays(startUtc, days - 1);
           const endString = dateEnd.toISOString().split('T')[0];
           form.setValue('endDate', endString, { shouldValidate: true });
           form.trigger('endDate');
@@ -411,7 +412,8 @@ export default function CellRentalsPage() {
         if (!startDate || !endDate) return '-';
 
         try {
-          return differenceInDays(new Date(endDate), new Date(startDate));
+          // Считаем дни включительно: добавляем 1 день к разности
+          return differenceInDays(new Date(endDate), new Date(startDate)) + 1;
         } catch {
           return '-';
         }
@@ -575,7 +577,7 @@ export default function CellRentalsPage() {
               startDate: formatDateForInput(modal.editItem.startDate),
               endDate: formatDateForInput(modal.editItem.endDate),
               rentalStatus: modal.editItem.rentalStatus,
-              days: differenceInDays(new Date(modal.editItem.endDate), new Date(modal.editItem.startDate))
+              days: differenceInDays(new Date(modal.editItem.endDate), new Date(modal.editItem.startDate)) + 1
             };
           })() : {
             cellIds: [],
