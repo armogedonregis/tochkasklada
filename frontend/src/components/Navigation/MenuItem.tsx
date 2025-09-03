@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { getNavigationIcon } from './icons';
 
 interface MenuItemProps {
-  icon: React.ReactNode;
-  activeIcon: React.ReactNode;
+  iconKey: string;
   pageName: string;
   newItems?: number;
   isNavOpened?: boolean;
@@ -16,8 +16,7 @@ interface MenuItemProps {
 }
 
 export const MenuItem: React.FC<MenuItemProps> = ({
-  icon,
-  activeIcon,
+  iconKey,
   pageName,
   newItems = 0,
   isNavOpened = true,
@@ -78,7 +77,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
     >
       <div className="flex items-center h-full px-2">
         <div className="flex items-center justify-center w-7 h-7">
-          {isHovered || isActive ? activeIcon : icon}
+          {getNavigationIcon(iconKey, isHovered || isActive, `h-5 w-5 ${isHovered || isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`)}
         </div>
 
         {isNavOpened && (
