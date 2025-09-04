@@ -470,21 +470,9 @@ export class PaymentsService {
 
       // Обновление rentalDuration у существующей аренды
       else if (rentalDuration && existingPayment.cellRentalId) {
-        const rental = await this.prisma.cellRental.findUnique({
-          where: { id: existingPayment.cellRentalId },
-        });
-
-        if (rental) {
-          const newEndDate = new Date(rental.startDate);
-          newEndDate.setDate(newEndDate.getDate() + rentalDuration);
-
-          await this.prisma.cellRental.update({
-            where: { id: existingPayment.cellRentalId },
-            data: { endDate: newEndDate },
-          });
-
-          this.logger.log(`Срок аренды ${existingPayment.cellRentalId} обновлен. Новая дата окончания: ${newEndDate}`, PaymentsService.name);
-        }
+        // Вместо ручного расчета используем общий метод пересчета
+        await this.cellRentalsService.recalculateRentalDuration(existingPayment.cellRentalId);
+        this.logger.log(`Срок аренды ${existingPayment.cellRentalId} пересчитан через recalculateRentalDuration`, PaymentsService.name);
       }
 
       // Обновление дат существующей аренды, связанной с платежом
@@ -1203,23 +1191,20 @@ export class PaymentsService {
     const normalizedUnit = unit.toLowerCase().trim();
   
     if (normalizedUnit.includes('мес') || normalizedUnit.includes('month')) {
-      // Для месяцев: добавляем месяцы и вычитаем 1 день для получения включительной даты
+      // Для месяцев: добавляем месяцы
       endDate.setMonth(endDate.getMonth() + value);
-      endDate.setDate(endDate.getDate() - 1);
       // Устанавливаем время на конец дня (23:59:59.999)
       endDate.setHours(23, 59, 59, 999);
     } 
     else if (normalizedUnit.includes('дн') || normalizedUnit.includes('day')) {
-      // Для дней: добавляем (дни - 1), чтобы получить включительную дату
-      // Например: начало 15.07, +30 дней -> 15.07 + 29 дней = 13.08 (30 дней включительно)
-      endDate.setDate(endDate.getDate() + value - 1);
+      // Для дней: добавляем дни
+      endDate.setDate(endDate.getDate() + value);
       // Устанавливаем время на конец дня (23:59:59.999)
       endDate.setHours(23, 59, 59, 999);
     } 
     else if (normalizedUnit.includes('год') || normalizedUnit.includes('year')) {
-      // Для лет: добавляем годы и вычитаем 1 день
+      // Для лет: добавляем годы
       endDate.setFullYear(endDate.getFullYear() + value);
-      endDate.setDate(endDate.getDate() - 1);
       // Устанавливаем время на конец дня (23:59:59.999)
       endDate.setHours(23, 59, 59, 999);
     }
