@@ -1130,7 +1130,6 @@ export class CellRentalsService {
     });
 
     // Рассчитываем новую дату окончания аренды
-    const daysToAdd = rentalDuration || 30; // По умолчанию 30 дней
     const now = new Date();
     const currentEndDate = new Date(rental.endDate);
 
@@ -1139,7 +1138,11 @@ export class CellRentalsService {
     const baseDate = rental.isActive && currentEndDate > now ? currentEndDate : now;
 
     const newEndDate = new Date(baseDate);
-    newEndDate.setDate(newEndDate.getDate() + daysToAdd);
+    // Используем календарные месяцы вместо дней
+    newEndDate.setMonth(newEndDate.getMonth() + (rentalDuration || 1));
+    // Вычитаем 1 день для получения включительной даты
+    newEndDate.setDate(newEndDate.getDate() - 1);
+    newEndDate.setHours(23, 59, 59, 999);
 
     this.logger.log(`Updating rental ${cellRentalId} with new end date: ${newEndDate}`, 'CellRentalsService');
 
