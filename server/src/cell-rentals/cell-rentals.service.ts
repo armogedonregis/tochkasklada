@@ -1140,8 +1140,7 @@ export class CellRentalsService {
     const newEndDate = new Date(baseDate);
     // Используем календарные месяцы вместо дней
     newEndDate.setMonth(newEndDate.getMonth() + (rentalDuration || 1));
-    // Вычитаем 1 день для получения включительной даты
-    newEndDate.setDate(newEndDate.getDate() - 1);
+    // Устанавливаем время на конец дня (23:59:59.999)
     newEndDate.setHours(23, 59, 59, 999);
 
     this.logger.log(`Updating rental ${cellRentalId} with new end date: ${newEndDate}`, 'CellRentalsService');
