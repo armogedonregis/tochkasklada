@@ -1420,37 +1420,6 @@ export class CellRentalsService {
     }
   }
 
-  /**
-   * Правильно рассчитывает дату окончания аренды с использованием календарных периодов
-   * Логика: аренда начинается в startDate и заканчивается в последний день периода включительно
-   * Например: начало 15.07, 3 месяца -> конец 14.10 включительно (3 месяца: 15.07-14.10)
-   */
-  private _calculateRentalEndDate(startDate: Date, value: number, unit: string): Date {
-    // Создаем копию даты чтобы избежать мутации исходного объекта
-    const endDate = new Date(startDate);
-    
-    if (unit.startsWith('мес')) {
-      // Для месяцев: добавляем месяцы и вычитаем 1 день для получения включительной даты
-      endDate.setMonth(endDate.getMonth() + value);
-      endDate.setDate(endDate.getDate() - 1);
-      // Устанавливаем время на конец дня (23:59:59.999)
-      endDate.setHours(23, 59, 59, 999);
-    } else if (unit.startsWith('дн') || unit.startsWith('day')) {
-      // Для дней: добавляем (дни - 1), чтобы получить включительную дату
-      // Например: начало 15.07, +30 дней -> 15.07 + 29 дней = 13.08 (30 дней включительно)
-      endDate.setDate(endDate.getDate() + value - 1);
-      // Устанавливаем время на конец дня (23:59:59.999)
-      endDate.setHours(23, 59, 59, 999);
-    } else if (unit.startsWith('год') || unit.startsWith('year')) {
-      // Для лет: добавляем годы и вычитаем 1 день
-      endDate.setFullYear(endDate.getFullYear() + value);
-      endDate.setDate(endDate.getDate() - 1);
-      // Устанавливаем время на конец дня (23:59:59.999)
-      endDate.setHours(23, 59, 59, 999);
-    }
-    
-    return endDate;
-  }
 
   /**
    * Извлекает информацию о периоде аренды из описания платежа
@@ -1531,7 +1500,7 @@ export class CellRentalsService {
       );
     }
 
-    // Вычитаем 1 день для получения включительной даты
+    // Вычитаем 1 день для получения включительной даты (как в _calculateRentalEndDate)
     currentEndDate.setDate(currentEndDate.getDate() - 1);
     currentEndDate.setHours(23, 59, 59, 999);
 
