@@ -1423,7 +1423,7 @@ export class CellRentalsService {
   /**
    * Правильно рассчитывает дату окончания аренды с использованием календарных периодов
    * Логика: аренда начинается в startDate и заканчивается в последний день периода включительно
-   * Например: начало 03.09, 1 месяц -> конец 02.10 включительно (30 дней: 03.09-02.10)
+   * Например: начало 15.07, 3 месяца -> конец 14.10 включительно (3 месяца: 15.07-14.10)
    */
   private _calculateRentalEndDate(startDate: Date, value: number, unit: string): Date {
     // Создаем копию даты чтобы избежать мутации исходного объекта
@@ -1437,7 +1437,7 @@ export class CellRentalsService {
       endDate.setHours(23, 59, 59, 999);
     } else if (unit.startsWith('дн') || unit.startsWith('day')) {
       // Для дней: добавляем (дни - 1), чтобы получить включительную дату
-      // Например: начало 03.09, +30 дней -> 03.09 + 29 дней = 02.10 (30 дней включительно)
+      // Например: начало 15.07, +30 дней -> 15.07 + 29 дней = 13.08 (30 дней включительно)
       endDate.setDate(endDate.getDate() + value - 1);
       // Устанавливаем время на конец дня (23:59:59.999)
       endDate.setHours(23, 59, 59, 999);
@@ -1489,8 +1489,8 @@ export class CellRentalsService {
 
     this.logger.log(`Found ${allPayments.length} successful payments for rental ${rentalId}`, 'CellRentalsService');
 
-    // Сначала суммируем все дни для точного расчета
-    let totalDays = 0;
+    // Рассчитываем финальную дату, используя календарные периоды
+    let currentEndDate = new Date(rental.startDate);
     
     for (let i = 0; i < allPayments.length; i++) {
       const payment = allPayments[i];
@@ -1516,29 +1516,27 @@ export class CellRentalsService {
         source = 'description parsing';
       }
 
-      // Конвертируем в дни, если необходимо
-      let daysToAdd = value;
+      // Применяем период к текущей дате окончания
       if (unit.startsWith('мес')) {
-        daysToAdd = value * 30; // Месяц = всегда 30 дней для простоты
+        currentEndDate.setMonth(currentEndDate.getMonth() + value);
       } else if (unit.startsWith('год')) {
-        daysToAdd = value * 365; // Приблизительно, но для суммирования
+        currentEndDate.setFullYear(currentEndDate.getFullYear() + value);
+      } else if (unit.startsWith('дн')) {
+        currentEndDate.setDate(currentEndDate.getDate() + value);
       }
 
-      totalDays += daysToAdd;
-
       this.logger.log(
-        `Payment ${payment.id}: +${value} ${unit} (${daysToAdd} days) from ${source}, total days so far: ${totalDays}`,
+        `Payment ${payment.id}: +${value} ${unit} from ${source}, new end date: ${currentEndDate.toISOString()}`,
         'CellRentalsService'
       );
     }
 
-    // Рассчитываем финальную дату: startDate + totalDays - 1 (включительно)
-    const currentEndDate = new Date(rental.startDate);
-    currentEndDate.setDate(currentEndDate.getDate() + totalDays - 1);
+    // Вычитаем 1 день для получения включительной даты
+    currentEndDate.setDate(currentEndDate.getDate() - 1);
     currentEndDate.setHours(23, 59, 59, 999);
 
     this.logger.log(
-      `Total days calculated: ${totalDays}, start date: ${rental.startDate}, calculated end date: ${currentEndDate.toISOString()}`,
+      `Start date: ${rental.startDate}, calculated end date: ${currentEndDate.toISOString()}`,
       'CellRentalsService'
     );
 
