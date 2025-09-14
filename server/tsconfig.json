@@ -17,7 +17,13 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@/common/*": ["./src/common/*"],
+      "@/infrastructure/*": ["./src/infrastructure/*"],
+      "@/apps/*": ["./src/apps/*"],
+      "@/tasks/*": ["./src/tasks/*"]
+    }
   },
-  "exclude": ["prisma/seed.ts", "dist", "node_modules"]
+  "exclude": ["prisma/seed.ts", "dist", "node_modules"],
 }

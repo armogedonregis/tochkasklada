@@ -1,0 +1,7 @@
+
+ make fix-permissions
+            
+            make rebuild
+            
+            sleep 10
+            make migrate 

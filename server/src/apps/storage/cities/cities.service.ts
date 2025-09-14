@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { CitySortField, CreateCityDto, FindCitiesDto, SortDirection, UpdateCityDto } from './dto';
 import { City, Location } from '@prisma/client';
-import { LoggerService } from '../logger/logger.service';
+import { LoggerService } from '@/infrastructure/logger/logger.service';
 
 @Injectable()
 export class CitiesService {

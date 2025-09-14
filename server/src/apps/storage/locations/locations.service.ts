@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { Location } from '@prisma/client';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
+import { Location, Prisma } from '@prisma/client';
 import { 
   CreateLocationDto, 
   FindLocationsDto, 
@@ -37,7 +37,7 @@ export class LocationsService {
       } = queryParams;
 
       // Базовые условия фильтрации
-      let where: any = {};
+      let where: Prisma.LocationWhereInput = {};
 
       // Если есть поисковый запрос, добавляем условия поиска
       if (search) {
@@ -56,7 +56,7 @@ export class LocationsService {
         const cityIds = citiesMatching.map(city => city.id);
 
         // Условия поиска по полям локации
-        const locationConditions = [
+        const locationConditions: Prisma.LocationWhereInput[] = [
           // Поиск по названию
           {
             name: {
