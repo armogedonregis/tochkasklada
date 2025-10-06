@@ -43,7 +43,7 @@ export default function ProfilePage() {
 
   const handleCreateAdminProfile = async () => {
     try {
-      await createAdminProfile({}).unwrap();
+      await createAdminProfile().unwrap();
       ToastService.success('Админский профиль успешно создан!');
       refetchAdminProfile();
     } catch (error: any) {
