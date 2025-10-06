@@ -1,5 +1,4 @@
 FROM node:20-slim AS deps
-RUN npm install -g yarn
 WORKDIR /app
 
 COPY package.json yarn.lock ./
