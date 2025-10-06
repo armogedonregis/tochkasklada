@@ -86,7 +86,9 @@ function ConnectionCell({
 const panelValidationSchema = yup.object<CreatePanelDto>({
   name: yup.string().required('Название панели обязательно'),
   ipAddress: yup.string().required('IP адрес обязательно'),
-  port: yup.number().required('Порт обязательно')
+  port: yup.number().required('Порт обязательно'),
+  login: yup.string(),
+  password: yup.string()
 });
 
 export default function PanelsPage() {
@@ -665,13 +667,15 @@ export default function PanelsPage() {
         onClose={modal.closeModal}
         title={editingPanel ? 'Редактировать панель' : 'Добавить панель'}
         fields={modalFields}
-        validationSchema={panelValidationSchema}
+        validationSchema={panelValidationSchema as any}
         onSubmit={modal.handleSubmit}
         submitText={modal.editItem ? 'Сохранить' : 'Добавить'}
         defaultValues={modal.editItem ? {
           name: modal.editItem.name,
           ipAddress: modal.editItem.ipAddress,
           port: modal.editItem.port,
+          login: modal.editItem.login,
+          password: modal.editItem.password
         } : undefined} />
 
       <RelayModal />
