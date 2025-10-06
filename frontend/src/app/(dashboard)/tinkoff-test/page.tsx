@@ -226,9 +226,6 @@ const TinkoffTestPage = () => {
                     <div key={payment.id} className="p-4 border rounded-lg">
                       <div className="flex justify-between mb-2">
                         <span className="text-sm font-medium">{formatAmount(payment.amount)}</span>
-                        <Badge variant={payment.status ? "default" : "secondary"}>
-                          {payment.status ? 'Оплачен' : 'Не оплачен'}
-                        </Badge>
                       </div>
                       <div className="text-xs text-gray-500 mb-2">{formatDate(payment.createdAt)}</div>
                       <div className="text-sm mb-2 truncate">{payment.description}</div>
