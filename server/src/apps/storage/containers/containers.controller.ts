@@ -15,10 +15,9 @@ import {
 } from '@nestjs/common';
 import { ContainersService } from './containers.service';
 import { CreateContainerDto, FindContainersDto, UpdateContainerDto } from './dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
-import { RequireResourcePermission } from '../auth/decorators/resource-permission.decorator';
+import { JwtAuthGuard } from '@/apps/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '@/apps/auth/guards/permissions.guard';
+import { RequirePermissions } from '@/apps/auth/decorators/permissions.decorator';
 
 /**
  * Контроллер только для администраторов
@@ -43,7 +42,7 @@ export class ContainersController {
    * Получение контейнера по ID
    */
   @Get(':id')
-  @RequireResourcePermission('containers:read', 'Container', 'id')
+  @RequirePermissions('containers:read', 'Container', 'id')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return await this.containersService.findOne(id);
   }
@@ -64,7 +63,7 @@ export class ContainersController {
    * @returns Обновленный контейнер для RTK Query
    */
   @Patch(':id')
-  @RequireResourcePermission('containers:update', 'Container', 'id')
+  @RequirePermissions('containers:update', 'Container', 'id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateContainerDto: UpdateContainerDto
@@ -77,7 +76,7 @@ export class ContainersController {
    * @returns ID удаленного контейнера для RTK Query
    */
   @Delete(':id')
-  @RequireResourcePermission('containers:delete', 'Container', 'id')
+  @RequirePermissions('containers:delete', 'Container', 'id')
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     return await this.containersService.remove(id);

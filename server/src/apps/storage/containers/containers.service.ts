@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { Containers } from '@prisma/client';
 import { 
   ContainerSortField, 
@@ -8,8 +8,8 @@ import {
   SortDirection, 
   UpdateContainerDto 
 } from './dto';
-import { LoggerService } from '../logger/logger.service';
-import { RolesService } from '../roles/roles.service';
+import { LoggerService } from '@/infrastructure/logger/logger.service';
+import { RolesService } from '@/apps/roles/roles.service';
 
 /**
  * Сервис для управления контейнерами

@@ -1,30 +1,25 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { ClientsModule } from './clients/clients.module';
-import { SizesModule } from './sizes/sizes.module';
-import { CellsModule } from './cells/cells.module';
-import { ContainersModule } from './containers/containers.module';
-import { LocationsModule } from './locations/locations.module';
-import { CitiesModule } from './cities/cities.module';
-import { PaymentsModule } from './payments/payments.module';
-import { CellStatusesModule } from './cell-statuses/cell-statuses.module';
-import { PanelsModule } from './panels/panels.module';
-import { RelaysModule } from './relays/relays.module';
-import { RelayAccessModule } from './relay-access/relay-access.module';
-import { CellRentalsModule } from './cell-rentals/cell-rentals.module';
-import { SwaggerDocModule } from './swagger/swagger.module';
-import { StatisticsModule } from './statistics/statistics.module';
-import { LogsModule } from './logs/logs.module';
-import { LoggerModule } from './logger/logger.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { TasksModule } from './tasks/tasks.module';
-import { ListModule } from './list/list.module';
-import { RequestsModule } from './requests/requests.module';
-import { AdminsModule } from './admins/admins.module';
-import { RolesModule } from './roles/roles.module';
+import { LoggerModule } from '@/infrastructure/logger/logger.module';
+import { LogsModule } from '@/infrastructure/logs/logs.module';
+import { PrismaModule } from '@/infrastructure/prisma/prisma.module';
+import { TasksModule } from '@/tasks/tasks.module';
+import { AuthModule } from '@/apps/auth/auth.module';
+import { RolesModule } from '@/apps/roles/roles.module';
+import { UsersModule } from '@/apps/users/users.module';
+import { AdminsModule } from '@/apps/users/admins/admins.module';
+import { ClientsModule } from '@/apps/users/clients/clients.module';
+import { StorageModule } from '@/apps/storage/storage.module';
+import { RentalModule } from '@/apps/rental/rental.module';
+import { LeadManagementModule } from '@/apps/lead-management/lead-management.module';
+import { StatisticsModule } from '@/apps/statistics/statistics.module';
+import { ControlPanelModule } from '@/apps/control-panel/control-panel.module';
+import { SwaggerDocModule } from './swagger/swagger.module';
+import { AdminAuditModule } from '@/common/admin-audit.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AdminAuditInterceptor } from './common/interceptors/admin-audit.interceptor';
+import { MailModule } from './infrastructure/mail/mail.module';
 
 @Module({
   imports: [
@@ -36,29 +31,28 @@ import { RolesModule } from './roles/roles.module';
     }),
     ScheduleModule.forRoot(),
     LoggerModule,
+    LogsModule,
     PrismaModule,
     TasksModule,
     AuthModule,
     UsersModule,
-    ClientsModule,
-    SizesModule,
-    CellsModule,
-    ContainersModule,
-    LocationsModule,
-    CitiesModule,
-    PaymentsModule,
-    CellStatusesModule,
-    PanelsModule,
-    RelaysModule,
-    RelayAccessModule,
-    CellRentalsModule,
-    ListModule,
-    RequestsModule,
     AdminsModule,
+    ClientsModule,
+    StorageModule,
+    RentalModule,
+    LeadManagementModule,
     RolesModule,
     StatisticsModule,
-    LogsModule,
+    ControlPanelModule,
+    AdminAuditModule,
+    MailModule,
     SwaggerDocModule.forRoot(),
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AdminAuditInterceptor,
+    },
   ],
 })
 export class AppModule { }

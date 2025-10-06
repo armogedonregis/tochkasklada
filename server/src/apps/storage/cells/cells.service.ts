@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { CreateCellDto, UpdateCellDto, FindCellsDto, CellSortField, SortDirection } from './dto';
-import { LoggerService } from '../logger/logger.service';
-import { RolesService } from '../roles/roles.service';
+import { LoggerService } from '@/infrastructure/logger/logger.service';
+import { RolesService } from '@/apps/roles/roles.service';
 
 @Injectable()
 export class CellsService {
@@ -182,16 +182,12 @@ export class CellsService {
           size: true,
           status: true,
           rentals: {
-            where: {
-              isActive: true
-            },
             select: {
               id: true,
               startDate: true,
               endDate: true,
-              rentalStatus: true
             },
-            take: 1 // Берем только активную аренду, если есть
+            take: 1
           }
         },
       });

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { LoggerService } from '../logger/logger.service';
-import { CellRentalsService } from '../cell-rentals/cell-rentals.service';
-import { MailService } from '../mail/mail.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { LoggerService } from '@/infrastructure/logger/logger.service';
+import { CellRentalsService } from '@/apps/rental/cell-rentals/cell-rentals.service';
+import { MailService } from '@/infrastructure/mail/mail.service';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 
 @Injectable()
 export class EmailTasksService {
@@ -16,29 +16,29 @@ export class EmailTasksService {
     this.logger.log('EmailTasksService instantiated', 'EmailTasksService');
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_10AM)
-  async handleRentalExpirationNotifications() {
-    this.logger.log('Starting rental expiration email notifications task', 'EmailTasksService');
+  // @Cron(CronExpression.EVERY_DAY_AT_10AM)
+  // async handleRentalExpirationNotifications() {
+  //   this.logger.log('Starting rental expiration email notifications task', 'EmailTasksService');
     
-    try {
-      // // Отправка уведомлений за 7 дней
-      // await this.sendExpirationNotifications(7);
+  //   try {
+  //     // Отправка уведомлений за 7 дней
+  //     await this.sendExpirationNotifications(7);
       
-      // // Отправка уведомлений за 3 дня
-      // await this.sendExpirationNotifications(3);
+  //     // Отправка уведомлений за 3 дня
+  //     await this.sendExpirationNotifications(3);
       
-      // // Отправка уведомлений за 1 день
-      // await this.sendExpirationNotifications(1);
+  //     // Отправка уведомлений за 1 день
+  //     await this.sendExpirationNotifications(1);
       
-      this.logger.log('Completed rental expiration email notifications task', 'EmailTasksService');
-    } catch (error) {
-      this.logger.error(
-        'Error in rental expiration email notifications task',
-        error.stack,
-        'EmailTasksService'
-      );
-    }
-  }
+  //     this.logger.log('Completed rental expiration email notifications task', 'EmailTasksService');
+  //   } catch (error) {
+  //     this.logger.error(
+  //       'Error in rental expiration email notifications task',
+  //       error.stack,
+  //       'EmailTasksService'
+  //     );
+  //   }
+  // }
 
   // private async sendExpirationNotifications(daysBeforeExpiration: number) {
   //   const today = new Date();
@@ -57,16 +57,19 @@ export class EmailTasksService {
   //     'EmailTasksService'
   //   );
 
-  //   // Находим все аренды, которые истекают через указанное количество дней
+  // //   // Находим все аренды, которые истекают через указанное количество дней
   //   const expiringRentals = await this.prisma.cellRental.findMany({
   //     where: {
   //       endDate: {
   //         gte: targetDate,
   //         lte: endOfDay,
   //       },
-  //       isActive: true,
-  //       rentalStatus: {
-  //         notIn: ['CLOSED', 'COMPLETED']
+  //       status: {
+  //         isNot: {
+  //           statusType: {
+  //             notIn: ['CLOSED']
+  //           }
+  //         }
   //       }
   //     },
   //     include: {
@@ -86,7 +89,7 @@ export class EmailTasksService {
 
   //   let successCount = 0;
 
-  //   // Отправляем уведомления для каждой аренды
+  // //   // Отправляем уведомления для каждой аренды
   //   for (const rental of expiringRentals) {
   //     if (!rental.client?.email) {
   //       this.logger.warn(

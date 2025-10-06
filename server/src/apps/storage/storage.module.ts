@@ -1,18 +1,19 @@
-import { PrismaModule } from '@/infrastructure/prisma/prisma.module';
 import { Module } from '@nestjs/common';
-import { RolesModule } from '../roles/roles.module';
 import { ContainersModule } from './containers/containers.module';
 import { CitiesModule } from './cities/cities.module';
 import { CellsModule } from './cells/cells.module';
+import { LocationsModule } from './locations/locations.module';
+import { CellStatusesModule } from './cell-statuses/cell-statuses.module';
+import { SizesModule } from './sizes/sizes.module';
 
 @Module({
   imports: [
-    PrismaModule,
-    RolesModule,
     LocationsModule,
     CitiesModule,
     ContainersModule,
-    CellsModule
+    CellsModule,
+    CellStatusesModule,
+    SizesModule
   ],
 })
-export class LocationsModule {}
+export class StorageModule {}

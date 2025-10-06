@@ -1,7 +1,7 @@
 import { Controller, Get, Body, Patch, Param, Delete, UseGuards, Request, HttpCode, HttpStatus, ParseUUIDPipe, Post, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateUserDto, UpdateUserDto } from './dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('users')
 export class UsersController {
@@ -69,10 +69,10 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: { role: string } }) {
+  async remove(@Param('id', ParseUUIDPipe) id: string, fullDelete: boolean, @Request() req: { user: { role: string } }) {
     if (req.user.role !== 'SUPERADMIN') {
       throw new ForbiddenException('Доступ только для суперадмина');
     }
-    await this.usersService.remove(id);
+    await this.usersService.remove(id, fullDelete);
   }
 } 

@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -55,11 +55,8 @@ export class StatisticsService {
                 select: {
                   rentals: {
                     select: {
-                      isActive: true,
-                      rentalStatus: true,
                       payments: {
                         where: {
-                          status: true, // Только успешные платежи
                           ...(startDate || endDate ? {
                             createdAt: {
                               ...(startDate ? { gte: startDate } : {}),
@@ -98,9 +95,9 @@ export class StatisticsService {
               totalRentals++;
               
               // Считаем активными аренды, которые НЕ в статусе CLOSED
-              if (rental.rentalStatus !== 'CLOSED') {
-                activeRentals++;
-              }
+              // if (rental.rentalStatus !== 'CLOSED') {
+              //   activeRentals++;
+              // }
               
               // Считаем все платежи (независимо от статуса аренды)
               rental.payments.forEach((payment) => {
@@ -181,7 +178,6 @@ export class StatisticsService {
 
       // Условия для фильтрации платежей
       const paymentWhere: Prisma.PaymentWhereInput = {
-        status: true,
         cellRental: {
           cell: {
             some: {
@@ -231,8 +227,6 @@ export class StatisticsService {
               id: true,
               startDate: true,
               endDate: true,
-              isActive: true,
-              rentalStatus: true,
               cell: {
                 select: {
                   id: true,

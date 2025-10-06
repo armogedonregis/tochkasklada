@@ -93,19 +93,6 @@ export const paymentsApi = api.injectEndpoints({
       },
     }),
     
-    // Установка статуса платежа
-    setPaymentStatus: builder.mutation<Payment, { id: string; status: boolean }>({
-      query: ({ id, status }) => ({
-        url: `/payments/${id}/status`,
-        method: 'PATCH',
-        body: { status },
-      }),
-      invalidatesTags: (result, error, { id }) => [
-        { type: 'Payments', id },
-        { type: 'Payments', id: 'LIST' },
-      ],
-    }),
-    
     // Удаление платежа
     deletePayment: builder.mutation<void, string>({
       query: (id) => ({
@@ -134,7 +121,6 @@ export const {
   useCreatePaymentMutation,
   useAdminCreatePaymentMutation,
   useUpdatePaymentMutation,
-  useSetPaymentStatusMutation,
   useDeletePaymentMutation,
   useLazyGetPaymentLinkQuery,
 } = paymentsApi; 

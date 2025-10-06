@@ -30,7 +30,6 @@ export interface Client {
   name: string;
   phones: ClientPhone[];
   user?: User;
-  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,7 +37,6 @@ export interface Client {
 export interface CreateClientDto {
   name: string;
   email: string;
-  isActive: boolean;
   phones?: PhoneData[];
 }
 
@@ -46,7 +44,6 @@ export interface UpdateClientDto {
   name?: string;
   email?: string;
   phones?: PhoneData[];
-  isActive?: boolean;
 }
 
 export interface AddPhoneDto {
@@ -58,7 +55,6 @@ export interface ClientFilters extends FilterParams {
   search?: string;
   sortBy?: ClientSortField;
   sortDirection?: SortDirection;
-  isActive?: boolean;
 }
 
 export type PaginatedClientResponse = PaginatedResponse<Client>; 

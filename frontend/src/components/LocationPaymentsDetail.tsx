@@ -78,7 +78,7 @@ const LocationPaymentsDetail: React.FC<LocationPaymentsDetailProps> = ({
   const handleExport = async () => {
     try {
       const XLSX = await import('xlsx');
-      
+
       const exportData = data?.data.map(payment => ({
         'ID платежа': payment.id,
         'Сумма': payment.amount,
@@ -99,7 +99,7 @@ const LocationPaymentsDetail: React.FC<LocationPaymentsDetailProps> = ({
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Платежи');
-      
+
       const fileName = `платежи_${locationName}_${format(new Date(), 'dd-MM-yyyy_HH-mm')}.xlsx`;
       XLSX.writeFile(wb, fileName);
     } catch (error) {
@@ -145,7 +145,7 @@ const LocationPaymentsDetail: React.FC<LocationPaymentsDetailProps> = ({
       cell: ({ row }) => {
         const rental = row.original.cellRental;
         if (!rental) return <span className="text-gray-400">Нет данных</span>;
-        
+
         return (
           <div>
             {rental.cell.container.name} - {rental.cell.name}
@@ -159,12 +159,12 @@ const LocationPaymentsDetail: React.FC<LocationPaymentsDetailProps> = ({
       cell: ({ row }) => {
         const description = row.original.description;
         if (!description) return '-';
-        
+
         // Декодируем HTML если есть
         const div = document.createElement('div');
         div.innerHTML = description;
         const decodedValue = div.textContent || div.innerText || description;
-        
+
         return (
           <div className="max-w-xs truncate" title={decodedValue}>
             {decodedValue}
@@ -178,7 +178,7 @@ const LocationPaymentsDetail: React.FC<LocationPaymentsDetailProps> = ({
       cell: ({ row }) => {
         const rental = row.original.cellRental;
         if (!rental) return <span className="text-gray-400">Нет данных</span>;
-        
+
         const isActive = rental.rentalStatus !== 'CLOSED';
         return (
           <Badge variant={isActive ? 'default' : 'secondary'}>

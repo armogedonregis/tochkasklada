@@ -11,24 +11,19 @@ interface PhoneInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
 }
 
 export function PhoneInput({ value, onChange, className, error, ...props }: PhoneInputProps) {
-  // Конфигурация маски
   const maskOptions = {
     mask: '+{7} (000) 000-00-00',
-    lazy: false, // Показывать маску сразу
+    lazy: false,
     placeholderChar: '_'
   };
 
-  // Обработчик изменения значения
   const handleAccept = (value: string) => {
-    // Сохраняем только цифры и +
     const cleanValue = value.replace(/[^\d+]/g, '');
     onChange(cleanValue);
   };
 
-  // Обработчик потери фокуса
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const digits = value.replace(/\D/g, '');
-    // Если номер неполный (меньше 11 цифр) - очищаем поле
     if (digits.length > 0 && digits.length < 11) {
       onChange('');
     }

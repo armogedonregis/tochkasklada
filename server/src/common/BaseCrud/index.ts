@@ -1,4 +1,3 @@
-// base-crud.service.ts
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { LoggerService } from '@/infrastructure/logger/logger.service';
@@ -155,12 +154,13 @@ export abstract class BaseCrudService<
         }
 
         return {
-            AND: [baseWhere, additionalWhere],
+           ...baseWhere,
+           ...additionalWhere,
         };
     }
 
     protected async getTotalCount(where: WhereInput): Promise<number> {
-        return this.prisma[this.modelName.toLowerCase()].count({ where });
+        return this.prisma[this.modelName].count({ where });
     }
 
     protected async getData(
@@ -170,7 +170,7 @@ export abstract class BaseCrudService<
         orderBy?: OrderBy,
         include?: any
     ): Promise<Entity[]> {
-        return this.prisma[this.modelName.toLowerCase()].findMany({
+        return this.prisma[this.modelName].findMany({
             where,
             skip,
             take,
@@ -181,7 +181,7 @@ export abstract class BaseCrudService<
 
     async findOne(id: string): Promise<Entity> {
         try {
-            const entity = await this.prisma[this.modelName.toLowerCase()].findUnique({
+            const entity = await this.prisma[this.modelName].findUnique({
                 where: { id },
             });
 
@@ -255,9 +255,9 @@ export abstract class BaseCrudService<
 
     async remove(id: string): Promise<{ id: string }> {
         try {
-            await this.findOne(id); // Check if exists
+            await this.findOne(id);
 
-            await this.prisma[this.modelName.toLowerCase()].delete({
+            await this.prisma[this.modelName].delete({
                 where: { id },
             });
 

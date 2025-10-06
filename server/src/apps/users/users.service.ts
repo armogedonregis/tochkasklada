@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
-import { LoggerService } from '../logger/logger.service';
-import { hashPassword } from '../common/utils/password.utils';
+import { LoggerService } from '@/infrastructure/logger/logger.service';
+import { hashPassword } from '@/common/utils/password.utils';
 
 @Injectable()
 export class UsersService {
@@ -30,27 +30,6 @@ export class UsersService {
         admin: {
           select: {
             id: true,
-            adminRoles: {
-              select: {
-                role: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    rolePermissions: {
-                      select: {
-                        permission: {
-                          select: {
-                            key: true,
-                            description: true
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
           }
         }
       },
@@ -107,7 +86,7 @@ export class UsersService {
     try {
       return await this.prisma.$transaction(async (prisma) => {
         // Создаем пользователя с ролью ADMIN по умолчанию
-        const user = await prisma.user.create({ 
+        const user = await prisma.user.create({
           data: {
             email: createUserDto.email,
             password: hashedPassword,
@@ -130,14 +109,6 @@ export class UsersService {
         });
         this.logger.log(`Admin profile created for user id: ${user.id}`, 'UsersService');
 
-        // Если указаны роли, назначаем их
-        if (createUserDto.roleIds && createUserDto.roleIds.length > 0) {
-          await prisma.adminRole.createMany({
-            data: createUserDto.roleIds.map(roleId => ({ adminId: admin.id, roleId }))
-          });
-          this.logger.log(`Roles assigned to user id: ${user.id}`, 'UsersService');
-        }
-
         this.logger.log(`User created with id: ${user.id}`, 'UsersService');
         return user;
       });
@@ -153,7 +124,7 @@ export class UsersService {
       throw error;
     }
   }
-  
+
   /**
    * Создание клиента для пользователя
    */
@@ -170,7 +141,7 @@ export class UsersService {
     }
 
     // Создаем клиента
-    await this.prisma.client.create({ 
+    await this.prisma.client.create({
       data: {
         ...clientData,
         userId,
@@ -196,11 +167,6 @@ export class UsersService {
       include: {
         admin: {
           include: {
-            adminRoles: {
-              include: {
-                role: true
-              }
-            }
           }
         }
       }
@@ -234,28 +200,6 @@ export class UsersService {
         },
       });
 
-      // Если есть roleIds и пользователь админ, обновляем роли
-      if (updateUserDto.roleIds && existingUser.role === 'ADMIN' && existingUser.admin) {
-        // Удаляем все существующие роли
-        await prisma.adminRole.deleteMany({
-          where: {
-            adminId: existingUser.admin!.id
-          }
-        });
-
-        // Добавляем новые роли
-        if (updateUserDto.roleIds.length > 0) {
-          await prisma.adminRole.createMany({
-            data: updateUserDto.roleIds.map(roleId => ({
-              adminId: existingUser.admin!.id,
-              roleId
-            }))
-          });
-        }
-
-        this.logger.log(`Roles updated for admin user id: ${id}`, 'UsersService');
-      }
-
       this.logger.log(`User with id: ${id} updated successfully`, 'UsersService');
       return user;
     });
@@ -264,7 +208,7 @@ export class UsersService {
   /**
    * Удаление пользователя
    */
-  async remove(id: string) {
+  async remove(id: string, fullDelete: boolean) {
     this.logger.log(`Removing user with id: ${id}`, 'UsersService');
     // Проверяем существование пользователя
     const existingUser = await this.prisma.user.findUnique({
@@ -276,16 +220,34 @@ export class UsersService {
       throw new NotFoundException(`Пользователь с ID ${id} не найден`);
     }
 
-    const user = await this.prisma.user.delete({
-      where: { id },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    let user;
+    if (fullDelete) {
+      user = await this.prisma.user.delete({
+        where: { id },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    } else {
+      user = await this.prisma.user.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+        },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    }
+
 
     this.logger.log(`User with id: ${id} removed successfully`, 'UsersService');
     return user;
@@ -312,17 +274,7 @@ export class UsersService {
         admin: {
           select: {
             id: true,
-            adminRoles: {
-              select: {
-                role: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true
-                  }
-                }
-              }
-            }
+
           }
         }
       },

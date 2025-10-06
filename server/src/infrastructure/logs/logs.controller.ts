@@ -1,9 +1,9 @@
 import { Controller, Get, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '@/apps/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@/apps/auth/guards/roles.guard';
+import { Roles } from '@/apps/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('logs')

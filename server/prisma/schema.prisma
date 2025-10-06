@@ -7,14 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Основной пользователь
+/// =============================================================
+/// USERS MODEL CLIENT/ADMIN
+/// -------------------------------------------------------------
 model User {
-  id       String @id @default(uuid())
-  email    String @unique
-  password String
+  id String @id @default(uuid())
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  email     String   @unique
+  password  String
+  isDeleted Boolean? @default(false)
 
   role UserRole @default(CLIENT)
 
@@ -22,24 +23,24 @@ model User {
   admin    Admin?
   payments Payment[]
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isDeleted])
   @@map("users")
 }
 
-// РОЛИ
 enum UserRole {
   SUPERADMIN
   ADMIN
   CLIENT
 }
 
-// Подмодель для клиентов
 model Client {
-  id       String  @id @default(uuid())
-  name     String
-  isActive Boolean @default(false)
+  id String @id @default(uuid())
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  name      String
+  isDeleted Boolean? @default(false)
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -47,19 +48,42 @@ model Client {
   phones  ClientPhone[]
   rentals CellRental[]
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isDeleted])
   @@map("clients")
 }
 
-// Подмодель для админов
+model ClientPhone {
+  id String @id @default(uuid())
+
+  phone     String
+  comment   String?
+  isDeleted Boolean? @default(false)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isDeleted])
+  @@map("client_phones")
+}
+
 model Admin {
-  id     String @id @default(uuid())
+  id String @id @default(uuid())
+
   user   User   @relation(fields: [userId], references: [id])
   userId String @unique
 
-  // RBAC связи (только для админов)
-  adminRoles AdminRole[]              // Роли админа в RBAC системе
-  adminPermissions AdminPermission[]  // Прямые права админа
-  adminResourcePermissions AdminResourcePermission[] // Права на ресурсы
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  adminResourcePermissions AdminResourcePermission[]
+
+  audit AdminAuditLog[]
 
   closedLists    List[]
   closedRequests Request[]
@@ -70,173 +94,151 @@ model Admin {
   @@map("admins")
 }
 
+enum AdminAction {
+  CREATE
+  UPDATE
+  DELETE
+  SOFT_DELETE
+  RESTORE
+  ASSIGN_ROLE
+  REVOKE_ROLE
+  ASSIGN_RESOURCE_ACCESS
+  REVOKE_RESOURCE_ACCESS
+  OTHER
+}
+
+model AdminAuditLog {
+  id String @id @default(uuid())
+
+  adminId String?
+  admin   Admin?  @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  entity   String
+  entityId String
+
+  action AdminAction
+
+  before Json?
+  after  Json?
+
+  requestId String?
+  ip        String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminId, createdAt])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}
 
 /// =============================================================
 /// RBAC / Permissions (только для админов)
 /// -------------------------------------------------------------
-
 model Role {
-  id          String @id @default(uuid())
-  name        String @unique           // "Админ Москвы", "Оператор СПб"
+  id String @id @default(uuid())
+
+  name        String   @unique
   description String?
-  
-  rolePermissions RolePermission[]
-  adminRoles      AdminRole[]         // Связь с админами
-  
+  isDeleted   Boolean? @default(false)
+
+  admins      Admin[]
+  permissions Permission[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
+  @@index([isDeleted])
   @@map("roles")
 }
 
 model Permission {
-  id          String @id @default(uuid())
-  key         String @unique           // "cells:read", "clients:create"
+  id String @id @default(uuid())
+
+  key         String  @unique
   description String?
-  
-  rolePermissions RolePermission[]
-  adminPermissions AdminPermission[]   // Связь с админами
-  adminResourcePermissions AdminResourcePermission[] // Права на ресурсы
-  
+
+  roles Role[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("permissions")
 }
 
-// Связь ролей с правами
-model RolePermission {
-  roleId       String
-  permissionId String
-  
-  role       Role       @relation(fields: [roleId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@id([roleId, permissionId])
-  @@map("role_permissions")
-}
-
-// Назначение ролей админам
-model AdminRole {
-  adminId String
-  roleId  String
-  
-  admin Admin @relation(fields: [adminId], references: [id])
-  role  Role  @relation(fields: [roleId], references: [id])
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@id([adminId, roleId])
-  @@map("admin_roles")
-}
-
-// Прямые права админов (обход ролей)
-model AdminPermission {
-  adminId      String
-  permissionId String
-  
-  admin      Admin      @relation(fields: [adminId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@id([adminId, permissionId])
-  @@map("admin_permissions")
-}
-
-// Права админов на конкретные ресурсы
 model AdminResourcePermission {
-  id           String @id @default(uuid())
-  adminId      String
-  permissionId String
-  
-  // Полиморфные связи с ресурсами
-  resourceType String  // "Location", "Cell", "Container", "Panel", "Relay", "Client", "Rental", "Request", "List", "Payment"
-  resourceId   String  // ID конкретного ресурса
-  
-  admin      Admin      @relation(fields: [adminId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
-  
+  id String @id @default(uuid())
+
+  adminId String
+  admin   Admin  @relation(fields: [adminId], references: [id])
+
+  resourceType String
+  resourceId   String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  @@unique([adminId, permissionId, resourceType, resourceId])
+
+  @@unique([adminId, resourceType, resourceId])
   @@index([adminId])
   @@index([resourceType, resourceId])
   @@map("admin_resource_permissions")
 }
+
 /// =============================================================
-
-// Телефоны клиентов
-model ClientPhone {
-  id      String  @id @default(uuid())
-  phone   String
-  comment String?
-
-  clientId String
-  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("client_phones")
-}
-
-// Заявки от клиентов
+/// REQUEST AND LIST MODEL FOR CRM SYSTEM
+/// -------------------------------------------------------------
 model Request {
-  id       String  @id @default(uuid())
-  email    String
-  phone    String?
-  name     String
-  sizeform String?
-  location String?
-  comment  String?
+  id String @id @default(uuid())
+
+  email     String?
+  phone     String?
+  name      String
+  sizeform  String?
+  location  String?
+  comment   String?
+  isDeleted Boolean? @default(false)
 
   status ListStatus @default(WAITING)
 
   closedById String?
-  closedBy   Admin?  @relation(fields: [closedById], references: [id])
-
-  closedAt DateTime?
+  closedBy   Admin?    @relation(fields: [closedById], references: [id])
+  closedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("requests")
 }
 
-// Лист ожиданий
-// перенос в клиенты
 model List {
-  id          String  @id @default(uuid())
+  id String @id @default(uuid())
+
   email       String?
   phone       String?
   name        String
   description String?
   comment     String?
+  isDeleted   Boolean? @default(false)
 
-  // Привязка к локации
+  status ListStatus @default(WAITING)
+
   locationId String?
   location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
-  // Привязка к размеру ячейки
   sizeId String?
   size   SizeCells? @relation(fields: [sizeId], references: [id], onDelete: SetNull)
 
-  // Кто лист ожидания (через Admin)
   closedById String?
-  closedBy   Admin?  @relation(fields: [closedById], references: [id])
-
-  closedAt DateTime?
+  closedBy   Admin?    @relation(fields: [closedById], references: [id])
+  closedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("lists")
 }
 
@@ -245,19 +247,22 @@ enum ListStatus {
   CLOSED
 }
 
-// Платежи
+/// =============================================================
+/// PAYMENTS AND CELL RENTAL MODEL FOR CRM SYSTEM
+/// -------------------------------------------------------------
 model Payment {
-  id             String  @id @default(uuid())
+  id String @id @default(uuid())
+
   amount         Int
-  orderId        String? @unique
+  orderId        String?  @unique
   description    String?
-  status         Boolean @default(false)
   bankPaymentId  String?
   paymentUrl     String?
   rentalDuration Int?
+  isDeleted      Boolean? @default(false)
 
-  userId         String
-  user           User    @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
   cellRentalId String?
   cellRental   CellRental? @relation(fields: [cellRentalId], references: [id], onDelete: Cascade)
@@ -265,61 +270,103 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("payments")
 }
 
-// Города связаны с локациями
+model CellRental {
+  id String @id @default(uuid())
+
+  cellId String?
+  cell   Cells[]
+
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  startDate      DateTime
+  endDate        DateTime
+  lastExtendedAt DateTime?
+  extensionCount Int       @default(0)
+  closedAt       DateTime?
+  isDeleted      Boolean?  @default(false)
+
+  statusId String?
+  status   CellStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
+
+  payments    Payment[]
+  relayAccess RelayAccess[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isDeleted])
+  @@map("cell_rentals")
+}
+
+/// =============================================================
+/// STORAGE MODELS FOR SYSTEM APPLICATION STORAGE
+/// -------------------------------------------------------------
 model City {
-  id         String @id @default(uuid())
+  id String @id @default(uuid())
+
   title      String
-  short_name String @unique
+  short_name String   @unique
+  isDeleted  Boolean? @default(false)
 
   locations Location[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("citys")
 }
 
-// Локации связаны с городами
 model Location {
-  id         String  @id @default(uuid())
-  name       String
-  short_name String  @unique
-  address    String?
+  id String @id @default(uuid())
 
-  cityId     String
-  city       City         @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  name       String
+  short_name String   @unique
+  address    String?
+  isDeleted  Boolean? @default(false)
+
+  cityId String
+  city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
   containers Containers[]
   lists      List[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("locations")
 }
 
-// Контейнеры связаны с ячейками
 model Containers {
-  id   String @id @default(uuid())
-  name Int    @unique
+  id String @id @default(uuid())
+
+  name      Int      @unique
+  isDeleted Boolean? @default(false)
 
   locId    String?
   location Location? @relation(fields: [locId], references: [id], onDelete: SetNull)
-  cells    Cells[]
+
+  cells Cells[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("containers")
 }
 
-// Ячейки связаны с контейнерами
 model Cells {
-  id      String  @id @default(uuid())
-  name    String
-  comment String?
+  id String @id @default(uuid())
+
+  name      String
+  comment   String?
+  isDeleted Boolean? @default(false)
 
   containerId String
   container   Containers @relation(fields: [containerId], references: [id], onDelete: Cascade)
@@ -332,22 +379,23 @@ model Cells {
 
   rentals CellRental[]
 
-  // Связь с реле (1 ячейка - 1 реле)
   relay Relay?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("cells")
 }
 
-// Статусы ячеек
 model CellStatus {
-  id    String @id @default(uuid())
-  name  String
-  color String
+  id String @id @default(uuid())
 
-  statusType CellRentalStatus?
+  name      String
+  color     String
+  isDeleted Boolean? @default(false)
+
+  statusType CellRentalStatus @unique
 
   cells   Cells[]
   rentals CellRental[]
@@ -355,16 +403,28 @@ model CellStatus {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("cell_statuses")
 }
 
-// Размеры ячеек
+enum CellRentalStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  CLOSED
+  RESERVATION
+  EXTENDED
+  PAYMENT_SOON
+}
+
 model SizeCells {
-  id         String @id @default(uuid())
+  id String @id @default(uuid())
+
   name       String
-  short_name String @unique
+  short_name String   @unique
   area       String
   size       String
+  isDeleted  Boolean? @default(false)
 
   cells Cells[]
   lists List[]
@@ -372,115 +432,78 @@ model SizeCells {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isDeleted])
   @@map("size_cells")
 }
 
-// Модель панель
+/// =============================================================
+/// PANELS AND RELAYS MODELS FOR CONTROLS SYSTEM CELLS
+/// -------------------------------------------------------------
 model Panel {
-  id        String @id @default(uuid())
+  id String @id @default(uuid())
+
   name      String
-  ipAddress String @unique
+  ipAddress String   @unique
   port      Int
   login     String
   password  String
+  isDeleted Boolean? @default(false)
+
+  relays Relay[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  relays    Relay[]
 
+  @@index([isDeleted])
   @@map("panels")
 }
 
-// Модель реле
 model Relay {
-  id          String    @id @default(uuid())
+  id String @id @default(uuid())
+
   relayNumber Int
   name        String
   type        RelayType
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isDeleted   Boolean?  @default(false)
 
   panelId String
-  panel   Panel         @relation(fields: [panelId], references: [id], onDelete: Cascade)
-  access  RelayAccess[]
+  panel   Panel  @relation(fields: [panelId], references: [id], onDelete: Cascade)
 
-  // Связь с ячейкой (1 реле - 1 ячейка)
   cellId String? @unique
   cell   Cells?  @relation(fields: [cellId], references: [id], onDelete: SetNull)
 
+  access RelayAccess[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([panelId, relayNumber])
+  @@index([isDeleted])
   @@map("relays")
 }
 
 model RelayAccess {
-  id      String @id @default(uuid())
+  id String @id @default(uuid())
+
+  isDeleted Boolean? @default(false)
+
   relayId String
   relay   Relay  @relation(fields: [relayId], references: [id], onDelete: Cascade)
 
-  // Связь с арендой
   cellRentalId String?
   cellRental   CellRental? @relation(fields: [cellRentalId], references: [id], onDelete: SetNull)
 
   validUntil DateTime
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@map("relay_access")
-}
-
-enum RelayType {
-  SECURITY // Дверь
-  LIGHT // Свет
-  GATE // Ворота
-}
-
-// Модель для аренды ячеек
-model CellRental {
-  id String @id @default(uuid())
-
-  // Связь с ячейкой
-  cellId String?
-  cell   Cells[]
-
-  // Связь с клиентом
-  clientId String?
-  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
-
-  // Даты и статусы
-  startDate      DateTime
-  endDate        DateTime
-  lastExtendedAt DateTime?
-  extensionCount Int       @default(0)
-  isActive       Boolean   @default(true)
-
-  // Статусы аренды
-  rentalStatus CellRentalStatus @default(ACTIVE) // Программный статус аренды
-  statusId     String?
-  status       CellStatus?      @relation(fields: [statusId], references: [id], onDelete: SetNull)
-
-  // Завершение аренды
-  closedAt DateTime?
-
-  // Связь с платежами
-  payments Payment[]
-
-  // Доступ к реле
-  relayAccess RelayAccess[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("cell_rentals")
+  @@index([isDeleted])
+  @@map("relay_access")
 }
 
-// Статусы аренды ячеек
-enum CellRentalStatus {
-  ACTIVE // Активная аренда
-  EXPIRING_SOON // Скоро истекает (осталось меньше недели)
-  EXPIRED // Просрочена (дата окончания в прошлом)
-  CLOSED // Договор закрыт администратором
-  RESERVATION // Бронь
-  EXTENDED // Продлен
-  PAYMENT_SOON // Скоро оплата
+enum RelayType {
+  SECURITY
+  LIGHT
+  GATE
 }

@@ -22,7 +22,6 @@ export interface Payment {
   orderId?: string;
   description?: string;
   userId: string;
-  status: boolean;
   bankPaymentId?: string;
   paymentUrl?: string;
   rentalDuration?: number;

@@ -1,5 +1,5 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '@/apps/auth/auth.module';
 import { SwaggerController } from './swagger.controller';
 import { SwaggerService } from './swagger.service';
 

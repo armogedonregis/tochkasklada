@@ -9,7 +9,3 @@ export interface AdminProfile {
   createdAt: string;
   updatedAt: string;
 }
-
-export interface CreateAdminProfileDto {
-  // Пока пустой, так как профиль создается только с userId
-}

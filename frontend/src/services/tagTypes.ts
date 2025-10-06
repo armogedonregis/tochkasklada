@@ -20,5 +20,6 @@ export const tagTypes = [
     'Admin',
     'Roles',
     'Permissions',
-    'CurrentUser'
+    'CurrentUser',
+    'AdminAudit'
 ] as const;

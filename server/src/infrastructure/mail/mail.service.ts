@@ -39,16 +39,15 @@ export class MailService {
     clientName: string, 
     daysLeft: number, 
     cellNumber: string,
-    expirationDate: Date
+    expirationDate: string
   ) {
-    const formattedDate = expirationDate.toLocaleDateString('ru-RU');
     
     const subject = `Уведомление об окончании срока аренды (осталось ${daysLeft} дн.)`;
     
     const text = `
     Уважаемый(ая) ${clientName},
 
-    Напоминаем, что срок аренды ячейки №${cellNumber} истекает через ${daysLeft} ${this.getDayWord(daysLeft)} (${formattedDate}).
+    Напоминаем, что срок аренды ячейки №${cellNumber} истекает через ${daysLeft} ${this.getDayWord(daysLeft)} (${expirationDate}).
 
     Пожалуйста, не забудьте продлить аренду или освободить ячейку до указанной даты.
 
@@ -60,7 +59,7 @@ export class MailService {
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #333;">Уведомление об окончании срока аренды</h2>
       <p>Уважаемый(ая) <strong>${clientName}</strong>,</p>
-      <p>Напоминаем, что срок аренды ячейки <strong>№${cellNumber}</strong> истекает через <strong>${daysLeft} ${this.getDayWord(daysLeft)}</strong> (${formattedDate}).</p>
+      <p>Напоминаем, что срок аренды ячейки <strong>№${cellNumber}</strong> истекает через <strong>${daysLeft} ${this.getDayWord(daysLeft)}</strong> (${expirationDate}).</p>
       <p>Пожалуйста, не забудьте продлить аренду или освободить ячейку до указанной даты.</p>
       <p style="margin-top: 30px;">С уважением,<br>Команда Точка Склада</p>
     </div>

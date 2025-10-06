@@ -1,5 +1,4 @@
-// public/sw.js
-const CACHE_NAME = 'tochka-sklada-v4';
+const CACHE_NAME = 'tochka-sklada-v1.0.1';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -55,7 +54,6 @@ self.addEventListener('fetch', (event) => {
 
             caches.open(CACHE_NAME)
               .then((cache) => {
-                // Кэшируем только статические ресурсы Next.js
                 if (event.request.url.includes('/_next/static/')) {
                   cache.put(event.request, responseToCache);
                 }
@@ -64,7 +62,6 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            // Упрощенный offline fallback
             if (event.request.destination === 'document') {
               return caches.match('/');
             }
@@ -75,14 +72,12 @@ self.addEventListener('fetch', (event) => {
 });
 
 
-// Фоновая синхронизация (опционально)
 self.addEventListener('sync', (event) => {
   if (event.tag === 'background-sync') {
     console.log('Background sync triggered');
   }
 });
 
-// Push уведомления (опционально)
 self.addEventListener('push', (event) => {
   if (event.data) {
     const data = event.data.json();

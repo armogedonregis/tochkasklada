@@ -30,3 +30,10 @@ jobs:
             git reset --hard HEAD
             git clean -fd
             git pull origin main
+
+            make fix-permissions
+            
+            make rebuild
+            
+            sleep 10
+            make migrate

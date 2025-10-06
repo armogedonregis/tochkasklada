@@ -14,10 +14,9 @@ import {
 } from '@nestjs/common';
 import { CellsService } from './cells.service';
 import { CreateCellDto, UpdateCellDto, FindCellsDto } from './dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
-import { RequireResourcePermission } from '../auth/decorators/resource-permission.decorator';
+import { JwtAuthGuard } from '@/apps/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '@/apps/auth/guards/permissions.guard';
+import { RequirePermissions } from '@/apps/auth/decorators/permissions.decorator';
 
 // Контроллер для методов, доступных всем авторизованным пользователям
 @Controller('cells')
@@ -62,7 +61,7 @@ export class CellsAdminController {
    * Получение ячейки по ID
    */
   @Get(':id')
-  @RequireResourcePermission('cells:read', 'Cell', 'id')
+  @RequirePermissions('cells:read', 'Cell', 'id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellsService.findOne(id);
   }
@@ -81,7 +80,7 @@ export class CellsAdminController {
    * Обновление ячейки
    */
   @Patch(':id')
-  @RequireResourcePermission('cells:update', 'Cell', 'id')
+  @RequirePermissions('cells:update', 'Cell', 'id')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() updateCellDto: UpdateCellDto) {
     return this.cellsService.update(id, updateCellDto);
   }
@@ -90,7 +89,7 @@ export class CellsAdminController {
    * Удаление ячейки
    */
   @Delete(':id')
-  @RequireResourcePermission('cells:delete', 'Cell', 'id')
+  @RequirePermissions('cells:delete', 'Cell', 'id')
   @HttpCode(HttpStatus.OK)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.cellsService.remove(id);

@@ -8,8 +8,8 @@ import {
   SortDirection, 
   UpdateLocationDto 
 } from './dto';
-import { LoggerService } from '../logger/logger.service';
-import { RolesService } from '../roles/roles.service';
+import { LoggerService } from '@/infrastructure/logger/logger.service';
+import { RolesService } from '@/apps/roles/roles.service';
 
 @Injectable()
 export class LocationsService {

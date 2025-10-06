@@ -109,16 +109,8 @@ export const navigationConfig: NavigationSection[] = [
     items: [
       {
         id: 'locations-manage',
-        name: 'Города',
+        name: 'Локации',
         href: '/control/locations',
-        iconKey: 'locations',
-        permission: ['locations:create', 'locations:update', 'locations:delete'],
-        className: 'hidden md:block',
-      },
-      {
-        id: 'locations-control',
-        name: 'Локации (управление)',
-        href: '/control/locations/locations',
         iconKey: 'locations',
         permission: ['locations:create', 'locations:update', 'locations:delete'],
         className: 'hidden md:block',
@@ -160,7 +152,7 @@ export const navigationConfig: NavigationSection[] = [
         id: 'tinkoff-test',
         name: 'Тест Тбанк',
         href: '/tinkoff-test',
-        iconKey: 'payments', // Используем иконку платежей
+        iconKey: 'payments',
         permission: 'system:admin',
         className: 'hidden md:block',
         requireSuperAdmin: true,
@@ -204,6 +196,15 @@ export const navigationConfig: NavigationSection[] = [
         href: '/logs',
         iconKey: 'database',
         permission: 'system:logs',
+        className: 'hidden md:block',
+        requireSuperAdmin: true,
+      },
+      {
+        id: 'admin-audit',
+        name: 'Аудит админов',
+        href: '/admin-audit',
+        iconKey: 'audit',
+        permission: 'system:audit',
         className: 'hidden md:block',
         requireSuperAdmin: true,
       },

@@ -14,9 +14,9 @@ import {
 } from '@nestjs/common';
 import { CitiesService } from './cities.service';
 import { CreateCityDto, FindCitiesDto, UpdateCityDto } from './dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '@/apps/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@/apps/auth/guards/roles.guard';
+import { Roles } from '@/apps/auth/decorators/roles.decorator';
 
 // Контроллер для методов, доступных всем авторизованным пользователям
 @Controller('cities')

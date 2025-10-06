@@ -88,6 +88,18 @@ export const clientsApi = api.injectEndpoints({
         'Payments'
       ],
     }),
+
+    // Отправка письма с уведомлением об окончании срока аренды
+    sendEmailRental: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/clients/${id}/send-email-rental`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, id) => [
+        { type: 'Clients', id },
+        { type: 'Clients', id: 'LIST' },
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -101,4 +113,5 @@ export const {
   useRemovePhoneMutation,
   useUpdateClientMutation,
   useDeleteClientMutation,
+  useSendEmailRentalMutation,
 } = clientsApi; 

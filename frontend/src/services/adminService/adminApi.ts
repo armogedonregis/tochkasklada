@@ -1,9 +1,8 @@
 import { api } from '../api';
-import { AdminProfile, CreateAdminProfileDto } from './admin.types';
+import { AdminProfile } from './admin.types';
 
 export const adminApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Получение профиля администратора по ID пользователя
     getAdminProfile: builder.query<AdminProfile, void>({
       query: () => ({
         url: '/admins/profile',
@@ -11,9 +10,7 @@ export const adminApi = api.injectEndpoints({
       }),
       providesTags: ['Admin'],
     }),
-
-    // Создание профиля администратора
-    createAdminProfile: builder.mutation<AdminProfile, CreateAdminProfileDto>({
+    createAdminProfile: builder.mutation<AdminProfile, void>({
       query: (data) => ({
         url: '/admins/profile',
         method: 'POST',

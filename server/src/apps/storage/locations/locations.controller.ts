@@ -15,10 +15,9 @@ import {
 } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { CreateLocationDto, FindLocationsDto, UpdateLocationDto } from './dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
-import { RequireResourcePermission } from '../auth/decorators/resource-permission.decorator';
+import { JwtAuthGuard } from '@/apps/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '@/apps/auth/guards/permissions.guard';
+import { RequirePermissions } from '@/apps/auth/decorators/permissions.decorator';
 
 // Контроллер для методов, доступных всем авторизованным пользователям
 @Controller('locations')
@@ -43,7 +42,7 @@ export class LocationsController {
    */
   @Get(':id')
   @UseGuards(PermissionsGuard)
-  @RequireResourcePermission('locations:read', 'Location', 'id')
+  @RequirePermissions('locations:read', 'Location', 'id')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return await this.locationsService.findOne(id);
   }
@@ -71,7 +70,7 @@ export class LocationsAdminController {
    * @returns Обновленная локация для RTK Query
    */
   @Patch(':id')
-  @RequireResourcePermission('locations:update', 'Location', 'id')
+  @RequirePermissions('locations:update', 'Location', 'id')
   async update(
     @Param('id', ParseUUIDPipe) id: string, 
     @Body() updateLocationDto: UpdateLocationDto
@@ -84,7 +83,7 @@ export class LocationsAdminController {
    * @returns ID удаленной локации для RTK Query
    */
   @Delete(':id')
-  @RequireResourcePermission('locations:delete', 'Location', 'id')
+  @RequirePermissions('locations:delete', 'Location', 'id')
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     return await this.locationsService.remove(id);

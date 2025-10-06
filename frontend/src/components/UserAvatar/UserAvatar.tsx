@@ -19,14 +19,12 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   
-  // Определяем размеры в зависимости от переданного параметра
   const sizeClasses = {
     sm: 'w-8 h-8 text-xs',
     md: 'w-10 h-10 text-sm',
     lg: 'w-12 h-12 text-base',
   };
   
-  // Получаем инициалы из имени
   const getInitials = () => {
     if (!name) return 'U';
     

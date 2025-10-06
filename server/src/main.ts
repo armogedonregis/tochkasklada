@@ -3,7 +3,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerService } from './swagger/swagger.service';
-import { LoggerService } from './logger/logger.service';
+import { LoggerService } from '@/infrastructure/logger/logger.service';
 
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter({
@@ -11,7 +11,6 @@ async function bootstrap() {
     bodyLimit: 10 * 1024 * 1024
   });
 
-  // Добавляем хук для обработки пустого тела в DELETE запросах
   fastifyAdapter.getInstance().addHook('preHandler', (request, reply, done) => {
     if (request.method === 'DELETE' && !request.body) {
       request.body = {};
@@ -27,11 +26,9 @@ async function bootstrap() {
     }
   );
 
-  // Используем кастомный логгер
   const logger = app.get(LoggerService);
   app.useLogger(logger);
 
-  // Глобальные настройки
   app.enableCors({
     origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -51,7 +48,6 @@ async function bootstrap() {
     }),
   );
 
-  // Инициализация Swagger с экземпляром приложения
   const swaggerService = app.get(SwaggerService);
   swaggerService.initWithApp(app);
   

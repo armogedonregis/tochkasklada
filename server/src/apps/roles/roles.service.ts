@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { LoggerService } from '../logger/logger.service';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
+import { LoggerService } from '@/infrastructure/logger/logger.service';
 import { CreateRoleDto, UpdateRoleDto, AssignLocationPermissionsDto } from './dto';
 
 @Injectable()
@@ -17,16 +17,7 @@ export class RolesService {
         name: { not: 'SUPERADMIN' }
       },
       include: {
-        rolePermissions: {
-          include: {
-            permission: true,
-          },
-        },
-        _count: {
-          select: {
-            adminRoles: true,
-          },
-        },
+       
       },
       orderBy: { name: 'asc' },
     });
@@ -36,18 +27,6 @@ export class RolesService {
   async findOne(id: string) {
     const role = await this.prisma.role.findUnique({
       where: { id },
-      include: {
-        rolePermissions: {
-          include: {
-            permission: true,
-          },
-        },
-        _count: {
-          select: {
-            adminRoles: true,
-          },
-        },
-      },
     });
 
     if (!role) {
@@ -80,31 +59,8 @@ export class RolesService {
           name: data.name,
           description: data.description,
         },
-        include: {
-          rolePermissions: {
-            include: {
-              permission: true,
-            },
-          },
-          _count: {
-            select: {
-              adminRoles: true,
-            },
-          },
-        },
       });
 
-      // Если указаны права, назначаем их
-      if (data.permissionIds && data.permissionIds.length > 0) {
-        for (const permissionId of data.permissionIds) {
-          await prisma.rolePermission.create({
-            data: {
-              roleId: role.id,
-              permissionId,
-            },
-          });
-        }
-      }
 
       return role;
     });
@@ -142,26 +98,6 @@ export class RolesService {
         });
       }
 
-      // Если указаны права, обновляем их
-      if (data.permissionIds !== undefined) {
-        // Удаляем все текущие права
-        await prisma.rolePermission.deleteMany({
-          where: { roleId: id },
-        });
-
-        // Добавляем новые права
-        if (data.permissionIds.length > 0) {
-          for (const permissionId of data.permissionIds) {
-            await prisma.rolePermission.create({
-              data: {
-                roleId: id,
-                permissionId,
-              },
-            });
-          }
-        }
-      }
-
       return this.findOne(id);
     });
   }
@@ -175,15 +111,6 @@ export class RolesService {
       throw new BadRequestException(`Роль "SUPERADMIN" не может быть удалена`);
     }
 
-    // Проверяем, что роль не используется админами
-    if (role._count.adminRoles > 0) {
-      throw new BadRequestException(`Нельзя удалить роль "${role.name}", так как она назначена ${role._count.adminRoles} администраторам`);
-    }
-
-    // Удаляем все права роли
-    await this.prisma.rolePermission.deleteMany({
-      where: { roleId: id },
-    });
 
     // Удаляем роль
     await this.prisma.role.delete({
@@ -260,26 +187,11 @@ export class RolesService {
       },
     });
 
-    // Создаем новые права на локацию
-    const resourcePermissions = await Promise.all(
-      permissions.map(permission =>
-        this.prisma.adminResourcePermission.create({
-          data: {
-            adminId: dto.adminId,
-            permissionId: permission.id,
-            resourceType: 'Location',
-            resourceId: dto.locationId,
-          },
-        })
-      )
-    );
-
     return {
       message: `Права на локацию "${location.name}" успешно назначены администратору`,
       adminId: dto.adminId,
       locationId: dto.locationId,
-      permissions: dto.permissions,
-      resourcePermissions: resourcePermissions.length,
+      permissions: dto.permissions
     };
   }
 
@@ -300,9 +212,6 @@ export class RolesService {
         adminId,
         resourceType: 'Location',
       },
-      include: {
-        permission: true,
-      },
     });
 
     // Группируем по локациям
@@ -314,7 +223,7 @@ export class RolesService {
           permissions: [],
         };
       }
-      acc[locationId].permissions.push(perm.permission.key);
+      acc[locationId].permissions.push(perm.resourceId);
       return acc;
     }, {});
 
@@ -362,9 +271,8 @@ export class RolesService {
         creates.push(this.prisma.adminResourcePermission.create({
           data: {
             adminId: dto.adminId,
-            permissionId: perm.id,
-            resourceType: 'Location',
             resourceId: locationId,
+            resourceType: 'Location',
           }
         }));
       }
@@ -448,8 +356,7 @@ export class RolesService {
                 size: true,
                 status: true,
                 rentals: {
-                  where: { isActive: true },
-                  select: { id: true, endDate: true, rentalStatus: true, client: { select: { name: true, user: { select: { email: true } } } } }
+                  select: { id: true, endDate: true, status: true, client: { select: { name: true, user: { select: { email: true } } } } }
                 }
               }
             }
@@ -494,7 +401,6 @@ export class RolesService {
     if (activeRentalIds.length > 0) {
       const payments = await this.prisma.payment.findMany({
         where: {
-          status: true,
           cellRentalId: { in: activeRentalIds },
         },
         orderBy: { createdAt: 'desc' },

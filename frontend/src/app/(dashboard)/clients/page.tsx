@@ -4,7 +4,8 @@ import {
   useGetClientsQuery,
   useCreateClientMutation,
   useUpdateClientMutation,
-  useDeleteClientMutation
+  useDeleteClientMutation,
+  useSendEmailRentalMutation
 } from '@/services/clientsService/clientsApi';
 import { Button } from '@/components/ui/button';
 import { BaseTable } from '@/components/table/BaseTable';
@@ -15,10 +16,12 @@ import { toast } from 'react-toastify';
 import * as yup from 'yup';
 import { useTableControls } from '@/hooks/useTableControls';
 import { useFormModal } from '@/hooks/useFormModal';
-import { Eye } from 'lucide-react';
+import { Eye, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PermissionGate } from '@/services/authService';
 import { ProtectedPage } from '@/components/auth/ProtectedPage';
+import { BaseConfirmModal } from '@/components/modals/BaseConfirmModal';
+import { useState } from 'react';
 
 // Схема валидации для клиента
 const clientValidationSchema = yup.object({
@@ -35,8 +38,7 @@ const clientValidationSchema = yup.object({
         comment: yup.string().optional()
       })
     )
-    .min(1, 'Введите хотя бы один номер телефона'),
-  isActive: yup.boolean()
+    .min(1, 'Введите хотя бы один номер телефона')
 });
 
 // Типы для формы
@@ -44,7 +46,6 @@ interface ClientFormFields {
   name: string;
   email: string;
   phones: { phone: string; comment?: string }[];
-  isActive: boolean;
 }
 
 export default function ClientsPage() {
@@ -68,6 +69,11 @@ export default function ClientsPage() {
   const [createClient] = useCreateClientMutation();
   const [updateClient] = useUpdateClientMutation();
   const [deleteClient] = useDeleteClientMutation();
+  const [sendEmailRental] = useSendEmailRentalMutation();
+
+
+  const [openModal, setOpenModal] = useState<Client | null>(null);
+  const closeModal = () => setOpenModal(null);
 
   // Хук для управления модальным окном
   const modal = useFormModal<ClientFormFields, Client>({
@@ -78,7 +84,6 @@ export default function ClientsPage() {
           name: values.name,
           email: values.email,
           phones: values.phones,
-          isActive: values.isActive
         }).unwrap();
         toast.success('Клиент успешно обновлен');
       } else {
@@ -86,7 +91,6 @@ export default function ClientsPage() {
           name: values.name,
           email: values.email,
           phones: values.phones,
-          isActive: values.isActive
         }).unwrap();
         toast.success('Клиент успешно создан');
       }
@@ -107,6 +111,15 @@ export default function ClientsPage() {
       }
     }
   };
+
+  // Обработчик отправки письма с уведомлением об окончании срока аренды
+  const handleSendEmailRental = async () => {
+    if(!openModal) return null;
+    await sendEmailRental(openModal.id).unwrap();
+    toast.success('Письмо с уведомлением об окончании срока аренды успешно отправлено');
+  };
+
+
 
   // Определение колонок таблицы
   const columns: ColumnDef<Client>[] = [
@@ -162,6 +175,15 @@ export default function ClientsPage() {
           <Eye className="h-4 w-4" />
         </Button>
       ),
+    },
+    {
+      id: 'send-email-rental',
+      header: 'Отправить письмо',
+      cell: ({ row }) => (
+        <Button variant="outline" size="icon" onClick={() => setOpenModal(row.original)}>
+          <Mail className="h-4 w-4" />
+        </Button>
+      ),
     }
   ];
 
@@ -186,11 +208,6 @@ export default function ClientsPage() {
       multiplePhones: true,
       comment: true
     },
-    {
-      type: 'checkbox' as const,
-      fieldName: 'isActive' as const,
-      label: 'Активный клиент'
-    }
   ];
 
   return (
@@ -251,16 +268,16 @@ export default function ClientsPage() {
                 phone: p.phone,
                 comment: p.comment || ''
               })) : [],
-              isActive: modal.editItem.isActive
             } : {
               name: '',
               email: '',
               phones: [],
-              isActive: false
             }}
           />
         </div>
       </div>
+
+      <BaseConfirmModal title={"Осторожно, вы отправляете письмо"} isOpen={openModal !== null} onClose={closeModal} onConfirm={handleSendEmailRental} />
     </ProtectedPage>
   );
 } 

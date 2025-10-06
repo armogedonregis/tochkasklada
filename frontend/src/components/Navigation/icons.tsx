@@ -136,6 +136,12 @@ export const navigationIcons: Record<string, IconConfig> = {
     activeIcon: CircleStackSolid,
   },
   
+  // Аудит и безопасность
+  audit: {
+    icon: ShieldCheckIcon,
+    activeIcon: ShieldCheckSolid,
+  },
+  
   // Профиль пользователя
   profile: {
     icon: UserCircleIcon,

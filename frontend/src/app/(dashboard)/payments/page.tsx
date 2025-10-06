@@ -6,7 +6,6 @@ import {
   useAdminCreatePaymentMutation,
   useUpdatePaymentMutation,
   useDeletePaymentMutation,
-  useSetPaymentStatusMutation,
 } from '@/services/paymentsService/paymentsApi';
 import { useLazyGetClientsQuery } from '@/services/clientsService/clientsApi';
 import { toast } from 'react-toastify';
@@ -30,7 +29,6 @@ const getPaymentValidationSchema = (isEdit: boolean) => yup.object({
   userId: isEdit ? yup.string().optional() : yup.string().required('Клиент обязателен'),
   amount: yup.number().required('Сумма обязательна').min(1, 'Сумма должна быть больше 0'),
   description: yup.string().optional(),
-  status: yup.boolean().default(false),
   cellId: yup.string().optional(),
   cellIds: yup.array().of(yup.string()).optional(),
   rentalDuration: yup.number().optional().min(1, 'Срок аренды должен быть > 0').nullable(),
@@ -41,7 +39,6 @@ interface PaymentFormFields {
   userId?: string;
   amount: number;
   description: string;
-  status: boolean;
   cellId?: string;          // Для обратной совместимости
   cellIds?: string[];       // Массив ID ячеек
   rentalDuration?: number;
@@ -77,7 +74,6 @@ const PaymentsPage = () => {
   const [deletePayment] = useDeletePaymentMutation();
   const [adminCreatePayment] = useAdminCreatePaymentMutation();
   const [updatePayment] = useUpdatePaymentMutation();
-  const [setPaymentStatus] = useSetPaymentStatusMutation();
 
   // Хук для управления модальным окном
   const modal = useFormModal<PaymentFormFields, Payment>({
@@ -146,16 +142,6 @@ const PaymentsPage = () => {
       } catch (error) {
         toast.error('Ошибка при удалении платежа');
       }
-    }
-  };
-
-  // Обработчик изменения статуса платежа
-  const handleToggleStatus = async (id: string, newStatus: boolean) => {
-    try {
-      await setPaymentStatus({ id, status: newStatus }).unwrap();
-      toast.success(`Статус платежа ${newStatus ? 'оплачен' : 'не оплачен'}`);
-    } catch (error) {
-      toast.error('Не удалось изменить статус платежа');
     }
   };
 
@@ -348,11 +334,6 @@ const PaymentsPage = () => {
       placeholder: 'Опишите платеж'
     },
     {
-      type: 'checkbox' as const,
-      fieldName: 'status' as const,
-      label: 'Оплачен'
-    },
-    {
       type: 'searchSelect' as const,
       fieldName: 'cellIds' as const,
       label: 'Ячейки',
@@ -448,7 +429,6 @@ const PaymentsPage = () => {
             userId: currentUserId,
             amount: modal.editItem.amount,
             description: modal.editItem.description,
-            status: modal.editItem.status,
             rentalDuration: modal.editItem.rentalDuration,
             cellIds: cellIds,
           };
@@ -456,7 +436,6 @@ const PaymentsPage = () => {
           userId: undefined,
           amount: undefined,
           description: '',
-          status: false,
           cellId: '',
           rentalDuration: undefined,
           cellIds: [],

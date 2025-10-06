@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -36,33 +36,12 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Доступ запрещен');
     }
 
-    // Получаем профиль админа
+    // Получаем профиль админа с ролями и ресурсным скоупом
     const admin = await this.prisma.admin.findUnique({
       where: { userId: user.id },
       include: {
-        adminRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: {
-                  include: {
-                    permission: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        adminPermissions: {
-          include: {
-            permission: true,
-          },
-        },
-        adminResourcePermissions: {
-          include: {
-            permission: true,
-          },
-        },
+        role: { include: { permissions: true } },
+        adminResourcePermissions: true,
       },
     });
 
@@ -70,20 +49,13 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Профиль администратора не найден');
     }
 
-    // Собираем все права админа
+    // Собираем все права админа из назначенных ролей
     const userPermissions = new Set<string>();
-
-    // Права из ролей
-    admin.adminRoles.forEach(adminRole => {
-      adminRole.role.rolePermissions.forEach(rolePermission => {
-        userPermissions.add(rolePermission.permission.key);
+    if (admin.role) {
+      admin.role.permissions.forEach(permission => {
+        userPermissions.add(permission.key);
       });
-    });
-
-    // Прямые права
-    admin.adminPermissions.forEach(adminPermission => {
-      userPermissions.add(adminPermission.permission.key);
-    });
+    }
 
     // Проверяем, есть ли у пользователя все необходимые права
     const hasAllPermissions = requiredPermissions.every(permission => 
@@ -96,28 +68,23 @@ export class PermissionsGuard implements CanActivate {
       );
     }
 
-    // Если указан ресурс, проверяем права на него
-    if (resourceType && resourceIdParam) {
-      const resourceId = request.params[resourceIdParam];
-      
-      if (resourceId) {
-        // Проверяем, есть ли у админа права на этот конкретный ресурс
-        const hasResourcePermission = await this.checkResourcePermission(
-          admin.id, 
-          requiredPermissions[0], 
-          resourceType, 
-          resourceId
-        );
-        
-        // Если нет прав на конкретный ресурс, но есть общий permission - разрешаем
-        // Это позволяет видеть все ресурсы, но управлять только теми, на которые есть права
-        if (!hasResourcePermission) {
-          // Проверяем, есть ли у админа общий permission на этот тип ресурса
-          const hasGeneralPermission = userPermissions.has(requiredPermissions[0]);
-          
-          if (!hasGeneralPermission) {
+    // Если указан ресурс, формируем скоуп и (если есть resourceId) проверяем доступ к конкретной записи
+    if (resourceType) {
+      // Всегда формируем список доступных ID для последующей фильтрации в сервисах
+      const scopeIds = await this.getAccessibleResourceIds(admin.id, resourceType);
+      request.resourceScope = { ...(request.resourceScope || {}), [resourceType]: scopeIds };
+
+      if (resourceIdParam) {
+        const resourceId = request.params[resourceIdParam];
+        if (resourceId) {
+          const hasResourceAccess = await this.checkResourceScope(
+            admin.id,
+            resourceType,
+            resourceId
+          );
+          if (!hasResourceAccess) {
             throw new ForbiddenException(
-              `Нет прав на ресурс ${resourceType}:${resourceId}`
+              `Нет доступа к ресурсу ${resourceType}:${resourceId}`
             );
           }
         }
@@ -127,134 +94,41 @@ export class PermissionsGuard implements CanActivate {
     return true;
   }
 
-  private async checkResourcePermission(
-    adminId: string, 
-    permission: string, 
-    resourceType: string, 
+  private async checkResourceScope(
+    adminId: string,
+    resourceType: string,
     resourceId: string
   ): Promise<boolean> {
-    // Проверяем прямые права на ресурс
-    const directPermission = await this.prisma.adminResourcePermission.findUnique({
+    // Проверяем прямой доступ к ресурсу (без наследования)
+    const direct = await this.prisma.adminResourcePermission.findUnique({
       where: {
-        adminId_permissionId_resourceType_resourceId: {
+        adminId_resourceType_resourceId: {
           adminId,
-          permissionId: await this.getPermissionId(permission),
           resourceType,
           resourceId,
         },
       },
     });
-    
-    if (directPermission) return true;
-    
-    // Проверяем права на родительские ресурсы (иерархия)
-    const parentPermission = await this.findParentPermission(
-      adminId, 
-      permission, 
-      resourceType, 
-      resourceId
-    );
-    
-    return !!parentPermission;
-  }
-
-  private async findParentPermission(
-    adminId: string, 
-    permission: string, 
-    resourceType: string, 
-    resourceId: string
-  ): Promise<boolean> {
-    // Определяем иерархию ресурсов
-    const resourceHierarchy = {
-      'Cell': ['Container', 'Location'],
-      'Container': ['Location'],
-      'CellRental': ['Cell', 'Container', 'Location'],
-      'Payment': ['CellRental', 'Cell', 'Container', 'Location'],
-      'Client': ['CellRental', 'Cell', 'Container', 'Location'],
-    };
-
-    const hierarchy = resourceHierarchy[resourceType] || [];
-    
-    for (const parentType of hierarchy) {
-      const parentId = await this.getParentResourceId(resourceType, resourceId, parentType);
-      
-      if (parentId) {
-        const parentPermission = await this.prisma.adminResourcePermission.findUnique({
-          where: {
-            adminId_permissionId_resourceType_resourceId: {
-              adminId,
-              permissionId: await this.getPermissionId(permission),
-              resourceType: parentType,
-              resourceId: parentId,
-            },
-          },
-        });
-        
-        if (parentPermission) return true;
-      }
-
-    }
-    
+    if (direct) return true;
     return false;
   }
 
-  private async getParentResourceId(
-    resourceType: string, 
-    resourceId: string, 
-    parentType: string
-  ): Promise<string | null> {
-    // Получаем ID родительского ресурса
-    switch (resourceType) {
-      case 'Cell':
-        if (parentType === 'Container') {
-          const cell = await this.prisma.cells.findUnique({
-            where: { id: resourceId },
-            select: { containerId: true }
-          });
-          return cell?.containerId || null;
-        }
-        if (parentType === 'Location') {
-          const cell = await this.prisma.cells.findUnique({
-            where: { id: resourceId },
-            include: { container: true }
-          });
-          return cell?.container?.locId || null;
-        }
-        break;
-        
-      case 'Container':
-        if (parentType === 'Location') {
-          const container = await this.prisma.containers.findUnique({
-            where: { id: resourceId },
-            select: { locId: true }
-          });
-          return container?.locId || null;
-        }
-        break;
-        
-      case 'CellRental':
-        if (parentType === 'Cell') {
-          const rental = await this.prisma.cellRental.findUnique({
-            where: { id: resourceId },
-            select: { cellId: true }
-          });
-          return rental?.cellId || null;
-        }
-        break;
+  private async getAccessibleResourceIds(
+    adminId: string,
+    resourceType: string,
+  ): Promise<string[] | 'ALL'> {
+    // В дальнейшем можно расширить для разных типов
+    if (resourceType === 'Location') {
+      const perms = await this.prisma.adminResourcePermission.findMany({
+        where: { adminId, resourceType: 'Location' },
+        select: { resourceId: true },
+      });
+      return Array.from(new Set(perms.map(p => p.resourceId)));
     }
-    
-    return null;
+    // По умолчанию возвращаем пустой список
+    return [];
   }
 
-  private async getPermissionId(permissionKey: string): Promise<string> {
-    const permission = await this.prisma.permission.findUnique({
-      where: { key: permissionKey },
-    });
-    
-    if (!permission) {
-      throw new ForbiddenException(`Permission ${permissionKey} не найден`);
-    }
-    
-    return permission.id;
-  }
+
+  // Больше не нужно, т.к. scope не хранит permissionId
 }

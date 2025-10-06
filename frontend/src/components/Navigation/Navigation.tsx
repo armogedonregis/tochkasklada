@@ -29,14 +29,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const dispatch = useAppDispatch();
-
-  // Получаем права доступа
   const { canAccessItem, isSuperAdmin } = useNavigationAccess();
-  
-  // Получаем статистику по заявкам для отображения счетчика
   const { data: requestsStats } = useGetRequestsStatsQuery();
-
-  // Обработка свайпов для мобильного меню
   const minSwipeDistance = 50;
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -52,19 +46,17 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   const onTouchEnd = () => {
     if (!touchStart || !touchEnd || !isMobile || !onClose) return;
-    
+
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
 
     if (isLeftSwipe) {
-      // Добавляем небольшую задержку для плавности
       setTimeout(() => {
         onClose();
       }, 100);
     }
   };
 
-  // Имитация сохранения состояния
   useEffect(() => {
     const savedNavState = localStorage.getItem('isNavOpened');
     if (savedNavState) {
@@ -85,10 +77,8 @@ export const Navigation: React.FC<NavigationProps> = ({
     setIsNavOpened(!isNavOpened);
   };
 
-  // В мобильном режиме всегда показываем полное меню
   const shouldShowFullMenu = isMobile || isNavOpened;
 
-  // Получаем новые элементы для заявок
   const getNewItemsCount = (itemId: string) => {
     if (itemId === 'requests') {
       return requestsStats?.byStatus?.WAITING || 0;
@@ -96,20 +86,14 @@ export const Navigation: React.FC<NavigationProps> = ({
     return 0;
   };
 
-  // Рендерим секции навигации
   const renderNavigationSections = () => {
     return navigationConfig.map((section) => {
-      // Фильтруем элементы секции по правам доступа
       const accessibleItems = section.items.filter(canAccessItem);
-      
-      // Если нет доступных элементов, не рендерим секцию
       if (accessibleItems.length === 0) {
         return null;
       }
 
-      // Специальная обработка для секции "Управление" - показываем только SUPERADMIN или если есть права управления
       if (section.id === 'management' && !isSuperAdmin) {
-        // Проверяем, есть ли хотя бы один элемент, который не требует SUPERADMIN
         const nonSuperAdminItems = accessibleItems.filter(item => !item.requireSuperAdmin);
         if (nonSuperAdminItems.length === 0) {
           return null;
@@ -118,7 +102,6 @@ export const Navigation: React.FC<NavigationProps> = ({
 
       return (
         <div key={section.id}>
-          {/* Заголовок секции */}
           {shouldShowFullMenu && section.title && section.id !== 'user' && (
             <>
               {section.id === 'management' && (
@@ -131,8 +114,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               </div>
             </>
           )}
-
-          {/* Элементы секции */}
           {accessibleItems.map((item) => (
             <MenuItem
               key={item.id}
@@ -151,15 +132,13 @@ export const Navigation: React.FC<NavigationProps> = ({
   };
 
   return (
-    <div 
-      className={`flex flex-col h-screen bg-white dark:bg-gray-900 transition-all duration-300 ease-in-out ${
-        isMobile ? 'w-full z-50' : shouldShowFullMenu ? 'w-64' : 'w-20'
-      } border-r border-gray-200 dark:border-gray-700`}
+    <div
+      className={`flex flex-col h-screen bg-white dark:bg-gray-900 transition-all duration-300 ease-in-out ${isMobile ? 'w-full z-50' : shouldShowFullMenu ? 'w-64' : 'w-20'
+        } border-r border-gray-200 dark:border-gray-700`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Верхняя часть с логотипом */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         {shouldShowFullMenu ? (
           <div className="flex items-center">
@@ -172,7 +151,6 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
         <div className="flex items-center space-x-2">
-          {/* Кнопка закрытия для мобильного меню */}
           {isMobile && onClose && (
             <button
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white p-1 touch-manipulation"
@@ -181,7 +159,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               {getInterfaceIcon('close')}
             </button>
           )}
-          {/* Кнопка сворачивания/разворачивания (только для десктопа) */}
           {!isMobile && (
             <button
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white touch-manipulation"
@@ -192,13 +169,9 @@ export const Navigation: React.FC<NavigationProps> = ({
           )}
         </div>
       </div>
-
-      {/* Основное меню */}
       <div className="flex-grow overflow-y-auto py-4 px-3 scrollbar-hide navigation-mobile overflow-mobile-fix">
         {renderNavigationSections()}
       </div>
-
-      {/* Профиль пользователя */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 navigation-mobile overflow-mobile-fix">
         {shouldShowFullMenu && (
           <div className="mb-2 ml-4">
@@ -210,13 +183,12 @@ export const Navigation: React.FC<NavigationProps> = ({
 
         {shouldShowFullMenu ? (
           <div className="mb-4 px-2">
-            {/* Десктопная версия свитчера */}
             <div className="hidden md:flex items-center justify-between rounded-lg bg-gray-100 dark:bg-gray-800 p-1.5">
               <button
                 onClick={() => theme === 'dark' && toggleTheme()}
                 className={`flex items-center space-x-2 rounded-md py-1.5 px-2.5 transition-all ${theme === 'light'
-                    ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-md'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-md'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
               >
                 {getInterfaceIcon('sun', 'h-4 w-4')}
@@ -225,16 +197,14 @@ export const Navigation: React.FC<NavigationProps> = ({
               <button
                 onClick={() => theme === 'light' && toggleTheme()}
                 className={`flex items-center space-x-2 rounded-md py-1.5 px-2.5 transition-all ${theme === 'dark'
-                    ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-md'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-md'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
               >
                 {getInterfaceIcon('moon', 'h-4 w-4')}
                 <span className="text-xs font-medium">Темная</span>
               </button>
             </div>
-
-            {/* Мобильная версия свитчера */}
             <div className="md:hidden">
               <div className="text-center mb-2">
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -244,22 +214,20 @@ export const Navigation: React.FC<NavigationProps> = ({
               <div className="flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 p-1.5 theme-switcher-mobile">
                 <button
                   onClick={() => theme === 'dark' && toggleTheme()}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-all touch-manipulation ${
-                    theme === 'light'
+                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-all touch-manipulation ${theme === 'light'
                       ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-lg scale-110 active'
                       : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
+                    }`}
                 >
                   {getInterfaceIcon('sun', 'h-5 w-5')}
                 </button>
                 <div className="mx-3 w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
                 <button
                   onClick={() => theme === 'light' && toggleTheme()}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-all touch-manipulation ${
-                    theme === 'dark'
+                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-all touch-manipulation ${theme === 'dark'
                       ? 'bg-gradient-to-r from-[#F62D40] to-[#F8888F] text-white shadow-lg scale-110 active'
                       : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
+                    }`}
                 >
                   {getInterfaceIcon('moon', 'h-5 w-5')}
                 </button>
@@ -280,8 +248,6 @@ export const Navigation: React.FC<NavigationProps> = ({
             </button>
           </div>
         )}
-
-        {/* Рендерим секцию пользователя */}
         {navigationConfig.find(section => section.id === 'user')?.items
           .filter(canAccessItem)
           .map((item) => (

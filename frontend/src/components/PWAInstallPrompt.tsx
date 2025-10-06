@@ -16,7 +16,6 @@ export function PWAInstallPrompt() {
   const [iosStandalone, setIosStandalone] = useState(false);
 
   useEffect(() => {
-    // Регистрация Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
@@ -29,21 +28,17 @@ export function PWAInstallPrompt() {
   }, []);
 
   useEffect(() => {
-    // Проверка для iOS
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    
+
     setIsIOS(isIos);
     setIosStandalone(isStandalone);
-    
-    // Для iOS 18+ можно использовать стандартный flow
+
     if (isIos && !isStandalone) {
-      // Проверяем версию iOS (примерно)
-      const isModernIOS = !navigator.userAgent.includes('OS 16') && 
-                         !navigator.userAgent.includes('OS 17');
-      
+      const isModernIOS = !navigator.userAgent.includes('OS 16') &&
+        !navigator.userAgent.includes('OS 17');
+
       if (isModernIOS) {
-        // Современные iOS используют стандартный PWA flow
         setIsIOS(false);
       }
     }
@@ -60,7 +55,7 @@ export function PWAInstallPrompt() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowInstallPrompt(true);
-      
+
       const dateCache = new Date();
       dateCache.setDate(dateCache.getDate() + 1);
       localStorage.setItem('pwa-install-prompt', dateCache.toISOString());
@@ -89,7 +84,6 @@ export function PWAInstallPrompt() {
     setShowInstallPrompt(false);
   };
 
-  // Для iOS показываем кастомное сообщение
   if (isIOS && !iosStandalone) {
     return (
       <div className="fixed bottom-4 left-4 right-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-50">
@@ -118,7 +112,6 @@ export function PWAInstallPrompt() {
     );
   }
 
-  // Для Android и современных iOS показываем стандартный prompt
   if (!showInstallPrompt) return null;
 
   return (

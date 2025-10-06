@@ -31,34 +31,29 @@ export default function AuthGuard({
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Если пользователь не аутентифицирован и требуется авторизация
       if (!isAuthenticated && requireAuth) {
         router.push("/login");
         setIsChecking(false);
         return;
       }
 
-      // Если пользователь аутентифицирован, но находится на странице логина
       if (isAuthenticated && pathname === "/login") {
         router.push("/");
         setIsChecking(false);
         return;
       }
 
-      // Проверяем текущего пользователя только если еще не проверяли и пользователь аутентифицирован
       if (isAuthenticated && requireAuth && !userChecked) {
         try {
           const userData = await getCurrentUser().unwrap();
           dispatch(setUser(userData));
           setUserChecked(true);
           
-          // Проверка прав доступа
           if (roles.length > 0 && !roles.includes(userData.role)) {
             setAccessDenied(true);
           }
         } catch (error) {
           console.error("Ошибка получения данных пользователя:", error);
-          // Если запрос не удался, выходим из аккаунта
           dispatch(logout());
           router.push("/login");
         }
@@ -70,14 +65,12 @@ export default function AuthGuard({
     checkAuth();
   }, [isAuthenticated, requireAuth, pathname, router, token, dispatch, roles, getCurrentUser, userChecked]);
 
-  // Сбрасываем флаг userChecked при смене маршрута
   useEffect(() => {
     return () => {
       setUserChecked(false);
     };
   }, [pathname]);
 
-  // Пока проверяем авторизацию, показываем заглушку загрузки
   if (isChecking) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -86,7 +79,6 @@ export default function AuthGuard({
     );
   }
 
-  // Если доступ запрещен
   if (accessDenied) {
     return (
       <div className="p-8 text-center">
@@ -97,6 +89,5 @@ export default function AuthGuard({
     );
   }
 
-  // Проверка пройдена, показываем содержимое
   return <>{children}</>;
 } 
