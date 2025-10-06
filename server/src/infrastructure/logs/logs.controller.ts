@@ -8,7 +8,7 @@ import { UserRole } from '@prisma/client';
 
 @Controller('logs')
 export class LogsController {
-  private readonly logsDir = process.env.LOGS_DIR || path.join(__dirname, '..', '..', 'logs');
+  private readonly logsDir = path.join(__dirname, '..', '..', '..', 'logs');
 
   /**
    * Возвращает список доступных лог-файлов.
