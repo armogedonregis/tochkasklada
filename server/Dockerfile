@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y openssl && \
 RUN npx prisma generate
 RUN npm install bcrypt
 RUN npm run build
-RUN npx tsc prisma/seed.ts --outDir . --target ES2020 --module commonjs --esModuleInterop --skipLibCheck
 RUN npm prune --production
 
 FROM node:20-slim AS runner

@@ -37,4 +37,3 @@ jobs:
             
             sleep 10
             make migrate
-            make seed

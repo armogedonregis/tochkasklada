@@ -22,7 +22,7 @@
     "seed": "dotenv -e ../.env -- npx prisma db seed"
   },
   "prisma": {
-    "seed": "node prisma/seed.js"
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
