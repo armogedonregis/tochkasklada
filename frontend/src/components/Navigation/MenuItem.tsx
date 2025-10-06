@@ -48,7 +48,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
         {isNavOpened && (
           <div className="flex flex-grow items-center justify-between">
             <span
-              className={`ml-4 text-sm font-medium transition-all duration-150 no-select group-hover:text-blue-600 group-hover:dark:text-blue-400 text-gray-900 dark:text-white'`}
+              className={`ml-4 text-sm font-medium transition-all duration-150 no-select group-hover:text-blue-600 group-hover:dark:text-blue-400 text-gray-900 dark:text-white`}
             >
               {pageName}
             </span>
