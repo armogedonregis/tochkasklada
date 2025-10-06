@@ -549,18 +549,18 @@ export class CellRentalsService {
     this.logger.log(`Updating cell rental with id: ${id}`, 'CellRentalsService');
     try {
       await this.findOne(id); // Проверяем существование
-
+  
       // Проверяем существование клиента, если указан
       if (updateCellRentalDto.clientId) {
         const client = await this.prisma.client.findUnique({
           where: { id: updateCellRentalDto.clientId },
         });
-
+  
         if (!client) {
           throw new NotFoundException(`Клиент с ID ${updateCellRentalDto.clientId} не найден`);
         }
       }
-
+  
       // Обработка ячеек для обновления
       let cellUpdateData = {};
       
@@ -572,19 +572,19 @@ export class CellRentalsService {
       if (updateCellRentalDto.cellIds) {
         cellsToUpdate.push(...updateCellRentalDto.cellIds);
       }
-
+  
       if (cellsToUpdate.length > 0) {
         // Проверяем существование всех ячеек
         const cells = await this.prisma.cells.findMany({
           where: { id: { in: cellsToUpdate } },
         });
-
+  
         if (cells.length !== cellsToUpdate.length) {
           const foundCellIds = cells.map(c => c.id);
           const missingCellIds = cellsToUpdate.filter(id => !foundCellIds.includes(id));
           throw new NotFoundException(`Ячейки с ID ${missingCellIds.join(', ')} не найдены`);
         }
-
+  
         // Проверяем, нет ли уже активной аренды для этих ячеек другим клиентом
         const activeRentals = await this.prisma.cellRental.findMany({
           where: {
@@ -601,25 +601,25 @@ export class CellRentalsService {
             cell: true
           }
         });
-
+  
         if (activeRentals.length > 0) {
           // Получаем текущую аренду для сравнения клиентов
           const currentRental = await this.prisma.cellRental.findUnique({
             where: { id },
             include: { client: true }
           });
-
+  
           // Проверяем, принадлежат ли активные аренды другим клиентам
           const conflictingRentals = activeRentals.filter(rental => 
             rental.clientId !== currentRental?.clientId
           );
-
+  
           if (conflictingRentals.length > 0) {
             const occupiedCells = conflictingRentals.flatMap(rental => rental.cell.map(c => c.name));
             throw new BadRequestException(`Ячейки ${occupiedCells.join(', ')} уже арендованы другими клиентами`);
           }
         }
-
+  
         // Обновляем связи с ячейками
         cellUpdateData = {
           cell: {
@@ -628,12 +628,12 @@ export class CellRentalsService {
           }
         };
       }
-
-      // Исключаем cellId и cellIds из updateData, так как они обрабатываются отдельно
+  
+      // Исключаем поля, которые обрабатываются отдельно
       const { cellId, cellIds, ...restUpdateData } = updateCellRentalDto;
       
       const updateData = {
-        ...restUpdateData,
+        ...restUpdateData, // clientId остается здесь и будет работать
         ...cellUpdateData, // Добавляем данные для обновления ячеек
         startDate: updateCellRentalDto.startDate
           ? new Date(updateCellRentalDto.startDate)
@@ -648,7 +648,7 @@ export class CellRentalsService {
           ? new Date(updateCellRentalDto.closedAt)
           : undefined,
       };
-
+  
       // Автоматическая синхронизация isActive с rentalStatus
       if (updateCellRentalDto.rentalStatus !== undefined) {
         if (updateCellRentalDto.rentalStatus === CellRentalStatus.CLOSED) {
@@ -666,10 +666,10 @@ export class CellRentalsService {
         } else {
           updateData.isActive = true;
           // Сбрасываем дату закрытия, если статус не CLOSED
-          updateData.closedAt = undefined;
+          updateData.closedAt = undefined; // Используем null вместо undefined
         }
       }
-
+  
       const updatedRental = await this.prisma.cellRental.update({
         where: { id },
         data: updateData,
@@ -685,14 +685,14 @@ export class CellRentalsService {
           status: true,
         },
       });
-
+  
       this.logger.log(`Cell rental with id: ${id} updated successfully`, 'CellRentalsService');
       return this.findOne(updatedRental.id);
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
-
+  
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new ConflictException('Конфликт данных при обновлении аренды');
@@ -700,7 +700,7 @@ export class CellRentalsService {
           throw new NotFoundException('Один из связанных объектов не найден');
         }
       }
-
+  
       throw new InternalServerErrorException(`Ошибка при обновлении аренды: ${error.message}`);
     }
   }

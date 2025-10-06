@@ -1621,9 +1621,18 @@ export class PaymentsService {
       ? this._calculateRentalEndDate(new Date(startDate), rentalDuration.value, rentalDuration.unit)
       : this._calculateRentalEndDate(new Date(startDate), 1, 'month');
 
+      const statuses = await this.prisma.cellStatus.findFirst({
+        where: {
+          statusType: "ACTIVE"
+        }
+      })
+
+      if(!statuses) return null; 
+
       const rental = await this.cellRentalsService.create({
         cellIds: uniqueCellIds,
         clientId: clientId,
+        statusId: statuses.id,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString()
       });
