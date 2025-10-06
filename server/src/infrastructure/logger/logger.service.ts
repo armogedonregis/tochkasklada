@@ -8,7 +8,7 @@ export class LoggerService implements NestLoggerService {
   private readonly logger: winston.Logger;
 
   constructor() {
-    const logDir = process.env.LOGS_DIR || path.join(__dirname, '..', '..', 'logs');
+    const logDir = process.env.LOGS_DIR || path.join(__dirname, '..', '..', '..', 'logs');
 
     const errorTransport = new winston.transports.DailyRotateFile({
       filename: path.join(logDir, 'error-%DATE%.log'),
