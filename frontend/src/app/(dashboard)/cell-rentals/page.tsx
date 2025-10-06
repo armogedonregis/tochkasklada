@@ -368,10 +368,10 @@ export default function CellRentalsPage() {
       },
     },
     {
-      accessorKey: 'rentalStatus',
+      accessorKey: 'status',
       header: 'Статус',
       cell: ({ row }) => {
-        const currentStatus = statusList?.find(item => item.statusType === row.original.rentalStatus);
+        const currentStatus = row.original.status
         return (
           <div
             style={{

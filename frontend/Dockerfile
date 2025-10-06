@@ -1,15 +1,15 @@
 FROM node:20-slim AS deps
-RUN npm install -g pnpm
+RUN npm install -g yarn
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
 FROM deps AS builder
 ENV NODE_ENV=production
 
 COPY . .
-RUN pnpm build
+RUN yarn build
 
 FROM node:20-slim AS runner
 WORKDIR /app
