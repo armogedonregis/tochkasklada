@@ -15,6 +15,7 @@ RUN npx prisma generate
 RUN npm install bcrypt
 RUN npm run build
 RUN npm prune --production
+RUN npm install -g ts-node
 
 FROM node:20-slim AS runner
 
