@@ -60,12 +60,4 @@ export class CreateClientDto {
   @Type(() => PhoneDto)
   @IsOptional()
   phones?: PhoneDto[];
-
-  /**
-   * Активность клиента
-   * @example true
-   */
-  @IsBoolean()
-  @IsNotEmpty()
-  isActive: boolean;
 } 

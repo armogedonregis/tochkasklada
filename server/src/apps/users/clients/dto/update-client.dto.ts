@@ -30,12 +30,4 @@ export class UpdateClientDto extends PartialType(CreateClientDto) {
   @ValidateNested({ each: true })
   @IsOptional()
   phones?: PhoneDto[];
-
-  /**
-   * Активность клиента
-   * @example true
-   */
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
 } 

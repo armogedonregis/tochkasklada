@@ -79,17 +79,9 @@ export class ClientsController {
   @Get()
   async findAll(
     @Query() dto: FindClientsDto,
-    @Query('isActive') rawIsActive?: string,
     @Req() req?: any,
   ) {
-    this.logger.log(`Raw isActive query param: ${rawIsActive}, type: ${typeof rawIsActive}`);
 
-    // Если isActive передан в запросе, переопределяем его значение в DTO
-    if (rawIsActive !== undefined) {
-      dto.isActive = rawIsActive.toLowerCase() === 'true';
-      this.logger.log(`Overriding isActive in DTO to: ${dto.isActive}`);
-    }
-    
     return this.clientsService.findAll(dto, req?.user);
   }
 

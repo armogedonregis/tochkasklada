@@ -263,8 +263,7 @@ export class ClientsService {
       page = 1, 
       limit = 10, 
       sortBy = ClientSortField.CREATED_AT, 
-      sortDirection = SortDirection.DESC,
-      isActive 
+      sortDirection = SortDirection.DESC
     } = queryParams;
 
     // Базовые условия фильтрации
@@ -278,15 +277,6 @@ export class ClientsService {
       }
     });
     this.logger.log(`All clients in database: ${JSON.stringify(allClients)}`, 'ClientsService');
-
-    // Добавляем фильтр по активности
-    if (isActive !== undefined) {
-      this.logger.log(`isActive parameter received: ${isActive} (${typeof isActive})`, 'ClientsService');
-      where.isActive = {
-        equals: isActive
-      };
-      this.logger.log(`Applied where condition for isActive: ${JSON.stringify(where)}`, 'ClientsService');
-    }
 
     // Если есть поисковый запрос, добавляем условия поиска
     if (search) {

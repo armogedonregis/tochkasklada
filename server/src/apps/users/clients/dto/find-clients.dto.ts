@@ -34,8 +34,4 @@ export class FindClientsDto {
   @IsOptional()
   @IsEnum(SortDirection)
   sortDirection?: SortDirection;
-
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
 } 
