@@ -550,7 +550,8 @@ export class CellRentalsService {
     try {
       await this.findOne(id); // Проверяем существование
   
-      // Проверяем существование клиента, если указан
+      // Подготовка данных для обновления связи с клиентом
+      let clientUpdateData = {};
       if (updateCellRentalDto.clientId) {
         const client = await this.prisma.client.findUnique({
           where: { id: updateCellRentalDto.clientId },
@@ -559,6 +560,31 @@ export class CellRentalsService {
         if (!client) {
           throw new NotFoundException(`Клиент с ID ${updateCellRentalDto.clientId} не найден`);
         }
+  
+        clientUpdateData = {
+          client: {
+            connect: { id: updateCellRentalDto.clientId }
+          }
+        };
+      }
+  
+      // Подготовка данных для обновления статуса
+      let statusUpdateData = {};
+      if (updateCellRentalDto.rentalStatus) {
+        // Находим статус по его типу
+        const status = await this.prisma.cellStatus.findFirst({
+          where: { statusType: updateCellRentalDto.rentalStatus },
+        });
+  
+        if (!status) {
+          throw new NotFoundException(`Статус с типом ${updateCellRentalDto.rentalStatus} не найден`);
+        }
+  
+        statusUpdateData = {
+          status: {
+            connect: { id: status.id }
+          }
+        };
       }
   
       // Обработка ячеек для обновления
@@ -603,13 +629,11 @@ export class CellRentalsService {
         });
   
         if (activeRentals.length > 0) {
-          // Получаем текущую аренду для сравнения клиентов
           const currentRental = await this.prisma.cellRental.findUnique({
             where: { id },
             include: { client: true }
           });
   
-          // Проверяем, принадлежат ли активные аренды другим клиентам
           const conflictingRentals = activeRentals.filter(rental => 
             rental.clientId !== currentRental?.clientId
           );
@@ -623,18 +647,20 @@ export class CellRentalsService {
         // Обновляем связи с ячейками
         cellUpdateData = {
           cell: {
-            set: [], // Сначала отключаем все ячейки
-            connect: cellsToUpdate.map(id => ({ id })) // Потом подключаем новые
+            set: [],
+            connect: cellsToUpdate.map(id => ({ id }))
           }
         };
       }
   
       // Исключаем поля, которые обрабатываются отдельно
-      const { cellId, cellIds, ...restUpdateData } = updateCellRentalDto;
+      const { cellId, cellIds, clientId, rentalStatus, ...restUpdateData } = updateCellRentalDto;
       
       const updateData = {
-        ...restUpdateData, // clientId остается здесь и будет работать
-        ...cellUpdateData, // Добавляем данные для обновления ячеек
+        ...restUpdateData,
+        ...clientUpdateData,
+        ...statusUpdateData, // Добавляем данные для обновления статуса
+        ...cellUpdateData,
         startDate: updateCellRentalDto.startDate
           ? new Date(updateCellRentalDto.startDate)
           : undefined,
@@ -652,21 +678,16 @@ export class CellRentalsService {
       // Автоматическая синхронизация isActive с rentalStatus
       if (updateCellRentalDto.rentalStatus !== undefined) {
         if (updateCellRentalDto.rentalStatus === CellRentalStatus.CLOSED) {
-          updateData.isActive = false;
           const closeDate = new Date();
-          // Устанавливаем дату закрытия, если она не задана явно
           if (!updateData.closedAt) {
             updateData.closedAt = closeDate;
             updateData.endDate = closeDate;
           }
-          // Фиксируем окончание аренды на день закрытия
           if (!updateCellRentalDto.endDate) {
             updateData.endDate = closeDate;
           }
         } else {
-          updateData.isActive = true;
-          // Сбрасываем дату закрытия, если статус не CLOSED
-          updateData.closedAt = undefined; // Используем null вместо undefined
+          updateData.closedAt = undefined;
         }
       }
   
