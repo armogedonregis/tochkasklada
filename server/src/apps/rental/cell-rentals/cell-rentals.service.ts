@@ -297,6 +297,18 @@ export class CellRentalsService {
 
       baseAndConditions.push({
         OR: [
+          {
+            container: {
+              cells: {
+                every: {
+                  OR: [
+                    { status: null },
+                    { status: { statusType: 'CLOSED' } }
+                  ]
+                }
+              }
+            }
+          },
           { status: null },
           { status: { statusType: 'CLOSED' } }
         ]
@@ -310,12 +322,12 @@ export class CellRentalsService {
           // ИЛИ все аренды не активные
           {
             rentals: {
-              every: {
+              every: { 
                 OR: [
                   { status: null },
                   { status: { statusType: { not: 'ACTIVE' } } }
                 ]
-              }
+              } 
             }
           }
         ]
@@ -857,7 +869,7 @@ export class CellRentalsService {
 
   async syncCellAndRentalStatuses() {
     this.logger.log('Syncing cell and rental statuses...', 'CellRentalsService');
-    
+
     // 1. Обновляем статусы ячеек на основе активных аренд
     const activeRentals = await this.prisma.cellRental.findMany({
       where: {
@@ -867,21 +879,21 @@ export class CellRentalsService {
         cell: true
       }
     });
-  
-    const activeCellIds = [...new Set(activeRentals.flatMap(rental => 
+
+    const activeCellIds = [...new Set(activeRentals.flatMap(rental =>
       rental.cell.map(c => c.id)
     ))];
-  
+
     // Получаем статус "ACTIVE" для ячеек
     const activeCellStatus = await this.prisma.cellStatus.findFirst({
       where: { statusType: 'ACTIVE' }
     });
-  
+
     // Получаем статус "CLOSED" для ячеек  
     const closedCellStatus = await this.prisma.cellStatus.findFirst({
       where: { statusType: 'CLOSED' }
     });
-  
+
     if (activeCellStatus) {
       // Устанавливаем статус ACTIVE для ячеек с активными арендами
       await this.prisma.cells.updateMany({
@@ -889,7 +901,7 @@ export class CellRentalsService {
         data: { statusId: activeCellStatus.id }
       });
     }
-  
+
     // 2. Устанавливаем статус CLOSED для ячеек без активных аренд
     if (closedCellStatus) {
       const cellsWithoutActiveRentals = await this.prisma.cells.findMany({
@@ -901,13 +913,13 @@ export class CellRentalsService {
           ]
         }
       });
-  
+
       await this.prisma.cells.updateMany({
         where: { id: { in: cellsWithoutActiveRentals.map(c => c.id) } },
         data: { statusId: closedCellStatus.id }
       });
     }
-  
+
   }
 
   async calculateAndUpdateRentalStatus(id: string, forceStatus?: CellRentalStatus) {
