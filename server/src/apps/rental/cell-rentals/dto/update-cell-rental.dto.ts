@@ -51,4 +51,4 @@ export class UpdateCellRentalDto {
   @IsOptional()
   @IsEnum(CellRentalStatus)
   rentalStatus?: CellRentalStatus;
-} 
+}

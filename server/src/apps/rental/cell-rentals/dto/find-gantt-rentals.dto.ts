@@ -13,4 +13,4 @@ export class FindGanttRentalsDto {
   @IsOptional()
   @Type(() => Number)
   limit?: number;
-} 
+}

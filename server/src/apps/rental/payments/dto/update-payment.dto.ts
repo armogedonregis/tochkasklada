@@ -14,42 +14,28 @@ export class UpdatePaymentDto {
 
   @IsOptional()
   @IsUUID()
-  userId?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  status?: boolean;
+  userId?: string; 
   
-  // Поля для работы с арендой ячейки
   @IsOptional()
   @IsUUID()
-  cellRentalId?: string;    // ID существующей аренды для привязки
+  cellRentalId?: string;
 
   @IsOptional()
   @IsUUID()
-  cellId?: string;          // ID ячейки (для создания новой аренды, обратная совместимость)
+  cellId?: string;
 
   @IsOptional()
   @IsArray()
   @IsUUID(4, { each: true })
-  cellIds?: string[];       // Массив ID ячеек (для создания новой аренды)
-
-  @IsOptional()
-  @IsBoolean()
-  extendRental?: boolean;   // Продлить связанную аренду
-
-  @IsOptional()
-  @IsBoolean()
-  detachRental?: boolean;   // Отвязать от аренды
+  cellIds?: string[];
   
-  // Поля для корректировки дат аренды
   @IsOptional()
   @IsDateString()
-  rentalStartDate?: string; // Новая дата начала аренды (формат: "YYYY-MM-DD")
+  rentalStartDate?: string;
 
   @IsOptional()
   @IsDateString()
-  rentalEndDate?: string;   // Новая дата окончания аренды (формат: "YYYY-MM-DD")
+  rentalEndDate?: string;
 
   @IsOptional()
   @IsNumber()

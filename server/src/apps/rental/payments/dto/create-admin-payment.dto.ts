@@ -2,7 +2,6 @@ import { IsNotEmpty, IsNumber, IsString, IsOptional, IsUUID, Min, IsBoolean, IsU
 import { Type } from 'class-transformer';
 
 export class CreateAdminPaymentDto {
-  // Общие поля платежа
   @IsNotEmpty()
   @IsNumber()
   @Type(() => Number)

@@ -52,7 +52,6 @@ export class FindCellRentalsDto {
   @IsUUID()
   cellId?: string;
 
-  // Массив ID ячеек для фильтрации
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })

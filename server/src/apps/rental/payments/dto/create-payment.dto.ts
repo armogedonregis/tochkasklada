@@ -14,11 +14,9 @@ export class CreatePaymentDto {
 
   @IsOptional()
   @IsUUID()
-  userId?: string; // Автоматически добавляется из req.user.id в контроллере
+  userId?: string;
 
   @IsOptional()
   @IsUUID()
-  cellId?: string; // ID ячейки для аренды
-
-  // rentalDays свойство удалено, продолжительность аренды вычисляется на основе дат
+  cellId?: string;
 } 
