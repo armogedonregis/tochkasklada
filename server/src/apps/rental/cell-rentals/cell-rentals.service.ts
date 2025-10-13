@@ -297,8 +297,27 @@ export class CellRentalsService {
 
       baseAndConditions.push({
         OR: [
+          { status: null },
+          { status: { statusType: 'CLOSED' } }
+        ]
+      });
+
+
+      baseAndConditions.push({
+        OR: [
+          // Без аренд
           { rentals: { none: {} } },
-          { rentals: { every: { status: { is: { statusType: { not: 'ACTIVE' } } } } } }
+          // ИЛИ все аренды не активные
+          { 
+            rentals: { 
+              every: { 
+                OR: [
+                  { status: null },
+                  { status: { statusType: { not: 'ACTIVE' } } }
+                ]
+              } 
+            } 
+          }
         ]
       });
 
@@ -328,7 +347,12 @@ export class CellRentalsService {
           size: true,
           status: true,
           rentals: {
-            where: { status: { is: { statusType: 'ACTIVE' }} },
+            where: { 
+              OR: [
+                { status: null },
+                { status: { statusType: { not: 'ACTIVE' } } }
+              ]
+            },
           }
         },
         orderBy,
