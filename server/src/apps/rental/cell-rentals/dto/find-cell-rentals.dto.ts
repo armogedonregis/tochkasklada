@@ -40,30 +40,8 @@ export class FindCellRentalsDto {
   sortDirection?: SortDirection;
 
   @IsOptional()
-  @IsBoolean()
-  @Type(() => Boolean)
-  onlyActive?: boolean;
-
-  @IsOptional()
   @IsEnum(CellRentalStatus)
   rentalStatus?: CellRentalStatus;
-
-  @IsOptional()
-  @IsUUID()
-  cellId?: string;
-
-  @IsOptional()
-  @IsArray()
-  @IsUUID('4', { each: true })
-  cellIds?: string[];
-
-  @IsOptional()
-  @IsUUID()
-  clientId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  statusId?: string;
 
   @IsOptional()
   @IsUUID()

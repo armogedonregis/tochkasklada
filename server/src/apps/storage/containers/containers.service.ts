@@ -230,8 +230,7 @@ export class ContainersService {
               },
               cells: {
                 include: {
-                  size: true,
-                  status: true
+                  size: true
                 }
               }
             }
@@ -359,8 +358,7 @@ export class ContainersService {
             },
             cells: {
               include: {
-                size: true,
-                status: true
+                size: true
               }
             }
           }

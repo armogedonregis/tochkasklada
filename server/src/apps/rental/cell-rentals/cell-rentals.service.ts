@@ -27,10 +27,6 @@ export class CellRentalsService {
         sortBy = CellRentalSortField.CREATED_AT,
         sortDirection = SortDirection.DESC,
         rentalStatus,
-        cellId,
-        cellIds,
-        clientId,
-        statusId,
         locationId
       } = queryParams;
 
@@ -41,29 +37,10 @@ export class CellRentalsService {
         where.status.statusType = rentalStatus;
       }
 
-      if (cellId || cellIds) {
-        const allCellIds: string[] = [];
-        if (cellId) allCellIds.push(cellId);
-        if (cellIds) allCellIds.push(...cellIds);
-
-        where.cell = {
-          some: {
-            id: {
-              in: allCellIds
-            }
-          }
-        };
-      }
-
-      if (clientId) {
-        where.clientId = clientId;
-      }
-
-      if (statusId || locationId) {
+      if (locationId) {
         if (where.cell) {
           where.cell.some = {
             ...where.cell.some,
-            ...(statusId && { statusId }),
             ...(locationId && {
               container: {
                 location: {
@@ -75,7 +52,6 @@ export class CellRentalsService {
         } else {
           where.cell = {
             some: {
-              ...(statusId && { statusId }),
               ...(locationId && {
                 container: {
                   location: {
@@ -154,7 +130,6 @@ export class CellRentalsService {
                 }
               },
               size: true,
-              status: true,
             },
           },
           client: {
@@ -297,13 +272,6 @@ export class CellRentalsService {
 
       baseAndConditions.push({
         OR: [
-          { status: null },
-          { status: { statusType: 'CLOSED' } }
-        ]
-      });
-
-      baseAndConditions.push({
-        OR: [
           // Без аренд
           { rentals: { none: {} } },
           // ИЛИ все аренды не активные
@@ -362,7 +330,6 @@ export class CellRentalsService {
             }
           },
           size: true,
-          status: true,
           rentals: {
             where: {
               OR: [
@@ -500,7 +467,6 @@ export class CellRentalsService {
               }
             },
             size: true,
-            status: true,
           },
         },
         client: {
@@ -678,8 +644,7 @@ export class CellRentalsService {
           cell: {
             include: {
               container: true,
-              size: true,
-              status: true,
+              size: true
             },
           },
           client: true,
@@ -751,7 +716,6 @@ export class CellRentalsService {
           include: {
             container: true,
             size: true,
-            status: true,
           },
         },
         status: true,
@@ -793,7 +757,6 @@ export class CellRentalsService {
               }
             },
             size: true,
-            status: true,
           },
         },
         status: true,
@@ -914,65 +877,12 @@ export class CellRentalsService {
           rental.cell.map(c => c.id)
         ))];
   
-        // 2. Обновляем только те ячейки, которые должны изменить статус
-        
-        // 2.1. Устанавливаем ACTIVE для ячеек с активными арендами
-        if (activeCellIds.length > 0) {
-          await prisma.cells.updateMany({
-            where: { 
-              id: { in: activeCellIds },
-              // Обновляем только если текущий статус не ACTIVE
-              OR: [
-                { statusId: { not: activeCellStatus.id } },
-                { statusId: null }
-              ]
-            },
-            data: { statusId: activeCellStatus.id }
-          });
-        }
   
         // 2.2. Устанавливаем CLOSED для ячеек без активных аренд
         const allCells = await prisma.cells.findMany({
           select: { id: true }
         });
         
-        const inactiveCellIds = allCells.map(c => c.id).filter(id => !activeCellIds.includes(id));
-        
-        if (inactiveCellIds.length > 0) {
-          await prisma.cells.updateMany({
-            where: { 
-              id: { in: inactiveCellIds },
-              // Обновляем только если текущий статус не CLOSED
-              OR: [
-                { statusId: { not: closedCellStatus.id } },
-                { statusId: null }
-              ]
-            },
-            data: { statusId: closedCellStatus.id }
-          });
-        }
-  
-        // 3. Проверяем результат
-        const activeCount = await prisma.cells.count({
-          where: { statusId: activeCellStatus.id }
-        });
-        
-        const closedCount = await prisma.cells.count({
-          where: { statusId: closedCellStatus.id }
-        });
-  
-        const nullCount = await prisma.cells.count({
-          where: { statusId: null }
-        });
-  
-        this.logger.log(`Sync completed: ACTIVE: ${activeCount}, CLOSED: ${closedCount}, NULL: ${nullCount}`, 'CellRentalsService');
-  
-        return {
-          active: activeCount,
-          closed: closedCount,
-          null: nullCount,
-          total: activeCount + closedCount + nullCount
-        };
   
       } catch (error) {
         this.logger.error(`Failed to sync cell statuses: ${error.message}`, error.stack, 'CellRentalsService');
@@ -1292,13 +1202,9 @@ export class CellRentalsService {
         throw new NotFoundException(`Статус с ID ${statusId} не найден`);
       }
 
-      return await this.prisma.cells.update({
+      return await this.prisma.cellRental.update({
         where: { id: cellId },
-        data: { statusId },
-        include: {
-          status: true,
-          container: true
-        }
+        data: { statusId: statusId },
       });
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -1326,13 +1232,9 @@ export class CellRentalsService {
         throw new BadRequestException(`Невозможно удалить статус у ячейки с ID ${cellId}, так как она находится в активной аренде`);
       }
 
-      return await this.prisma.cells.update({
+      return await this.prisma.cellRental.update({
         where: { id: cellId },
         data: { statusId: null },
-        include: {
-          status: true,
-          container: true
-        }
       });
     } catch (error) {
       if (error instanceof BadRequestException) {

@@ -17,7 +17,6 @@ export interface Cell {
   containerId: string;
   size_id: string;
   comment?: string;
-  statusId?: string;
   size?: Size;
   container?: Container;
   createdAt?: string;
@@ -29,7 +28,6 @@ export interface CreateCellDto {
   containerId: string;
   size_id: string;
   comment?: string;
-  statusId?: string;
 }
 
 export interface UpdateCellDto {
@@ -37,7 +35,6 @@ export interface UpdateCellDto {
   containerId?: string;
   size_id?: string;
   comment?: string;
-  statusId?: string;
 }
 
 export interface CellFilters extends FilterParams {

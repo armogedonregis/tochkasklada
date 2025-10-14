@@ -374,9 +374,6 @@ model Cells {
   size_id String?
   size    SizeCells? @relation(fields: [size_id], references: [id], onDelete: SetNull)
 
-  statusId String?
-  status   CellStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
-
   rentals CellRental[]
 
   relay Relay?
@@ -397,7 +394,6 @@ model CellStatus {
 
   statusType CellRentalStatus @unique
 
-  cells   Cells[]
   rentals CellRental[]
 
   createdAt DateTime @default(now())

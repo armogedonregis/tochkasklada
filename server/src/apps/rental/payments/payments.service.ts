@@ -6,7 +6,6 @@ import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, PaymentSortFi
 import { UserRole } from '@prisma/client';
 import { LoggerService } from '@/infrastructure/logger/logger.service';
 import { CellRentalsService } from '../cell-rentals/cell-rentals.service';
-import { ListService } from '@/apps/lead-management/list/list.service';
 import { RolesService } from '@/apps/roles/roles.service';
 import { RequestsService } from '@/apps/lead-management/requests/requests.service';
 import { NormalizeName } from './utils/normalizeName';
@@ -18,7 +17,6 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
     private readonly cellRentalsService: CellRentalsService,
-    private readonly listService: ListService,
     private readonly requestsService: RequestsService,
     private readonly rolesService: RolesService,
   ) {
@@ -79,8 +77,7 @@ export class PaymentsService {
             cell: {
               include: {
                 container: true,
-                size: true,
-                status: true
+                size: true
               }
             }
           }
@@ -244,8 +241,7 @@ export class PaymentsService {
         // Привязываем к существующей аренде
         rentalId = data.cellRentalId;
       } else if (data.cellId || data.cellIds) {
-        // Создаем новую аренду
-        const cellIds = data.cellIds || [data.cellId] as any;
+        const cellIds = data.cellIds || [data.cellId];
         const userId = data.userId || existingPayment.userId;
         
         const user = await prisma.user.findUnique({
@@ -257,20 +253,55 @@ export class PaymentsService {
           throw new BadRequestException(`У пользователя ${userId} нет клиента`);
         }
   
-        const rental = await this.cellRentalsService.create({
-          clientId: user.client.id,
-          cellIds,
-          startDate: data.rentalStartDate ? new Date(data.rentalStartDate) : new Date() as any,
-          endDate: data.rentalEndDate ? new Date(data.rentalEndDate) : this._calculateEndDate(data.rentalDuration) as any
+        // Ищем существующую активную аренду для этого клиента
+        const existingRental = await prisma.cellRental.findFirst({
+          where: {
+            clientId: user.client.id,
+            status: {
+              statusType: { in: ['ACTIVE', 'EXTENDED'] }
+            }
+          },
+          include: {
+            cell: true
+          }
         });
-        
-        rentalId = rental.id;
+  
+        if (existingRental) {
+          // ОБНОВЛЯЕМ существующую аренду - добавляем новые ячейки
+          rentalId = existingRental.id;
+          
+          // Получаем текущие ячейки аренды
+          const currentCellIds = existingRental.cell.map(c => c.id);
+          const allCellIds = [...new Set([...currentCellIds, ...cellIds])];
+          
+          // Обновляем аренду с новыми ячейками
+          await prisma.cellRental.update({
+            where: { id: rentalId },
+            data: {
+              cell: {
+                set: allCellIds.map(id => ({ id }))
+              }
+            }
+          });
+          
+          this.logger.log(`Updated existing rental ${rentalId} with cells: ${allCellIds.join(', ')}`, PaymentsService.name);
+        } else {
+          // Создаем новую аренду только если нет существующей
+          const rental = await this.cellRentalsService.create({
+            clientId: user.client.id,
+            cellIds: cellIds as any,
+            startDate: data.rentalStartDate ? new Date(data.rentalStartDate) : new Date() as any,
+            endDate: data.rentalEndDate ? new Date(data.rentalEndDate) : this._calculateEndDate(data.rentalDuration) as any
+          });
+          
+          rentalId = rental.id;
+          this.logger.log(`Created new rental ${rentalId} for cells ${cellIds.join(', ')}`, PaymentsService.name);
+        }
       }
   
-      // 2. ОБНОВЛЯЕМ ПОЛЬЗОВАТЕЛЯ И АРЕНДУ
+      // 2. ОБНОВЛЯЕМ ПОЛЬЗОВАТЕЛЯ
       const userId = data.userId || existingPayment.userId;
   
-      // Если меняем пользователя и есть аренда - обновляем clientId
       if (userId !== existingPayment.userId && rentalId) {
         const user = await prisma.user.findUnique({
           where: { id: userId },
@@ -303,8 +334,7 @@ export class PaymentsService {
               cell: {
                 include: {
                   container: true,
-                  size: true,
-                  status: true
+                  size: true
                 }
               }
             } 
@@ -312,7 +342,7 @@ export class PaymentsService {
         }
       });
   
-      // 4. ПЕРЕСЧИТЫВАЕМ АРЕНДУ ЕСЛИ ОНА ЕСТЬ
+      // 4. ПЕРЕСЧИТЫВАЕМ АРЕНДУ
       if (rentalId) {
         await this.cellRentalsService.recalculateRentalDuration(rentalId);
         await this.cellRentalsService.calculateAndUpdateRentalStatus(rentalId);
@@ -497,8 +527,7 @@ export class PaymentsService {
             cell: {
               include: {
                 container: true,
-                size: true,
-                status: true
+                size: true
               }
             }
           }
@@ -946,7 +975,6 @@ export class PaymentsService {
           name: { equals: cellNumber, mode: 'insensitive' }
         },
         include: {
-          status: true,
           rentals: {
             include: {
               client: {

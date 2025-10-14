@@ -180,7 +180,6 @@ export class CellsService {
             }
           },
           size: true,
-          status: true,
           rentals: {
             select: {
               id: true,
@@ -228,8 +227,7 @@ export class CellsService {
             }
           }
         },
-        size: true,
-        status: true
+        size: true
       }
     });
     
@@ -251,8 +249,7 @@ export class CellsService {
         data: createCellDto,
         include: {
           container: true,
-          size: true,
-          status: true
+          size: true
         }
       });
       this.logger.log(`Cell created with id: ${newCell.id}`, 'CellsService');
@@ -274,8 +271,7 @@ export class CellsService {
         data: updateCellDto,
         include: {
           container: true,
-          size: true,
-          status: true
+          size: true
         }
       });
       
