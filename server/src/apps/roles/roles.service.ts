@@ -354,7 +354,6 @@ export class RolesService {
             cells: {
               include: {
                 size: true,
-                status: true,
                 rentals: {
                   select: { id: true, endDate: true, status: true, client: { select: { name: true, user: { select: { email: true } } } } }
                 }
@@ -390,7 +389,7 @@ export class RolesService {
     const cells = allCells.map(cell => ({
       id: cell.id,
       number: (cell as any).number || cell.name,
-      statusLabel: cell.status?.name || undefined,
+      statusLabel: cell.rentals.filter(x => x.status?.statusType !== 'CLOSED') || undefined,
       rentalEnd: cell.rentals?.[0]?.endDate || null,
       clientName: cell.rentals?.[0]?.client?.name || undefined,
     }));
