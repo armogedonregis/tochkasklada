@@ -280,7 +280,7 @@ export class CellRentalsService {
               every: {
                 OR: [
                   { status: null },
-                  { status: { statusType: { not: 'ACTIVE' } } }
+                  { status: { statusType: { not: 'CLOSED' } } }
                 ]
               }
             }
@@ -298,7 +298,7 @@ export class CellRentalsService {
               every: {
                 OR: [
                   { status: null },
-                  { status: { statusType: { not: 'ACTIVE' } } }
+                  { status: { statusType: 'CLOSED' } }
                 ]
               }
             }
@@ -331,11 +331,8 @@ export class CellRentalsService {
           },
           size: true,
           rentals: {
-            where: {
-              OR: [
-                { status: null },
-                { status: { statusType: { not: 'ACTIVE' } } }
-              ]
+            include: {
+              status: true,
             },
           }
         },
@@ -839,31 +836,31 @@ export class CellRentalsService {
 
   async syncCellAndRentalStatuses() {
     this.logger.log('Syncing cell and rental statuses...', 'CellRentalsService');
-  
+
     return await this.prisma.$transaction(async (prisma) => {
       try {
         // Получаем статусы один раз
         const activeCellStatus = await prisma.cellStatus.findFirst({
           where: { statusType: 'ACTIVE' }
         });
-  
+
         const closedCellStatus = await prisma.cellStatus.findFirst({
           where: { statusType: 'CLOSED' }
         });
-  
+
         if (!activeCellStatus || !closedCellStatus) {
           throw new Error('Active or Closed cell status not found');
         }
-  
+
         // 1. Находим все ячейки с активными арендами (любые кроме CLOSED и EXPIRED)
         const activeRentals = await prisma.cellRental.findMany({
           where: {
-            status: { 
-              is: { 
-                statusType: { 
-                  in: ['ACTIVE', 'EXTENDED', 'PAYMENT_SOON', 'EXPIRING_SOON', 'RESERVATION'] 
-                } 
-              } 
+            status: {
+              is: {
+                statusType: {
+                  in: ['ACTIVE', 'EXTENDED', 'PAYMENT_SOON', 'EXPIRING_SOON', 'RESERVATION']
+                }
+              }
             }
           },
           include: {
@@ -872,18 +869,18 @@ export class CellRentalsService {
             }
           }
         });
-  
+
         const activeCellIds = [...new Set(activeRentals.flatMap(rental =>
           rental.cell.map(c => c.id)
         ))];
-  
-  
+
+
         // 2.2. Устанавливаем CLOSED для ячеек без активных аренд
         const allCells = await prisma.cells.findMany({
           select: { id: true }
         });
-        
-  
+
+
       } catch (error) {
         this.logger.error(`Failed to sync cell statuses: ${error.message}`, error.stack, 'CellRentalsService');
         throw error;
