@@ -251,29 +251,25 @@ export class PaymentsService {
 
     // Обрабатываем действия с арендой
     try {
-      // Отвязка от аренды
-      if (detachRental === true) {
-        // Проверяем, привязан ли платеж к аренде
-        if (existingPayment.cellRentalId) {
-          await this.prisma.payment.update({
-            where: { id },
-            data: { cellRentalId: null }
-          });
-          this.logger.log(`Платеж ${id} отвязан от аренды ${existingPayment.cellRentalId}`, PaymentsService.name);
+      if (existingPayment.cellRentalId) {
+        await this.prisma.payment.update({
+          where: { id },
+          data: { cellRentalId: null }
+        });
+        this.logger.log(`Платеж ${id} отвязан от аренды ${existingPayment.cellRentalId}`, PaymentsService.name);
 
-          // Проверяем, есть ли еще платежи у этой аренды
-          const remainingPayments = await this.prisma.payment.count({
-            where: { cellRentalId: existingPayment.cellRentalId }
-          });
+        // Проверяем, есть ли еще платежи у этой аренды
+        const remainingPayments = await this.prisma.payment.count({
+          where: { cellRentalId: existingPayment.cellRentalId }
+        });
 
-          // Если это был единственный платеж, очищаем clientId в аренде
-          if (remainingPayments === 0) {
-            await this.prisma.cellRental.update({
-              where: { id: existingPayment.cellRentalId },
-              data: { clientId: null }
-            });
-            this.logger.log(`Rental ${existingPayment.cellRentalId} clientId cleared as it has no payments`, PaymentsService.name);
-          }
+        // Если это был единственный платеж, очищаем clientId в аренде
+        if (remainingPayments === 0) {
+          await this.prisma.cellRental.update({
+            where: { id: existingPayment.cellRentalId },
+            data: { clientId: null }
+          });
+          this.logger.log(`Rental ${existingPayment.cellRentalId} clientId cleared as it has no payments`, PaymentsService.name);
         }
       }
 
