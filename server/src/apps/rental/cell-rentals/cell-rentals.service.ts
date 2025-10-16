@@ -275,16 +275,7 @@ export class CellRentalsService {
           // Без аренд
           { rentals: { none: {} } },
           // ИЛИ все аренды не активные
-          {
-            rentals: {
-              every: {
-                OR: [
-                  { status: null },
-                  { status: { statusType: { not: 'CLOSED' } } }
-                ]
-              }
-            }
-          }
+          { rentals: { every: { status: { statusType: "CLOSED" } } } }
         ]
       });
 
