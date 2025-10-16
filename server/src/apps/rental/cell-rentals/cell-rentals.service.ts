@@ -890,7 +890,7 @@ export class CellRentalsService {
       if (endDate < now && !rental.closedAt) {
         newStatus = CellRentalStatus.EXPIRED;
       } else {
-        newStatus = CellRentalStatus.CLOSED;
+        newStatus = CellRentalStatus.EXTENDED;
       }
     } else {
       const now = new Date();

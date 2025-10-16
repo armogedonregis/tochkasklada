@@ -1318,6 +1318,12 @@ export class PaymentsService {
       }
     });
 
+    const statuses = await this.prisma.cellStatus.findFirst({
+      where: {
+        statusType: "ACTIVE"
+      }
+    })
+
     const conflictingRentals = activeRentals.filter(rental => rental.clientId !== clientId);
     const sameClientRentals = activeRentals.filter(rental => rental.clientId === clientId);
 
@@ -1361,6 +1367,7 @@ export class PaymentsService {
       const newEndDate = rentalDuration
         ? this._calculateRentalEndDate(new Date(latestRental.endDate), rentalDuration.value, rentalDuration.unit)
         : this._calculateRentalEndDate(new Date(latestRental.endDate), 1, 'month');
+        
 
       const updatedRental = await this.prisma.cellRental.update({
         where: { id: latestRental.id },
@@ -1368,11 +1375,7 @@ export class PaymentsService {
           endDate: newEndDate,
           lastExtendedAt: new Date(),
           extensionCount: { increment: 1 },
-          status: {
-            connect: {
-              statusType: "ACTIVE"
-            }
-          }
+          statusId: statuses?.id,
         }
       });
 
@@ -1393,12 +1396,6 @@ export class PaymentsService {
       const endDate = rentalDuration
         ? this._calculateRentalEndDate(new Date(startDate), rentalDuration.value, rentalDuration.unit)
         : this._calculateRentalEndDate(new Date(startDate), 1, 'month');
-
-      const statuses = await this.prisma.cellStatus.findFirst({
-        where: {
-          statusType: "ACTIVE"
-        }
-      })
 
       if (!statuses) return null;
 
