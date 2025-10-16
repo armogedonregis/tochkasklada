@@ -236,11 +236,8 @@ export class PaymentsService {
     return await this.prisma.$transaction(async (prisma) => {
       // 1. ОПРЕДЕЛЯЕМ АРЕНДУ
       let rentalId = existingPayment.cellRentalId;
-  
-      if (data.cellRentalId) {
-        // Привязываем к существующей аренде
-        rentalId = data.cellRentalId;
-      } else if (data.cellId || data.cellIds) {
+
+      if (data.cellId || data.cellIds) {
         const cellIds = data.cellIds || [data.cellId];
         const userId = data.userId || existingPayment.userId;
         
@@ -258,7 +255,7 @@ export class PaymentsService {
           where: {
             clientId: user.client.id,
             status: {
-              statusType: { in: ['ACTIVE', 'EXTENDED'] }
+              statusType: { notIn: ['CLOSED'] }
             }
           },
           include: {
@@ -280,6 +277,11 @@ export class PaymentsService {
             data: {
               cell: {
                 set: allCellIds.map(id => ({ id }))
+              },
+              status: {
+                connect: {
+                  statusType: "EXTENDED"
+                }
               }
             }
           });
@@ -1156,7 +1158,12 @@ export class PaymentsService {
         data: {
           endDate: newEndDate,
           lastExtendedAt: new Date(),
-          extensionCount: { increment: 1 }
+          extensionCount: { increment: 1 },
+          status: {
+            connect: {
+              statusType: "ACTIVE"
+            }
+          }
         }
       });
 

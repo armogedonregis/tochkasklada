@@ -22,7 +22,6 @@ export class CellsService {
     try {
       const {
         search,
-        containerId,
         locationId,
         sizeId,
         available,
@@ -34,12 +33,6 @@ export class CellsService {
 
       // Базовые условия фильтрации
       let where: any = {};
-
-      // Фильтр по контейнеру
-      if (containerId) {
-        where.containerId = containerId;
-      }
-
       // Фильтр по размеру
       if (sizeId) {
         where.size_id = sizeId;

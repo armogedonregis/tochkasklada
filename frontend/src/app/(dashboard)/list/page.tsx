@@ -6,7 +6,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { useGetListsQuery, useDeleteListMutation, useCreateListMutation } from '@/services/listService/listApi';
 import { useGetLocationsQuery } from '@/services/locationsService/locationsApi';
-import { CreateListDto, List, ListFilters, ListSortField } from '@/services/listService/list.types';
+import { CreateListDto, List, ListFilters, ListSortField, ListStatus } from '@/services/listService/list.types';
 import { useTableControls } from '@/hooks/useTableControls';
 import { ColumnDef } from '@tanstack/react-table';
 import { ToastService } from '@/components/toast/ToastService';
@@ -24,9 +24,11 @@ import { useAppSelector } from '@/store/hooks';
 import { useFormModal } from '@/hooks/useFormModal';
 import { toast } from 'react-toastify';
 import { useGetSizesQuery } from '@/services/sizesService/sizesApi';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ListPage() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<ListStatus>(ListStatus.WAITING);
   const [selectedSizeId, setSelectedSizeId] = useState<string>('all');
   const router = useRouter();
   const { user } = useAppSelector((state) => state.user);
@@ -38,6 +40,7 @@ export default function ListPage() {
 
   const listFilters: ListFilters = {
     ...tableControls.queryParams,
+    status: activeTab,
     locationId: selectedLocationId && selectedLocationId !== 'all' ? selectedLocationId : undefined,
     sizeId: selectedSizeId && selectedSizeId !== 'all' ? selectedSizeId : undefined,
   };
@@ -320,29 +323,69 @@ export default function ListPage() {
         <CardHeader>
           <CardTitle className="text-lg">Лист ожидания</CardTitle>
         </CardHeader>
-        <CardContent>
-          <BaseTable
-            data={lists}
-            columns={columns}
-            searchColumn="name"
-            searchPlaceholder="Поиск по имени, email или телефону..."
-            tableId="waiting-lists-table"
-            editPermission="lists:update"
-            deletePermission="lists:delete"
-            totalCount={totalCount}
-            pageCount={pageCount}
-            onPaginationChange={tableControls.handlePaginationChange}
-            onSortingChange={tableControls.handleSortingChange}
-            onSearchChange={tableControls.handleSearchChange}
-            isLoading={isLoading}
-            error={error}
-            onRetry={refetch}
-            sortableFields={ListSortField}
-            pagination={tableControls.pagination}
-            sorting={tableControls.sorting}
-            persistSettings={true}
-          />
-        </CardContent>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ListStatus)}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value={ListStatus.WAITING} className="relative">
+              Ожидающие
+            </TabsTrigger>
+            <TabsTrigger value={ListStatus.CLOSED} className="relative">
+              Закрытые
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={ListStatus.WAITING} className="mt-4">
+
+            <CardContent>
+              <BaseTable
+                data={lists}
+                columns={columns}
+                searchColumn="name"
+                searchPlaceholder="Поиск по имени, email или телефону..."
+                tableId="waiting-lists-table"
+                editPermission="lists:update"
+                deletePermission="lists:delete"
+                totalCount={totalCount}
+                pageCount={pageCount}
+                onPaginationChange={tableControls.handlePaginationChange}
+                onSortingChange={tableControls.handleSortingChange}
+                onSearchChange={tableControls.handleSearchChange}
+                isLoading={isLoading}
+                error={error}
+                onRetry={refetch}
+                sortableFields={ListSortField}
+                pagination={tableControls.pagination}
+                sorting={tableControls.sorting}
+                persistSettings={true}
+              />
+            </CardContent>
+          </TabsContent>
+          <TabsContent value={ListStatus.CLOSED} className="mt-4">
+
+            <CardContent>
+              <BaseTable
+                data={lists}
+                columns={columns}
+                searchColumn="name"
+                searchPlaceholder="Поиск по имени, email или телефону..."
+                tableId="closed-lists-table"
+                editPermission="lists:update"
+                deletePermission="lists:delete"
+                totalCount={totalCount}
+                pageCount={pageCount}
+                onPaginationChange={tableControls.handlePaginationChange}
+                onSortingChange={tableControls.handleSortingChange}
+                onSearchChange={tableControls.handleSearchChange}
+                isLoading={isLoading}
+                error={error}
+                onRetry={refetch}
+                sortableFields={ListSortField}
+                pagination={tableControls.pagination}
+                sorting={tableControls.sorting}
+                persistSettings={true}
+              />
+            </CardContent>
+          </TabsContent>
+        </Tabs>
       </Card>
 
       <BaseFormModal

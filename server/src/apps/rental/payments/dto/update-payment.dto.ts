@@ -15,10 +15,6 @@ export class UpdatePaymentDto {
   @IsOptional()
   @IsUUID()
   userId?: string; 
-  
-  @IsOptional()
-  @IsUUID()
-  cellRentalId?: string;
 
   @IsOptional()
   @IsUUID()

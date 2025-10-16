@@ -1,6 +1,12 @@
 import { IsEnum, IsOptional, IsString, IsInt, Min, Max, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
+
+export enum ListStatus {
+  WAITING = 'WAITING',
+  CLOSED = 'CLOSED'
+}
+
 export enum ListSortField {
   CREATED_AT = 'createdAt',
   NAME = 'name',
@@ -18,17 +24,16 @@ export class FindListsDto {
   search?: string;
 
   @IsOptional()
+  @IsEnum(ListStatus)
+  status?: ListStatus;
+
+  @IsOptional()
   @IsString()
   locationId?: string;
 
   @IsOptional()
   @IsString()
   sizeId?: string;
-
-  // @IsOptional()
-  // @Type(() => Boolean)
-  // @IsBoolean()
-  // closed?: boolean;
 
   @IsOptional()
   @Type(() => Number)

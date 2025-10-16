@@ -7,6 +7,11 @@ export enum ListSortField {
   EMAIL = 'email'
 }
 
+export enum ListStatus {
+  WAITING = 'WAITING',
+  CLOSED = 'CLOSED',
+}
+
 export interface List {
   id: string;
   email: string;
@@ -14,6 +19,7 @@ export interface List {
   name: string;
   description?: string;
   comment?: string;
+  status: ListStatus;
   closedById?: string;
   closedBy?: {
     id: string;
@@ -51,6 +57,7 @@ export interface CloseListDto {
 
 export interface ListFilters extends FilterParams {
   locationId?: string;
+  status?: ListStatus;
   sizeId?: string;
   sortBy?: ListSortField;
   sortDirection?: SortDirection;

@@ -288,24 +288,6 @@ export class CellRentalsService {
         ]
       });
 
-      baseAndConditions.push({
-        OR: [
-          // Без аренд
-          { rentals: { none: {} } },
-          // ИЛИ все аренды не активные
-          {
-            rentals: {
-              every: {
-                OR: [
-                  { status: null },
-                  { status: { statusType: 'CLOSED' } }
-                ]
-              }
-            }
-          }
-        ]
-      });
-
       const mergedWhere: Prisma.CellsWhereInput = {
         ...where,
         AND: baseAndConditions

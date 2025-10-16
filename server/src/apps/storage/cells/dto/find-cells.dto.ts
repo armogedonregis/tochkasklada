@@ -1,5 +1,5 @@
 import { IsOptional, IsInt, Min, IsEnum, IsUUID, IsString, IsBoolean } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 
 /**
  * Enum для полей сортировки ячеек
@@ -31,14 +31,6 @@ export class FindCellsDto {
   @IsString()
   @IsOptional()
   search?: string;
-
-  /**
-   * ID контейнера для фильтрации
-   * @example "550e8400-e29b-41d4-a716-446655440000"
-   */
-  @IsUUID()
-  @IsOptional()
-  containerId?: string;
 
   /**
    * ID локации для фильтрации

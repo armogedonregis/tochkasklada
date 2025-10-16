@@ -73,6 +73,7 @@ export class ListService {
         search,
         locationId,
         sizeId,
+        status,
         page = 1,
         limit = 10,
         sortBy = ListSortField.CREATED_AT,
@@ -82,6 +83,10 @@ export class ListService {
       // Базовые условия фильтрации
       let where: any = {};
 
+      if (status) {
+        where.status = status;
+      }
+
       // Фильтр по локации
       if (locationId) {
         where.locationId = locationId;
@@ -89,11 +94,6 @@ export class ListService {
       if (sizeId) {
         where.sizeId = sizeId;
       }
-
-      // Убираем фильтрацию по статусу - показываем все записи
-      // if (typeof closed === 'boolean') {
-      //   where.closedAt = closed ? { not: null } : null;
-      // }
 
       // Поисковая строка
       if (search) {
@@ -219,7 +219,8 @@ export class ListService {
         data: {
           comment: data.comment,
           closedById: admin.id, // Используем ID админа из таблицы admins
-          closedAt: new Date()
+          closedAt: new Date(),
+          status: "CLOSED"
         },
         include: {
           closedBy: {
