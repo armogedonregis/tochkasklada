@@ -848,7 +848,7 @@ export class CellRentalsService {
     }
 
     const currentStatus = rental.status?.statusType;
-    if (currentStatus === CellRentalStatus.RESERVATION || currentStatus === CellRentalStatus.EXPIRED) {
+    if (currentStatus === CellRentalStatus.RESERVATION || currentStatus === CellRentalStatus.CLOSED) {
       this.logger.log(`Rental status for id ${id} is ${currentStatus} - skipping update`, 'CellRentalsService');
       return false;
     }
