@@ -22,7 +22,8 @@
       "@/common/*": ["./src/common/*"],
       "@/infrastructure/*": ["./src/infrastructure/*"],
       "@/apps/*": ["./src/apps/*"],
-      "@/tasks/*": ["./src/tasks/*"]
+      "@/tasks/*": ["./src/tasks/*"],
+      "@/integration/*": ["./src/integration/*"]
     }
   },
   "exclude": ["prisma/seed.ts", "dist", "node_modules"],

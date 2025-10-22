@@ -165,14 +165,4 @@ export class CellRentalsAdminController {
   getGanttData(@Query() query: FindGanttRentalsDto) {
     return this.cellRentalsService.findGanttRentals(query);
   }
-
-  /**
-   * Синхронизация визуальных статусов всех аренд
-   */
-  @Post('sync-visual-statuses')
-  @HttpCode(HttpStatus.OK)
-  @RequirePermissions('system:admin')
-  syncVisualStatuses() {
-    return this.cellRentalsService.syncAllRentalVisualStatuses();
-  }
 } 

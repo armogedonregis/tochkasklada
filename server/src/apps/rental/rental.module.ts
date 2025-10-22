@@ -5,8 +5,8 @@ import { CellRentalsModule } from './cell-rentals/cell-rentals.module';
 
 @Module({
   imports: [
+    CellRentalsModule,
     PaymentsModule,
-    CellRentalsModule
   ],
 })
 export class RentalModule {}

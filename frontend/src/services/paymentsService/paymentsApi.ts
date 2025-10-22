@@ -105,11 +105,7 @@ export const paymentsApi = api.injectEndpoints({
         { type: 'CellRentals', id: 'LIST' },
       ],
     }),
-    
-    // Получение ссылки на оплату для существующего платежа
-    getPaymentLink: builder.query<{ success: boolean; url?: string; message?: string }, string>({
-      query: (orderId) => `/payments/payment-link/${orderId}`,
-    }),
+  
   }),
   overrideExisting: false,
 });
@@ -122,5 +118,4 @@ export const {
   useAdminCreatePaymentMutation,
   useUpdatePaymentMutation,
   useDeletePaymentMutation,
-  useLazyGetPaymentLinkQuery,
 } = paymentsApi; 

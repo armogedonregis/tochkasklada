@@ -5,7 +5,6 @@ import {
   useGetAllPaymentsQuery, 
   useCreatePaymentMutation, 
   useGetPaymentByOrderIdQuery,
-  useLazyGetPaymentLinkQuery
 } from '@/services/paymentsService/paymentsApi';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/button';
@@ -38,7 +37,6 @@ import {
 
 const TinkoffTestPage = () => {
   const [createPayment, { isLoading: isCreating }] = useCreatePaymentMutation();
-  const [getPaymentLink, { isLoading: isLoadingLink }] = useLazyGetPaymentLinkQuery();
   const { data: payments, isLoading, refetch } = useGetAllPaymentsQuery();
   
   const [amount, setAmount] = useState('100');
@@ -85,16 +83,7 @@ const TinkoffTestPage = () => {
       
       // Получаем платежную ссылку
       if (result && result.orderId) {
-        const linkResult = await getPaymentLink(result.orderId).unwrap();
-        
-        if (linkResult && linkResult.success && linkResult.url) {
-          setCurrentPayment({
-            orderId: result.orderId,
-            paymentUrl: linkResult.url
-          });
-        } else {
-          toast.error('Не удалось получить ссылку на оплату');
-        }
+
       }
       
     } catch (error) {
@@ -163,9 +152,9 @@ const TinkoffTestPage = () => {
                 <Button 
                   className="w-full" 
                   onClick={handleCreateTestPayment}
-                  disabled={isCreating || isLoadingLink || !amount || parseFloat(amount) < 10}
+                  disabled={isCreating || !amount || parseFloat(amount) < 10}
                 >
-                  {(isCreating || isLoadingLink) ? (
+                  {(isCreating) ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {isCreating ? 'Создание платежа...' : 'Получение ссылки...'}

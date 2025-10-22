@@ -20,12 +20,16 @@ import { JwtAuthGuard } from '@/apps/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/apps/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/apps/auth/decorators/permissions.decorator';
 import { CreateAdminPaymentDto, UpdatePaymentDto, FindPaymentsDto, CreatePaymentDto } from './dto';
+import { TildaPaymentsService } from './tilda-payments.service';
 
 @Controller('payments')
 export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
 
-  constructor(private readonly paymentsService: PaymentsService) { }
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly tildaPaymentsService: TildaPaymentsService,
+  ) { }
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -59,7 +63,7 @@ export class PaymentsController {
 
     this.logger.debug(`Body: ${JSON.stringify(payload)}`);
     
-    const result = this.paymentsService.createTildaPayment(payload);
+    const result = this.tildaPaymentsService.createTildaPayment(payload);
     this.logger.log('=== Tilda webhook processing completed ===');
     return result;
   }
@@ -80,11 +84,6 @@ export class PaymentsController {
     @Body() updatePaymentDto: UpdatePaymentDto
   ) {
     return this.paymentsService.updatePayment(id, updatePaymentDto);
-  }
-
-  @Get('payment-link/:orderId')
-  async getPaymentLink(@Param('orderId') orderId: string) {
-    return await this.paymentsService.createTinkoffPayment(orderId);
   }
 
   @Get('my')

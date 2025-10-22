@@ -3,12 +3,15 @@ import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { LoggerService } from '@/infrastructure/logger/logger.service';
 import { hashPassword } from '@/common/utils/password.utils';
+import { UsersRepo } from './users.repo';
+import { FindOrCreateUserWithClientData } from './users.interface';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly usersRepo: UsersRepo,
   ) {
     this.logger.log('UsersService instantiated', 'UsersService');
   }
@@ -282,5 +285,28 @@ export class UsersService {
     });
 
     return users;
+  }
+
+  /**
+   * Find or create user with client
+   */
+  async findOrCreateUserWithClient(data: FindOrCreateUserWithClientData) {
+    try {
+      let user = await this.usersRepo.findUniqUser(data.email);
+
+      if (!user) {
+        user = await this.usersRepo.createUserWithClient(data)
+      } else {
+        if (user.client) {
+          if (data.phone && !user.client.phones.some(p => p.phone === data.phone)) {
+            await this.usersRepo.createUserPhoneForClient(data.phone, user.client.id);
+          }
+        }
+      }
+      return user;
+    } catch (error) {
+      this.logger.error(`Error in findOrCreateUserWithClient: ${error.message}`, error.stack, UsersRepo.name);
+      throw error;
+    }
   }
 } 

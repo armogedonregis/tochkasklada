@@ -6,6 +6,7 @@ import { CellRentalStatus, Prisma } from '@prisma/client';
 import { CellFreeSortField, FindFreeCellRentalsDto } from './dto/find-free-cells.dto';
 import { LoggerService } from '@/infrastructure/logger/logger.service';
 import { FindGanttRentalsDto } from './dto/find-gantt-rentals.dto';
+import { CellRentalsRepo } from './cell-rentals.repo';
 
 @Injectable()
 export class CellRentalsService {
@@ -13,6 +14,7 @@ export class CellRentalsService {
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
     private readonly rolesService: RolesService,
+    private readonly cellRentalsRepo: CellRentalsRepo,
   ) {
     this.logger.log('CellRentalsService instantiated', 'CellRentalsService');
   }
@@ -622,8 +624,6 @@ export class CellRentalsService {
         },
       });
 
-      await this.syncCellAndRentalStatuses();
-
       this.logger.log(`Cell rental with id: ${id} updated successfully`, 'CellRentalsService');
       return this.findOne(updatedRental.id);
     } catch (error) {
@@ -807,60 +807,12 @@ export class CellRentalsService {
     });
   }
 
-  async syncCellAndRentalStatuses() {
-    this.logger.log('Syncing cell and rental statuses...', 'CellRentalsService');
-
-    return await this.prisma.$transaction(async (prisma) => {
-      try {
-        // Получаем статусы один раз
-        const activeCellStatus = await prisma.cellStatus.findFirst({
-          where: { statusType: 'ACTIVE' }
-        });
-
-        const closedCellStatus = await prisma.cellStatus.findFirst({
-          where: { statusType: 'CLOSED' }
-        });
-
-        if (!activeCellStatus || !closedCellStatus) {
-          throw new Error('Active or Closed cell status not found');
-        }
-
-        // 1. Находим все ячейки с активными арендами (любые кроме CLOSED и EXPIRED)
-        const activeRentals = await prisma.cellRental.findMany({
-          where: {
-            status: {
-              is: {
-                statusType: {
-                  in: ['ACTIVE', 'EXTENDED', 'PAYMENT_SOON', 'EXPIRING_SOON', 'RESERVATION']
-                }
-              }
-            }
-          },
-          include: {
-            cell: {
-              select: { id: true }
-            }
-          }
-        });
-
-        const activeCellIds = [...new Set(activeRentals.flatMap(rental =>
-          rental.cell.map(c => c.id)
-        ))];
-
-
-        // 2.2. Устанавливаем CLOSED для ячеек без активных аренд
-        const allCells = await prisma.cells.findMany({
-          select: { id: true }
-        });
-
-
-      } catch (error) {
-        this.logger.error(`Failed to sync cell statuses: ${error.message}`, error.stack, 'CellRentalsService');
-        throw error;
-      }
-    });
-  }
-
+  /**
+   * Метод для расчета статуса аренды от дня до конца аренда
+   * @param id UUID
+   * @param forceStatus ACTIVE
+   * @returns Boolean
+   */
   async calculateAndUpdateRentalStatus(id: string, forceStatus?: CellRentalStatus) {
     this.logger.log(`Updating rental status for id: ${id}`, 'CellRentalsService');
     const rental = await this.prisma.cellRental.findUnique({
@@ -880,67 +832,61 @@ export class CellRentalsService {
       throw new NotFoundException(`Аренда с ID ${id} не найдена`);
     }
 
-    let newStatus: CellRentalStatus;
-
     if (forceStatus) {
-      newStatus = forceStatus;
-    } else if (rental.status?.statusType != 'ACTIVE') {
-      const now = new Date();
-      const endDate = new Date(rental.endDate);
-      if (endDate < now && !rental.closedAt) {
-        newStatus = CellRentalStatus.EXPIRED;
-      } else {
-        newStatus = CellRentalStatus.EXTENDED;
-      }
-    } else {
-      const now = new Date();
-      const endDate = new Date(rental.endDate);
-      const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-      const wasExtended = rental.extensionCount > 0 &&
-        rental.lastExtendedAt &&
-        new Date(rental.lastExtendedAt).getTime() > now.getTime() - 1000 * 60 * 60 * 24 * 7;
-
-      const isReservation = new Date(rental.startDate).getTime() > now.getTime();
-
-      if (isReservation) {
-        newStatus = CellRentalStatus.RESERVATION;
-      } else if (daysLeft <= 1) {
-        newStatus = CellRentalStatus.EXPIRED;
-      } else if (daysLeft <= 3) {
-        newStatus = CellRentalStatus.EXPIRING_SOON;
-      } else if (daysLeft <= 7) {
-        newStatus = CellRentalStatus.PAYMENT_SOON;
-      } else if (wasExtended) {
-        newStatus = CellRentalStatus.EXTENDED;
-      } else {
-        newStatus = CellRentalStatus.ACTIVE;
-      }
-    }
-
-    if (!rental.status || rental.status.statusType !== newStatus) {
-      const matchingStatus = await this.prisma.cellStatus.findFirst({
-        where: {
-          statusType: newStatus
+      await this.prisma.cellRental.update({
+        where: { id },
+        data: {
+          status: {
+            connect: {
+              statusType: forceStatus
+            }
+          }
         }
       });
+      this.logger.log(`Rental status for id ${id} force updated to ${forceStatus}`, 'CellRentalsService');
+      return true;
+    }
 
-      if (matchingStatus) {
-        await this.prisma.cellRental.update({
-          where: { id },
-          data: {
-            statusId: matchingStatus.id,
-            // Закрываем аренду только если статус CLOSED
-            closedAt: newStatus === CellRentalStatus.CLOSED ? new Date() : rental.closedAt
+    const currentStatus = rental.status?.statusType;
+    if (currentStatus === CellRentalStatus.RESERVATION || currentStatus === CellRentalStatus.EXPIRED) {
+      this.logger.log(`Rental status for id ${id} is ${currentStatus} - skipping update`, 'CellRentalsService');
+      return false;
+    }
+
+    let newStatus: CellRentalStatus;
+    const now = new Date();
+    const endDate = new Date(rental.endDate);
+    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    const wasExtended = rental.extensionCount > 0 &&
+      rental.lastExtendedAt &&
+      new Date(rental.lastExtendedAt).getTime() > now.getTime() - 1000 * 60 * 60 * 24 * 7;
+
+    if (wasExtended) {
+      newStatus = CellRentalStatus.EXTENDED;
+    } else if (daysLeft <= 1) {
+      newStatus = CellRentalStatus.EXPIRED;
+    } else if (daysLeft <= 3) {
+      newStatus = CellRentalStatus.EXPIRING_SOON;
+    } else if (daysLeft <= 7) {
+      newStatus = CellRentalStatus.PAYMENT_SOON;
+    } else if (wasExtended) {
+      newStatus = CellRentalStatus.EXTENDED;
+    } else {
+      newStatus = CellRentalStatus.ACTIVE;
+    }
+
+    if (currentStatus !== newStatus) {
+      await this.prisma.cellRental.update({
+        where: { id },
+        data: {
+          status: {
+            connect: {
+              statusType: newStatus
+            }
           }
-        });
-
-        this.logger.log(`Rental status for id ${id} updated to ${newStatus}`, 'CellRentalsService');
-
-        // Синхронизируем статусы ячеек
-        await this.syncCellAndRentalStatuses();
-        return true;
-      }
+        }
+      });
 
       this.logger.log(`Rental status for id ${id} updated to ${newStatus}`, 'CellRentalsService');
       return true;
@@ -1031,44 +977,6 @@ export class CellRentalsService {
     return { updatedCount };
   }
 
-  async syncAllRentalVisualStatuses() {
-    this.logger.log('Syncing visual statuses for all rentals', 'CellRentalsService');
-
-    const rentals = await this.prisma.cellRental.findMany({
-      include: {
-        status: true
-      }
-    });
-
-    let syncedCount = 0;
-    for (const rental of rentals) {
-      try {
-        const correctStatus = await this.prisma.cellStatus.findFirst({
-          where: {
-            statusType: rental.status?.statusType
-          }
-        });
-
-        if (correctStatus && rental.statusId !== correctStatus.id) {
-          await this.prisma.cellRental.update({
-            where: { id: rental.id },
-            data: {
-              statusId: correctStatus.id
-            }
-          });
-
-          this.logger.log(`Synced visual status for rental ${rental.id} -> ${correctStatus.name}`, 'CellRentalsService');
-          syncedCount++;
-        }
-      } catch (error) {
-        this.logger.error(`Failed to sync visual status for rental ${rental.id}: ${error.message}`, error.stack, 'CellRentalsService');
-      }
-    }
-
-    this.logger.log(`Synced visual statuses for ${syncedCount} rentals.`, 'CellRentalsService');
-    return { syncedCount };
-  }
-
   async extendRental(extendCellRentalDto: ExtendCellRentalDto) {
     const { cellRentalId, amount, description, rentalDuration } = extendCellRentalDto;
     this.logger.log(`Extending rental ${cellRentalId}`, 'CellRentalsService');
@@ -1133,34 +1041,6 @@ export class CellRentalsService {
     return updatedRental;
   }
 
-  async attachPaymentToRental(paymentId: string, rentalId: string) {
-    this.logger.log(`Attaching payment ${paymentId} to rental ${rentalId}`, 'CellRentalsService');
-
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-
-    if (!payment) {
-      throw new NotFoundException(`Платеж с ID ${paymentId} не найден`);
-    }
-
-    const rental = await this.findOne(rentalId);
-
-    this.logger.log(`Updating payment ${paymentId} to link with rental ${rentalId}`, 'CellRentalsService');
-    await this.prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        cellRentalId: rentalId,
-      },
-    });
-
-    await this.recalculateRentalDuration(rentalId);
-
-    await this.calculateAndUpdateRentalStatus(rentalId);
-
-    return this.findOne(rentalId);
-  }
-
   async setCellStatus(cellId: string, statusId: string) {
     this.logger.log(`Setting status ${statusId} for cell ${cellId}`, 'CellRentalsService');
     try {
@@ -1178,36 +1058,6 @@ export class CellRentalsService {
       });
     } catch (error) {
       if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new NotFoundException(`Ячейка с ID ${cellId} не найдена`);
-    }
-  }
-
-  async removeCellStatus(cellId: string) {
-    this.logger.log(`Removing status from cell ${cellId}`, 'CellRentalsService');
-    try {
-      const activeRental = await this.prisma.cellRental.findFirst({
-        where: {
-          cell: {
-            some: {
-              id: cellId
-            }
-          },
-          status: { statusType: 'ACTIVE' },
-        },
-      });
-
-      if (activeRental) {
-        throw new BadRequestException(`Невозможно удалить статус у ячейки с ID ${cellId}, так как она находится в активной аренде`);
-      }
-
-      return await this.prisma.cellRental.update({
-        where: { id: cellId },
-        data: { statusId: null },
-      });
-    } catch (error) {
-      if (error instanceof BadRequestException) {
         throw error;
       }
       throw new NotFoundException(`Ячейка с ID ${cellId} не найдена`);
@@ -1424,5 +1274,57 @@ export class CellRentalsService {
     await this.calculateAndUpdateRentalStatus(rentalId);
 
     return updatedRental;
+  }
+
+  /**
+   * Метод для поиска и сравнения доступной ячейки
+   * @param cellNumber 01C
+   * @param clientId UUID
+   * @returns 
+   */
+  async findAvailableCellClient(cellNumber: string, clientId: string) {
+    const context = 'TildaCellSearch';
+
+    if (!cellNumber) {
+      this.logger.warn('Cell number is empty', context);
+      return null;
+    }
+
+    this.logger.log(`Searching for cell by number: ${cellNumber}`, context);
+
+    try {
+      const existingCell = await this.cellRentalsRepo.findExistingCell(cellNumber);
+
+      if (!existingCell) {
+        this.logger.warn(`Cell not found by number: ${cellNumber}`, context);
+        return null;
+      }
+
+      const activeRentals = existingCell.rentals || [];
+      const hasActiveRentals = activeRentals.length > 0;
+
+      if (!hasActiveRentals) {
+        this.logger.log(`Cell ${cellNumber} is available`, context);
+        return existingCell;
+      }
+
+      const otherClientRentals = activeRentals.filter(rental =>
+        rental.client?.id !== clientId
+      );
+
+      if (otherClientRentals.length > 0) {
+        const otherClientEmail = otherClientRentals[0].client?.user?.email;
+        this.logger.log(`Cell ${cellNumber} has active rental by other client: ${otherClientEmail}`, context);
+        throw new BadRequestException(`Ячейка ${cellNumber} уже арендована другим клиентом`);
+      } else {
+        this.logger.log(`Cell ${cellNumber} has active rental by current client ${clientId}`, context);
+        return existingCell;
+      }
+
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(`Error: ${error.message}`, context);
+      throw error;
+    }
   }
 }

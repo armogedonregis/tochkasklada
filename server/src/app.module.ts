@@ -20,6 +20,7 @@ import { AdminAuditModule } from '@/common/admin-audit.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AdminAuditInterceptor } from './common/interceptors/admin-audit.interceptor';
 import { MailModule } from './infrastructure/mail/mail.module';
+import { IntegrationModule } from './integration/integration.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { MailModule } from './infrastructure/mail/mail.module';
     AdminsModule,
     ClientsModule,
     StorageModule,
+    IntegrationModule,
     RentalModule,
     LeadManagementModule,
     RolesModule,
