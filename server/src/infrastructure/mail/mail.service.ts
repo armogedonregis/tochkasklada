@@ -47,16 +47,14 @@ export class MailService {
 
   /**
    * Метод для отправки уведомления
-   * @param email 
-   * @param clientName 
+   * @param email
    * @param daysLeft 
    * @param cellNumber 
    * @param expirationDate 
    * @returns 
    */
   async sendRentalExpirationNotification(
-    email: string, 
-    clientName: string, 
+    email: string,
     daysLeft: number, 
     cellNumber: string,
     expirationDate: string
@@ -65,7 +63,7 @@ export class MailService {
     const subject = `Уведомление об окончании срока аренды (осталось ${daysLeft} дн.)`;
     
     const text = `
-    Уважаемый(ая) ${clientName},
+    Уважаемый клиент,
 
     Напоминаем, что срок аренды ячейки №${cellNumber} заканчивается (${expirationDate}).
 
@@ -78,7 +76,7 @@ export class MailService {
     const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #333;">Уведомление об окончании срока аренды</h2>
-      <p>Уважаемый(ая) <strong>${clientName}</strong>,</p>
+      <p>Уважаемый <strong>клиент</strong>,</p>
       <p>Напоминаем, что срок аренды ячейки <strong>№${cellNumber}</strong> заканчивается <strong>${expirationDate}</strong>.</p>
       <p>Пожалуйста, не забудьте продлить аренду или освободить ячейку до указанной даты.</p>
       <p style="margin-top: 30px;">С уважением,<br>Команда Точка Склада</p>

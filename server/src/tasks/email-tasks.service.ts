@@ -43,7 +43,7 @@ export class EmailTasksService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const activeRentals = await this.cellRentalsRepo.findRentalsForEmailNotifications(
+    const activeRentals = await this.cellRentalsRepo.findRentalsForEmailNotificationsDB(
       new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000), // от 7 дней назад
       new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)  // до 7 дней вперед
   );
@@ -88,7 +88,6 @@ export class EmailTasksService {
 
         const success = await this.mailService.sendRentalExpirationNotification(
           rental.client.user.email,
-          clientName,
           daysForEmail,
           cellNumbers,
           rental.endDate.toISOString().split('T')[0]
