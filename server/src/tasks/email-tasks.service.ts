@@ -43,7 +43,7 @@ export class EmailTasksService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const activeRentals = await this.cellRentalsRepo.findRentalsForEmailNotificationsDB(
+    const activeRentals = await this.cellRentalsRepo.findRentalsForEmailNotifications(
       new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000), // от 7 дней назад
       new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)  // до 7 дней вперед
   );
