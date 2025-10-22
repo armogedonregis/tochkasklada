@@ -21,6 +21,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 
 import {
@@ -64,6 +65,11 @@ export const navigationIcons: Record<string, IconConfig> = {
   locations: {
     icon: MapIcon,
     activeIcon: MapSolid,
+  },
+
+  mail: {
+    icon: EnvelopeIcon, // Импортируйте из heroicons
+    activeIcon: EnvelopeIcon, // или создайте solid версию
   },
   
   payments: {

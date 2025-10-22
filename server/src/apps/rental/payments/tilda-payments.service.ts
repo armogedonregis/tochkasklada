@@ -108,26 +108,33 @@ export class TildaPaymentsService {
 
             const payment = await this.paymentRepo.createPaymentByAdminDb(paymentDetails);
 
+            const cellIds: string[] = [];
+
+            if (cell?.id) {
+                cellIds.push(cell.id);
+            }
+
             if (secondCellNumber) {
                 try {
                     const secondCell = await this.cellRentalsService.findAvailableCellClient(secondCellNumber, user.client.id);
-                    const cellIds: string[] = [];
-                    if (cell?.id) cellIds.push(cell.id);
-                    if (secondCell?.id) cellIds.push(secondCell.id);
-
-                    if (cellIds.length >= 2 && payment) {
-                        await this._processMultipleCellsRental(
-                            cellIds,
-                            user.client.id,
-                            payment.id,
-                            paymentDetails.description || undefined,
-                            rentalDuration
-                        );
+                    if (secondCell?.id) {
+                        cellIds.push(secondCell.id);
                     }
                 } catch (e) {
                     this.logger.error(`Failed to process second cell ${secondCellNumber}: ${e.message}`, e.stack, TildaPaymentsService.name);
                 }
             }
+
+            if (cellIds.length > 0 && payment) {
+                await this._processMultipleCellsRental(
+                    cellIds,
+                    user.client.id,
+                    payment.id,
+                    paymentDetails.description || undefined,
+                    rentalDuration
+                );
+            }
+            
 
             return {
                 success: !errorMessage,

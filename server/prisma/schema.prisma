@@ -45,8 +45,9 @@ model Client {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  phones  ClientPhone[]
-  rentals CellRental[]
+  phones    ClientPhone[]
+  rentals   CellRental[]
+  emailLogs EmailLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -187,6 +188,43 @@ model AdminResourcePermission {
 }
 
 /// =============================================================
+/// NOTIFICATIONS
+/// -------------------------------------------------------------
+model EmailLog {
+  id String @id @default(uuid())
+
+  to      String
+  subject String
+  type    EmailType
+
+  status EmailStatus @default(SENT)
+  error  String?
+
+  rentalId String?
+  rental   CellRental? @relation(fields: [rentalId], references: [id], onDelete: SetNull)
+
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  sentAt DateTime @default(now())
+
+  @@map("email_logs")
+}
+
+enum EmailType {
+  RENTAL_EXPIRATION
+  PAYMENT_REMINDER
+  RENTAL_EXTENDED
+  OTHER
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  PENDING
+}
+
+/// =============================================================
 /// REQUEST AND LIST MODEL FOR CRM SYSTEM
 /// -------------------------------------------------------------
 model Request {
@@ -295,6 +333,7 @@ model CellRental {
 
   payments    Payment[]
   relayAccess RelayAccess[]
+  emailLogs   EmailLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -179,4 +179,38 @@ export class CellRentalsRepo {
             }
         });
     }
+
+    /**
+     * Поиск аренд для уведомления по email
+     * @param startDate 
+     * @param endDate 
+     * @returns 
+     */
+    async findRentalsForEmailNotifications(startDate: Date, endDate: Date) {
+        return await this.prisma.cellRental.findMany({
+            where: {
+                endDate: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+                status: {
+                    statusType: {
+                        not: 'CLOSED'
+                    }
+                }
+            },
+            include: {
+                client: {
+                    include: {
+                        user: true
+                    }
+                },
+                cell: {
+                    include: {
+                        container: true
+                    }
+                }
+            }
+        });
+    }
 }

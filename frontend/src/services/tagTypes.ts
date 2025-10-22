@@ -21,5 +21,6 @@ export const tagTypes = [
     'Roles',
     'Permissions',
     'CurrentUser',
-    'AdminAudit'
+    'AdminAudit',
+    'EmailLogs'
 ] as const;

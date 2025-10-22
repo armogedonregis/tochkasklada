@@ -8,12 +8,12 @@ import { MailModule } from '@/infrastructure/mail/mail.module';
 @Module({
   imports: [
     CellRentalsModule,
-    // MailModule,
+    MailModule,
   ],
   providers: [
     SystemTasksService,
     RentalTasksService,
-    // EmailTasksService,
+    EmailTasksService,
   ],
 })
 export class TasksModule {} 

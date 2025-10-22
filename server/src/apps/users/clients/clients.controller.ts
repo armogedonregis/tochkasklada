@@ -128,14 +128,4 @@ export class ClientsController {
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.clientsService.remove(id);
   }
-
-  /**
-   * Отправка письма с уведомлением об окончании срока аренды
-   */
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('clients:update')
-  @Post(':id/send-email-rental')
-  async sendEmailRental(@Param('id', ParseUUIDPipe) id: string) {
-    return this.clientsService.sendEmailRental(id);
-  }
 } 

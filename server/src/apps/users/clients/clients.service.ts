@@ -509,37 +509,4 @@ export class ClientsService {
       return { id };
     });
   }
-
-
-  async sendEmailRental(clientId: string) {
-    const rental = await this.prisma.cellRental.findFirst({
-      where: { clientId: clientId },
-      include: {
-        cell: {
-          include: { container: true }
-        }
-      }
-    });
-
-    const user = await this.prisma.client.findUnique({
-      where: { id: clientId },
-      select: { user: { select: { email: true } }, name: true }
-    });
-
-    if(!user) {
-      this.logger.warn(`User with id ${clientId} not found`, 'ClientsService');
-      throw new NotFoundException(`Пользователь с ID ${clientId} не найден`);
-    }
-
-    if(!rental) {
-      this.logger.warn(`Rental with client id ${clientId} not found`, 'ClientsService');
-      throw new NotFoundException(`Аренда с ID ${clientId} не найдена`);
-    }
-
-    const daysLeft = Math.ceil((new Date(rental.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-
-    const expirationDate = rental.endDate.toLocaleDateString('ru-RU').toString();
-
-    return this.mailService.sendRentalExpirationNotification(user.user.email, user.name, daysLeft, rental.cell[0].name, expirationDate);
-  }
 } 

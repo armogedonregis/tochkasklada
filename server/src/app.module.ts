@@ -21,6 +21,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AdminAuditInterceptor } from './common/interceptors/admin-audit.interceptor';
 import { MailModule } from './infrastructure/mail/mail.module';
 import { IntegrationModule } from './integration/integration.module';
+import { NotificationsModule } from './apps/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { IntegrationModule } from './integration/integration.module';
     ControlPanelModule,
     AdminAuditModule,
     MailModule,
+    NotificationsModule,
     SwaggerDocModule.forRoot(),
   ],
   providers: [

@@ -108,6 +108,14 @@ export const navigationConfig: NavigationSection[] = [
     title: 'Управление',
     items: [
       {
+        id: 'email-logs',
+        name: 'История email',
+        href: '/notifications/email-logs',
+        iconKey: 'documentation',
+        permission: 'notifications:read',
+        className: 'hidden md:block',
+      },
+      {
         id: 'locations-manage',
         name: 'Локации',
         href: '/control/locations',
