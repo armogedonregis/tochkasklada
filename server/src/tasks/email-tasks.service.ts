@@ -28,7 +28,7 @@ export class EmailTasksService {
     this.logger.log('Starting rental expiration email notifications task', 'EmailTasksService');
 
     try {
-      await this.sendAllExpirationNotifications();
+      // await this.sendAllExpirationNotifications();
       this.logger.log('Completed rental expiration email notifications task', 'EmailTasksService');
     } catch (error) {
       this.logger.error(
